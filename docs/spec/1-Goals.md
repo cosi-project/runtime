@@ -1,0 +1,5 @@
+# Goals
+
+- State
+- API
+- Pluggable
