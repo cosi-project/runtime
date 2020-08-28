@@ -1,0 +1,26 @@
+---
+kind: auto.CommandConfig
+name: directory-fun
+spec:
+  disableImage: true
+---
+kind: auto.CustomSteps
+spec:
+  steps:
+    - name: run-directory-fun
+      inputs:
+        - directory-fun
+      toplevel: true
+---
+kind: custom.Step
+name: run-directory-fun
+spec:
+  makefile:
+    enabled: true
+    depends:
+      - directory-fun
+    script:
+      - >-
+        @$(ARTIFACTS)/directory-fun
+  drone:
+    enabled: true
