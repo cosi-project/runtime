@@ -1,6 +1,6 @@
 # THIS FILE WAS AUTOMATICALLY GENERATED, PLEASE DO NOT EDIT.
 #
-# Generated on 2020-08-28T20:51:32Z by kres 292ed36-dirty.
+# Generated on 2020-09-25T18:15:38Z by kres ce6bee5-dirty.
 
 # common variables
 
@@ -8,13 +8,13 @@ SHA := $(shell git describe --match=none --always --abbrev=8 --dirty)
 TAG := $(shell git describe --tag --always --dirty)
 BRANCH := $(shell git rev-parse --abbrev-ref HEAD)
 ARTIFACTS := _out
-REGISTRY ?= docker.io
-USERNAME ?= autonomy
+REGISTRY ?= ghcr.io
+USERNAME ?= talos-systems
 REGISTRY_AND_USERNAME ?= $(REGISTRY)/$(USERNAME)
 GOFUMPT_VERSION ?= abc0db2c416aca0f60ea33c23c76665f6e7ba0b6
 GO_VERSION ?= 1.14
 TESTPKGS ?= ./...
-KRES_IMAGE ?= autonomy/kres:latest
+KRES_IMAGE ?= ghcr.io/talos-systems/kres:latest
 
 # docker build settings
 
@@ -34,7 +34,7 @@ COMMON_ARGS += --build-arg=USERNAME=$(USERNAME)
 COMMON_ARGS += --build-arg=TOOLCHAIN=$(TOOLCHAIN)
 COMMON_ARGS += --build-arg=GOFUMPT_VERSION=$(GOFUMPT_VERSION)
 COMMON_ARGS += --build-arg=TESTPKGS=$(TESTPKGS)
-TOOLCHAIN ?= docker.io/golang:1.14-alpine
+TOOLCHAIN ?= docker.io/golang:1.15-alpine
 
 # help menu
 
@@ -130,7 +130,7 @@ lint: lint-golangci-lint lint-gofumpt lint-markdown  ## Run all linters for the 
 .PHONY: rekres
 rekres:
 	@docker pull $(KRES_IMAGE)
-	@docker run --rm -v $(PWD):/src -w /src $(KRES_IMAGE)
+	@docker run --rm -v $(PWD):/src -w /src -e GITHUB_TOKEN $(KRES_IMAGE)
 
 .PHONY: help
 help:  ## This help menu.

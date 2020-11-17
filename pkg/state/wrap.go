@@ -1,3 +1,7 @@
+// This Source Code Form is subject to the terms of the Mozilla Public
+// License, v. 2.0. If a copy of the MPL was not distributed with this
+// file, You can obtain one at http://mozilla.org/MPL/2.0/.
+
 package state
 
 import (
@@ -18,20 +22,20 @@ type coreWrapper struct {
 }
 
 // UpdateWithConflicts automatically handles conflicts on update.
-func (state coreWrapper) UpdateWithConflicts(r resource.Resource, f UpdaterFunc) (resource.Resource, error) {
+func (state coreWrapper) UpdateWithConflicts(ctx context.Context, r resource.Resource, f UpdaterFunc) (resource.Resource, error) {
 	for {
-		current, err := state.Get(r.Type(), r.ID())
+		current, err := state.Get(ctx, resource.Pointer(r.Metadata()))
 		if err != nil {
 			return nil, err
 		}
 
-		curVersion := current.Version()
+		curVersion := current.Metadata().Version()
 
 		if err = f(current); err != nil {
 			return nil, err
 		}
 
-		err = state.Update(curVersion, current)
+		err = state.Update(ctx, curVersion, current)
 		if err == nil {
 			return current, nil
 		}
@@ -45,7 +49,7 @@ func (state coreWrapper) UpdateWithConflicts(r resource.Resource, f UpdaterFunc)
 }
 
 // WatchFor watches for resource to reach all of the specified conditions.
-func (state coreWrapper) WatchFor(ctx context.Context, typ resource.Type, id resource.ID, conditionFunc ...WatchForConditionFunc) (resource.Resource, error) {
+func (state coreWrapper) WatchFor(ctx context.Context, pointer resource.Pointer, conditionFunc ...WatchForConditionFunc) (resource.Resource, error) {
 	var condition WatchForCondition
 
 	for _, f := range conditionFunc {
@@ -59,7 +63,7 @@ func (state coreWrapper) WatchFor(ctx context.Context, typ resource.Type, id res
 	ctx, cancel := context.WithCancel(ctx)
 	defer cancel()
 
-	if err := state.Watch(ctx, typ, id, ch); err != nil {
+	if err := state.Watch(ctx, pointer, ch); err != nil {
 		return nil, err
 	}
 
