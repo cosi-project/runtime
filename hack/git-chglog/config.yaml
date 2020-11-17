@@ -1,12 +1,12 @@
 # THIS FILE WAS AUTOMATICALLY GENERATED, PLEASE DO NOT EDIT.
 #
-# Generated on 2020-08-28T20:43:11Z by kres 292ed36-dirty.
+# Generated on 2020-09-25T18:15:38Z by kres ce6bee5-dirty.
 
 style: github
 template: CHANGELOG.tpl.md
 info:
   title: CHANGELOG
-  repository_url: https://github.com/talos-systems/talos
+  repository_url: https://github.com/talos-systems/os-runtime
 options:
   commits:
     # filters:

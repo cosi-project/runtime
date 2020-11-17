@@ -1,3 +1,7 @@
+// This Source Code Form is subject to the terms of the Mozilla Public
+// License, v. 2.0. If a copy of the MPL was not distributed with this
+// file, You can obtain one at http://mozilla.org/MPL/2.0/.
+
 package local
 
 import (
@@ -23,17 +27,19 @@ type ResourceCollection struct {
 	cap int
 	gap int
 
+	ns  resource.Namespace
 	typ resource.Type
 }
 
 // NewResourceCollection returns new ResourceCollection.
-func NewResourceCollection(typ resource.Type) *ResourceCollection {
+func NewResourceCollection(ns resource.Namespace, typ resource.Type) *ResourceCollection {
 	const (
 		cap = 1000
 		gap = 10
 	)
 
 	collection := &ResourceCollection{
+		ns:      ns,
 		typ:     typ,
 		cap:     cap,
 		gap:     gap,
@@ -62,7 +68,7 @@ func (collection *ResourceCollection) Get(resourceID resource.ID) (resource.Reso
 
 	res, exists := collection.storage[resourceID]
 	if !exists {
-		return nil, ErrNotFound(resource.NewNullResource(collection.typ, resourceID))
+		return nil, ErrNotFound(resource.NewMetadata(collection.ns, collection.typ, resourceID, resource.VersionUndefined))
 	}
 
 	return res.Copy(), nil
@@ -71,13 +77,13 @@ func (collection *ResourceCollection) Get(resourceID resource.ID) (resource.Reso
 // Create a resource.
 func (collection *ResourceCollection) Create(resource resource.Resource) error {
 	resource = resource.Copy()
-	id := resource.ID()
+	id := resource.Metadata().ID()
 
 	collection.mu.Lock()
 	defer collection.mu.Unlock()
 
 	if _, exists := collection.storage[id]; exists {
-		return ErrAlreadyExists(resource)
+		return ErrAlreadyExists(resource.Metadata())
 	}
 
 	collection.storage[id] = resource
@@ -92,18 +98,18 @@ func (collection *ResourceCollection) Create(resource resource.Resource) error {
 // Update a resource.
 func (collection *ResourceCollection) Update(curVersion resource.Version, newResource resource.Resource) error {
 	newResource = newResource.Copy()
-	id := newResource.ID()
+	id := newResource.Metadata().ID()
 
 	collection.mu.Lock()
 	defer collection.mu.Unlock()
 
 	curResource, exists := collection.storage[id]
 	if !exists {
-		return ErrNotFound(newResource)
+		return ErrNotFound(newResource.Metadata())
 	}
 
-	if curResource.Version() != curVersion {
-		return ErrVersionConflict(curResource, curVersion, curResource.Version())
+	if curResource.Metadata().Version() != curVersion {
+		return ErrVersionConflict(curResource.Metadata(), curVersion, curResource.Metadata().Version())
 	}
 
 	collection.storage[id] = newResource
@@ -117,20 +123,24 @@ func (collection *ResourceCollection) Update(curVersion resource.Version, newRes
 }
 
 // Teardown a resource.
-func (collection *ResourceCollection) Teardown(resource resource.Resource) error {
-	id := resource.ID()
+func (collection *ResourceCollection) Teardown(ref resource.Reference) error {
+	id := ref.ID()
 
 	collection.mu.Lock()
 	defer collection.mu.Unlock()
 
-	_, exists := collection.storage[id]
+	resource, exists := collection.storage[id]
 	if !exists {
-		return ErrNotFound(resource)
+		return ErrNotFound(ref)
+	}
+
+	if resource.Metadata().Version() != ref.Version() {
+		return ErrVersionConflict(ref, ref.Version(), resource.Metadata().Version())
 	}
 
 	_, torndown := collection.rip[id]
 	if torndown {
-		return ErrAlreadyTorndown(resource)
+		return ErrAlreadyTorndown(resource.Metadata())
 	}
 
 	collection.rip[id] = struct{}{}
@@ -144,15 +154,15 @@ func (collection *ResourceCollection) Teardown(resource resource.Resource) error
 }
 
 // Destroy a resource.
-func (collection *ResourceCollection) Destroy(resource resource.Resource) error {
-	id := resource.ID()
+func (collection *ResourceCollection) Destroy(ref resource.Reference) error {
+	id := ref.ID()
 
 	collection.mu.Lock()
 	defer collection.mu.Unlock()
 
-	_, exists := collection.storage[id]
+	resource, exists := collection.storage[id]
 	if !exists {
-		return ErrNotFound(resource)
+		return ErrNotFound(ref)
 	}
 
 	delete(collection.storage, id)
@@ -160,7 +170,7 @@ func (collection *ResourceCollection) Destroy(resource resource.Resource) error 
 
 	collection.publish(state.Event{
 		Type:     state.Destroyed,
-		Resource: resource.Copy(),
+		Resource: resource,
 	})
 
 	return nil
@@ -189,7 +199,7 @@ func (collection *ResourceCollection) Watch(ctx context.Context, id resource.ID,
 				event.Type = state.Created
 			}
 		} else {
-			event.Resource = resource.NewNullResource(collection.typ, id)
+			event.Resource = resource.NewTombstone(resource.NewMetadata(collection.ns, collection.typ, id, resource.VersionUndefined))
 			event.Type = state.Destroyed
 		}
 
@@ -229,14 +239,14 @@ func (collection *ResourceCollection) Watch(ctx context.Context, id resource.ID,
 				event = collection.stream[pos%int64(collection.cap)]
 				pos++
 
-				if event.Resource.ID() == id {
+				if event.Resource.Metadata().ID() == id {
 					break
 				}
 			}
 
 			collection.mu.Unlock()
 
-			if event.Resource.ID() != id {
+			if event.Resource.Metadata().ID() != id {
 				continue
 			}
 
