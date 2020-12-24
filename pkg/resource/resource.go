@@ -7,7 +7,7 @@ package resource
 
 import (
 	"fmt"
-	"strconv"
+	"reflect"
 )
 
 type (
@@ -17,26 +17,9 @@ type (
 	//
 	// Type could be e.g. runtime/os/mount.
 	Type = string
-	// Version of a resource.
-	Version struct {
-		*uint64
-	}
 	// Namespace of a resource.
 	Namespace = string
 )
-
-// Special version constants.
-var (
-	VersionUndefined = Version{}
-)
-
-func (v Version) String() string {
-	if v.uint64 == nil {
-		return "undefined"
-	}
-
-	return strconv.FormatUint(*v.uint64, 10)
-}
 
 // Resource is an abstract resource managed by the state.
 //
@@ -50,11 +33,31 @@ type Resource interface {
 	// Metadata for the resource.
 	//
 	// Metadata.Version should change each time Spec changes.
-	Metadata() Metadata
+	Metadata() *Metadata
 
 	// Opaque data resource contains.
 	Spec() interface{}
 
 	// Deep copy of the resource.
-	Copy() Resource
+	DeepCopy() Resource
+}
+
+// Equal tests two resources for equality.
+func Equal(r1, r2 Resource) bool {
+	if !r1.Metadata().Equal(*r2.Metadata()) {
+		return false
+	}
+
+	return reflect.DeepEqual(r1.Spec(), r2.Spec())
+}
+
+// MarshalYAML marshals resource to YAML definition.
+func MarshalYAML(r Resource) (interface{}, error) {
+	return &struct {
+		Metadata *Metadata   `yaml:"metadata"`
+		Spec     interface{} `yaml:"spec"`
+	}{
+		Metadata: r.Metadata(),
+		Spec:     r.Spec(),
+	}, nil
 }

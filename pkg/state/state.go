@@ -20,8 +20,6 @@ const (
 	Created EventType = iota
 	// Resource got changed.
 	Updated
-	// Resource is about to be destroyed.
-	Torndown
 	// Resource was destroyed.
 	Destroyed
 )
@@ -30,12 +28,6 @@ const (
 type Event struct {
 	Type     EventType
 	Resource resource.Resource
-}
-
-// NamespacedState allows to create different namespaces which might be backed by different
-// State implementations.
-type NamespacedState interface {
-	Namespace(resource.Namespace) State
 }
 
 // CoreState is the central broker in the system handling state and changes.
@@ -47,6 +39,9 @@ type CoreState interface {
 	//
 	// If a resource is not found, error is returned.
 	Get(context.Context, resource.Pointer, ...GetOption) (resource.Resource, error)
+
+	// List resources by type.
+	List(context.Context, resource.Kind, ...ListOption) (resource.List, error)
 
 	// Create a resource.
 	//
@@ -60,17 +55,11 @@ type CoreState interface {
 	// curVersion, otherwise conflict error is returned.
 	Update(ctx context.Context, curVersion resource.Version, new resource.Resource, opts ...UpdateOption) error
 
-	// Teardown a resource (mark as being destroyed).
-	//
-	// If a resource doesn't exist, error is returned.
-	// If resource version doesn't match, conflict error is returned.
-	// It's an error to tear down a resource which is already being torn down.
-	Teardown(context.Context, resource.Reference, ...TeardownOption) error
-
 	// Destroy a resource.
 	//
 	// If a resource doesn't exist, error is returned.
-	Destroy(context.Context, resource.Reference, ...DestroyOption) error
+	// If a resource has pending finalizers, error is returned.
+	Destroy(context.Context, resource.Pointer, ...DestroyOption) error
 
 	// Watch state of a resource by type.
 	//
@@ -79,6 +68,9 @@ type CoreState interface {
 	// Watch sends initial resource state as the very first event on the channel,
 	// and then sends any updates to the resource as events.
 	Watch(context.Context, resource.Pointer, chan<- Event, ...WatchOption) error
+
+	// WatchKind watches resources of specific kind (namespace and type).
+	WatchKind(context.Context, resource.Kind, chan<- Event) error
 }
 
 // UpdaterFunc is called on resource to update it to the desired state.
@@ -91,7 +83,21 @@ type State interface {
 	CoreState
 
 	// UpdateWithConflicts automatically handles conflicts on update.
-	UpdateWithConflicts(context.Context, resource.Resource, UpdaterFunc) (resource.Resource, error)
+	UpdateWithConflicts(context.Context, resource.Pointer, UpdaterFunc) (resource.Resource, error)
+
 	// WatchFor watches for resource to reach all of the specified conditions.
 	WatchFor(context.Context, resource.Pointer, ...WatchForConditionFunc) (resource.Resource, error)
+
+	// Teardown a resource (mark as being destroyed).
+	//
+	// If a resource doesn't exist, error is returned.
+	// It's not an error to tear down a resource which is already being torn down.
+	// Teardown returns a flag telling whether it's fine to destroy a resource.
+	Teardown(context.Context, resource.Pointer, ...TeardownOption) (bool, error)
+
+	// AddFinalizer adds finalizer to resource metadata handling conflicts.
+	AddFinalizer(context.Context, resource.Pointer, ...resource.Finalizer) error
+
+	// RemoveFinalizer removes finalizer from resource metadata handling conflicts.
+	RemoveFinalizer(context.Context, resource.Pointer, ...resource.Finalizer) error
 }

@@ -1,6 +1,6 @@
 # THIS FILE WAS AUTOMATICALLY GENERATED, PLEASE DO NOT EDIT.
 #
-# Generated on 2020-08-28T20:43:11Z by kres 292ed36-dirty.
+# Generated on 2020-12-30T20:27:21Z by kres latest.
 
 
 # options for analysis running
@@ -125,6 +125,9 @@ linters:
     - gomnd
     - goerr113
     - nestif
+    - wrapcheck
+    - paralleltest
+    - exhaustivestruct
   disable-all: false
   fast: false
 

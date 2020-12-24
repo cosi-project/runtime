@@ -13,13 +13,13 @@ import (
 
 	"github.com/talos-systems/os-runtime/pkg/resource"
 	"github.com/talos-systems/os-runtime/pkg/state"
-	"github.com/talos-systems/os-runtime/pkg/state/impl/local"
+	"github.com/talos-systems/os-runtime/pkg/state/impl/inmem"
 )
 
 // DirectoryTask implements simple process attached to the state.
 //
 // DirectoryTask attempts to create path when the parent path got created.
-// DirectoryTask watches for parent to be torn down, starts tear down, waits for children
+// DirectoryTask watches for parent to be torn down, starts tear down process, waits for children
 // to be destroyed, and removes the path.
 //
 // DirectoryTask is a model of task in some OS sequencer.
@@ -34,7 +34,9 @@ func DirectoryTask(world state.State, path string) {
 		err    error
 	)
 
-	if parent, err = world.WatchFor(ctx, resource.NewMetadata(defaultNs, PathResourceType, base, resource.VersionUndefined), state.WithEventTypes(state.Created, state.Updated)); err != nil {
+	if parent, err = world.WatchFor(ctx,
+		resource.NewMetadata(defaultNs, PathResourceType, base, resource.VersionUndefined),
+		state.WithEventTypes(state.Created, state.Updated)); err != nil {
 		log.Fatal(err)
 	}
 
@@ -52,38 +54,39 @@ func DirectoryTask(world state.State, path string) {
 
 	log.Printf("%q: created %q", path, path)
 
-	if parent, err = world.UpdateWithConflicts(ctx, parent, func(r resource.Resource) error {
-		r.(*PathResource).AddDependent(self)
-
-		return nil
-	}); err != nil {
+	if err = world.AddFinalizer(ctx, parent.Metadata(), self.String()); err != nil {
 		log.Fatal(err)
 	}
 
-	log.Printf("%q: %q.dependents = %q", path, parent.Metadata().ID(), parent.(*PathResource).spec.dependents)
+	parent, err = world.Get(ctx, parent.Metadata())
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	log.Printf("%q: parent %q finalizers are %q", path, base, parent.Metadata().Finalizers())
 
 	// doing something useful here <>
 
 	log.Printf("%q: watching for teardown %q", path, base)
 
-	if parent, err = world.WatchFor(ctx, resource.NewMetadata(defaultNs, PathResourceType, base, resource.VersionUndefined), state.WithEventTypes(state.Destroyed, state.Torndown)); err != nil {
+	if parent, err = world.WatchFor(ctx,
+		parent.Metadata(),
+		state.WithEventTypes(state.Created, state.Updated),
+		state.WithPhases(resource.PhaseTearingDown)); err != nil {
 		log.Fatal(err)
 	}
 
 	log.Printf("%q: teardown self", path)
 
-	if err = world.Teardown(ctx, self.Metadata()); err != nil {
+	if _, err = world.Teardown(ctx, self.Metadata()); err != nil {
 		log.Fatal(err)
 	}
 
 	log.Printf("%q: watching for dependents to vanish %q", path, path)
 
 	if _, err = world.WatchFor(ctx,
-		resource.NewMetadata(defaultNs, PathResourceType, path, resource.VersionUndefined),
-		state.WithEventTypes(state.Created, state.Updated, state.Torndown),
-		state.WithCondition(func(r resource.Resource) (bool, error) {
-			return len(r.(*PathResource).spec.dependents) == 0, nil
-		})); err != nil {
+		self.Metadata(),
+		state.WithFinalizerEmpty()); err != nil {
 		log.Fatal(err)
 	}
 
@@ -93,13 +96,16 @@ func DirectoryTask(world state.State, path string) {
 		log.Fatal(err)
 	}
 
-	if _, err = world.UpdateWithConflicts(ctx, parent, func(r resource.Resource) error {
-		r.(*PathResource).DropDependent(self)
-
-		return nil
-	}); err != nil {
+	if err = world.RemoveFinalizer(ctx, parent.Metadata(), self.String()); err != nil {
 		log.Fatal(err)
 	}
+
+	parent, err = world.Get(ctx, parent.Metadata())
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	log.Printf("%q: parent %q finalizers are %q", path, base, parent.Metadata().Finalizers())
 
 	if err = world.Destroy(ctx, self.Metadata()); err != nil {
 		log.Fatal(err)
@@ -110,7 +116,7 @@ const defaultNs = "default"
 
 func main() {
 	ctx := context.Background()
-	world := state.WrapCore(local.NewState(defaultNs))
+	world := state.WrapCore(inmem.NewState(defaultNs))
 
 	root := NewPathResource(defaultNs, ".")
 	if err := world.Create(ctx, root); err != nil {
@@ -137,9 +143,22 @@ func main() {
 
 	time.Sleep(2 * time.Second)
 
-	if err := world.Teardown(ctx, root.Metadata()); err != nil {
+	if _, err := world.Teardown(ctx, root.Metadata()); err != nil {
 		log.Fatal(err)
 	}
 
-	time.Sleep(10 * time.Second)
+	if _, err := world.WatchFor(ctx,
+		root.Metadata(),
+		state.WithFinalizerEmpty()); err != nil {
+		log.Fatal(err)
+	}
+
+	rootRes, err := world.Get(ctx, root.Metadata())
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	if err := world.Destroy(ctx, rootRes.Metadata()); err != nil {
+		log.Fatal(err)
+	}
 }

@@ -4,7 +4,9 @@
 
 package state
 
-import "github.com/talos-systems/os-runtime/pkg/resource"
+import (
+	"github.com/talos-systems/os-runtime/pkg/resource"
+)
 
 // ResourceConditionFunc checks some condition on the resource.
 type ResourceConditionFunc func(resource.Resource) (bool, error)
@@ -15,6 +17,10 @@ type WatchForCondition struct {
 	EventTypes []EventType
 	// If set, match only if func returns true.
 	Condition ResourceConditionFunc
+	// If true, wait for the finalizers to empty
+	FinalizersEmpty bool
+	// If set, wait for resource phase to be one of the specified.
+	Phases []resource.Phase
 }
 
 // Matches checks whether event matches a condition.
@@ -46,6 +52,32 @@ func (condition *WatchForCondition) Matches(event Event) (bool, error) {
 		}
 	}
 
+	if condition.FinalizersEmpty {
+		if event.Type == Destroyed {
+			return false, nil
+		}
+
+		if !event.Resource.Metadata().Finalizers().Empty() {
+			return false, nil
+		}
+	}
+
+	if condition.Phases != nil {
+		matched := false
+
+		for _, phase := range condition.Phases {
+			if event.Resource.Metadata().Phase() == phase {
+				matched = true
+
+				break
+			}
+		}
+
+		if !matched {
+			return false, nil
+		}
+	}
+
 	// no conditions denied the event, consider it matching
 	return true, nil
 }
@@ -66,6 +98,24 @@ func WithEventTypes(types ...EventType) WatchForConditionFunc {
 func WithCondition(conditionFunc ResourceConditionFunc) WatchForConditionFunc {
 	return func(condition *WatchForCondition) error {
 		condition.Condition = conditionFunc
+
+		return nil
+	}
+}
+
+// WithFinalizerEmpty waits for the resource finalizers to be empty.
+func WithFinalizerEmpty() WatchForConditionFunc {
+	return func(condition *WatchForCondition) error {
+		condition.FinalizersEmpty = true
+
+		return nil
+	}
+}
+
+// WithPhases watches for specified resource phases.
+func WithPhases(phases ...resource.Phase) WatchForConditionFunc {
+	return func(condition *WatchForCondition) error {
+		condition.Phases = append(condition.Phases, phases...)
 
 		return nil
 	}

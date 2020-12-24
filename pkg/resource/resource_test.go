@@ -13,11 +13,15 @@ import (
 )
 
 func TestInterfaces(t *testing.T) {
+	t.Parallel()
+
 	assert.Implements(t, (*resource.Reference)(nil), resource.Metadata{})
 	assert.Implements(t, (*resource.Resource)(nil), new(resource.Tombstone))
 }
 
 func TestIsTombstone(t *testing.T) {
+	t.Parallel()
+
 	assert.True(t, resource.IsTombstone(new(resource.Tombstone)))
 	assert.False(t, resource.IsTombstone((resource.Resource)(nil)))
 }

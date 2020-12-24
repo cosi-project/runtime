@@ -4,9 +4,8 @@
 
 package resource
 
-// Pointer is a Reference minus resource version.
-type Pointer interface {
-	Kind
-
-	ID() ID
+// Kind is a Pointer minus resource ID.
+type Kind interface {
+	Namespace() Namespace
+	Type() Type
 }

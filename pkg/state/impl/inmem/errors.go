@@ -2,7 +2,7 @@
 // License, v. 2.0. If a copy of the MPL was not distributed with this
 // file, You can obtain one at http://mozilla.org/MPL/2.0/.
 
-package local
+package inmem
 
 import (
 	"fmt"
@@ -17,7 +17,7 @@ type eNotFound struct {
 func (eNotFound) NotFoundError() {}
 
 // ErrNotFound generates error compatible with state.ErrNotFound.
-func ErrNotFound(r resource.Reference) error {
+func ErrNotFound(r resource.Pointer) error {
 	return eNotFound{
 		fmt.Errorf("resource %s doesn't exist", r),
 	}
@@ -43,9 +43,16 @@ func ErrVersionConflict(r resource.Reference, expected, found resource.Version) 
 	}
 }
 
-// ErrAlreadyTorndown generates error compatible with state.ErrConflict.
-func ErrAlreadyTorndown(r resource.Reference) error {
+// ErrUpdateSameVersion generates error compatible with state.ErrConflict.
+func ErrUpdateSameVersion(r resource.Reference, version resource.Version) error {
 	return eConflict{
-		fmt.Errorf("resource %s has already been torn down", r),
+		fmt.Errorf("resource %s update conflict: same %q version for new and existing objects", r, version),
+	}
+}
+
+// ErrPendingFinalizers generates error compatible with state.ErrConflict.
+func ErrPendingFinalizers(r resource.Metadata) error {
+	return eConflict{
+		fmt.Errorf("resource %s has pending finalizers %s", r, r.Finalizers()),
 	}
 }
