@@ -10,6 +10,12 @@ type GetOptions struct{}
 // GetOption builds GetOptions.
 type GetOption func(*GetOptions)
 
+// ListOptions for the CoreState.List function.
+type ListOptions struct{}
+
+// ListOption builds ListOptions.
+type ListOption func(*ListOptions)
+
 // CreateOptions for the CoreState.Create function.
 type CreateOptions struct{}
 

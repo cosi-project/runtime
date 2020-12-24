@@ -4,9 +4,7 @@
 
 package resource
 
-// Pointer is a Reference minus resource version.
-type Pointer interface {
-	Kind
-
-	ID() ID
+// List is a list of resources.
+type List struct {
+	Items []Resource
 }

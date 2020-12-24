@@ -28,8 +28,8 @@ func (t *Tombstone) String() string {
 // Metadata for the resource.
 //
 // Metadata.Version should change each time Spec changes.
-func (t *Tombstone) Metadata() Metadata {
-	return t.ref
+func (t *Tombstone) Metadata() *Metadata {
+	return &t.ref
 }
 
 // Spec is not implemented for tobmstones.
@@ -37,8 +37,8 @@ func (t *Tombstone) Spec() interface{} {
 	panic("tombstone doesn't contain spec")
 }
 
-// Copy returns self, as tombstone is immutable.
-func (t *Tombstone) Copy() Resource {
+// DeepCopy returns self, as tombstone is immutable.
+func (t *Tombstone) DeepCopy() Resource {
 	return t
 }
 

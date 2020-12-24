@@ -4,23 +4,31 @@
 
 package resource
 
-import "fmt"
+import (
+	"fmt"
+	"sort"
+
+	"gopkg.in/yaml.v3"
+)
 
 // Metadata implements resource meta.
 type Metadata struct {
-	ns  Namespace
-	typ Type
-	id  ID
-	ver Version
+	ns    Namespace
+	typ   Type
+	id    ID
+	ver   Version
+	fins  Finalizers
+	phase Phase
 }
 
 // NewMetadata builds new metadata.
 func NewMetadata(ns Namespace, typ Type, id ID, ver Version) Metadata {
 	return Metadata{
-		ns:  ns,
-		typ: typ,
-		id:  id,
-		ver: ver,
+		ns:    ns,
+		typ:   typ,
+		id:    id,
+		ver:   ver,
+		phase: PhaseRunning,
 	}
 }
 
@@ -31,12 +39,17 @@ func (md Metadata) ID() ID {
 
 // Type returns resource types.
 func (md Metadata) Type() Type {
-	return md.id
+	return md.typ
 }
 
 // Namespace returns resource namespace.
 func (md Metadata) Namespace() Namespace {
 	return md.ns
+}
+
+// Copy returns metadata copy.
+func (md Metadata) Copy() Metadata {
+	return md
 }
 
 // Version returns resource version.
@@ -45,22 +58,174 @@ func (md Metadata) Version() Version {
 }
 
 // SetVersion updates resource version.
-func (md Metadata) SetVersion(newVersion Version) {
+func (md *Metadata) SetVersion(newVersion Version) {
 	md.ver = newVersion
 }
 
 // BumpVersion increments resource version.
-func (md Metadata) BumpVersion() {
-	if md.ver.uint64 == nil {
-		v := uint64(1)
+func (md *Metadata) BumpVersion() {
+	var v uint64
 
-		md.ver.uint64 = &v
+	if md.ver.uint64 == nil {
+		v = uint64(1)
 	} else {
-		*md.ver.uint64++
+		v = *md.ver.uint64 + 1
 	}
+
+	md.ver.uint64 = &v
+}
+
+// Finalizers returns a reference to the finalizers.
+func (md *Metadata) Finalizers() *Finalizers {
+	return &md.fins
+}
+
+// Phase returns current resource phase.
+func (md Metadata) Phase() Phase {
+	return md.phase
+}
+
+// SetPhase updates resource state.
+func (md *Metadata) SetPhase(newPhase Phase) {
+	md.phase = newPhase
 }
 
 // String implements fmt.Stringer.
 func (md Metadata) String() string {
 	return fmt.Sprintf("%s(%s/%s@%s)", md.typ, md.ns, md.id, md.ver)
+}
+
+// Equal tests two metadata objects for equality.
+func (md Metadata) Equal(other Metadata) bool {
+	equal := md.ns == other.ns && md.typ == other.typ && md.id == other.id && md.phase == other.phase && md.ver.Equal(other.ver)
+	if !equal {
+		return false
+	}
+
+	if len(md.fins) != len(other.fins) {
+		return false
+	}
+
+	if md.fins == nil && other.fins == nil {
+		return true
+	}
+
+	fins := append(Finalizers(nil), md.fins...)
+	otherFins := append(Finalizers(nil), other.fins...)
+
+	sort.Strings(fins)
+	sort.Strings(otherFins)
+
+	for i := range fins {
+		if fins[i] != otherFins[i] {
+			return false
+		}
+	}
+
+	return true
+}
+
+// MarshalYAML implements yaml.Marshaller interface.
+func (md *Metadata) MarshalYAML() (interface{}, error) {
+	var finalizers []*yaml.Node
+
+	if !md.fins.Empty() {
+		finalizers = []*yaml.Node{
+			{
+				Kind:  yaml.ScalarNode,
+				Value: "finalizers",
+			},
+			{
+				Kind:    yaml.SequenceNode,
+				Content: make([]*yaml.Node, 0, len(md.fins)),
+			},
+		}
+
+		for _, fin := range md.fins {
+			finalizers[1].Content = append(finalizers[1].Content, &yaml.Node{
+				Kind:  yaml.ScalarNode,
+				Value: fin,
+			})
+		}
+	}
+
+	return &yaml.Node{
+		Kind: yaml.MappingNode,
+		Content: append(
+			[]*yaml.Node{
+				{
+					Kind:  yaml.ScalarNode,
+					Value: "namespace",
+				},
+				{
+					Kind:  yaml.ScalarNode,
+					Value: md.ns,
+				},
+				{
+					Kind:  yaml.ScalarNode,
+					Value: "type",
+				},
+				{
+					Kind:  yaml.ScalarNode,
+					Value: md.typ,
+				},
+				{
+					Kind:  yaml.ScalarNode,
+					Value: "id",
+				},
+				{
+					Kind:  yaml.ScalarNode,
+					Value: md.id,
+				},
+				{
+					Kind:  yaml.ScalarNode,
+					Value: "version",
+				},
+				{
+					Kind:  yaml.ScalarNode,
+					Value: md.ver.String(),
+				},
+				{
+					Kind:  yaml.ScalarNode,
+					Value: "phase",
+				},
+				{
+					Kind:  yaml.ScalarNode,
+					Value: md.phase.String(),
+				},
+			},
+			finalizers...),
+	}, nil
+}
+
+// MetadataProto is an interface for protobuf serialization of Metadata.
+type MetadataProto interface {
+	GetNamespace() string
+	GetType() string
+	GetId() string
+	GetVersion() string
+	GetPhase() string
+	GetFinalizers() []string
+}
+
+// NewMetadataFromProto builds Metadata object from ProtoMetadata interface data.
+func NewMetadataFromProto(proto MetadataProto) (Metadata, error) {
+	ver, err := ParseVersion(proto.GetVersion())
+	if err != nil {
+		return Metadata{}, err
+	}
+
+	phase, err := ParsePhase(proto.GetPhase())
+	if err != nil {
+		return Metadata{}, err
+	}
+
+	md := NewMetadata(proto.GetNamespace(), proto.GetType(), proto.GetId(), ver)
+	md.SetPhase(phase)
+
+	for _, fin := range proto.GetFinalizers() {
+		md.Finalizers().Add(fin)
+	}
+
+	return md, nil
 }
