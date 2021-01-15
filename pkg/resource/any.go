@@ -13,8 +13,17 @@ import (
 // Any can hold data from any resource type.
 type Any struct {
 	md   Metadata
-	spec interface{}
-	yaml []byte
+	spec anySpec
+}
+
+type anySpec struct {
+	value interface{}
+	doc   yaml.Node
+	yaml  []byte
+}
+
+func (s anySpec) MarshalYAML() (interface{}, error) {
+	return s.doc.Content[0], nil
 }
 
 // SpecProto is a protobuf interface of resource spec.
@@ -30,11 +39,17 @@ func NewAnyFromProto(protoMd MetadataProto, protoSpec SpecProto) (*Any, error) {
 	}
 
 	any := &Any{
-		md:   md,
-		yaml: protoSpec.GetYaml(),
+		md: md,
+		spec: anySpec{
+			yaml: protoSpec.GetYaml(),
+		},
 	}
 
-	if err = yaml.Unmarshal(any.yaml, &any.spec); err != nil {
+	if err = yaml.Unmarshal(any.spec.yaml, &any.spec.value); err != nil {
+		return nil, err
+	}
+
+	if err = yaml.Unmarshal(any.spec.yaml, &any.spec.doc); err != nil {
 		return nil, err
 	}
 
@@ -49,6 +64,11 @@ func (a *Any) Metadata() *Metadata {
 // Spec implements resource.Resource.
 func (a *Any) Spec() interface{} {
 	return a.spec
+}
+
+// Value returns decoded value as Go type.
+func (a *Any) Value() interface{} {
+	return a.spec.value
 }
 
 func (a *Any) String() string {

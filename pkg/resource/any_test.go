@@ -5,9 +5,11 @@
 package resource_test
 
 import (
+	"strings"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+	"gopkg.in/yaml.v3"
 
 	"github.com/talos-systems/os-runtime/pkg/resource"
 )
@@ -30,6 +32,27 @@ func TestNewAnyFromProto(t *testing.T) {
 	r, err := resource.NewAnyFromProto(&protoMd{}, &protoSpec{})
 	assert.NoError(t, err)
 
-	assert.Equal(t, map[string]interface{}{"something": []interface{}{"a", "b", "c"}, "value": "xyz"}, r.Spec())
+	assert.Equal(t, map[string]interface{}{"something": []interface{}{"a", "b", "c"}, "value": "xyz"}, r.Value())
 	assert.Equal(t, "aaa", r.Metadata().ID())
+
+	enc, err := resource.MarshalYAML(r)
+	assert.NoError(t, err)
+
+	out, err := yaml.Marshal(enc)
+	assert.NoError(t, err)
+
+	assert.Equal(t, strings.TrimSpace(`
+metadata:
+    namespace: default
+    type: type
+    id: aaa
+    version: 1
+    phase: running
+    finalizers:
+      - resource1
+      - resource2
+spec:
+    value: xyz
+    something: [a, b, c]
+		`)+"\n", string(out))
 }
