@@ -265,3 +265,41 @@ func (ctrl *SumController) Run(ctx context.Context, r controller.Runtime, logger
 		}
 	}
 }
+
+// FailingController fails on each iteration creating new resources each time.
+type FailingController struct {
+	TargetNamespace resource.Namespace
+
+	count int
+}
+
+// Name implements controller.Controller interface.
+func (ctrl *FailingController) Name() string {
+	return "FailingController"
+}
+
+// ManagedResources implements controller.Controller interface.
+func (ctrl *FailingController) ManagedResources() (resource.Namespace, resource.Type) {
+	return ctrl.TargetNamespace, IntResourceType
+}
+
+// Run implements controller.Controller interface.
+func (ctrl *FailingController) Run(ctx context.Context, r controller.Runtime, logger *log.Logger) error {
+	select {
+	case <-ctx.Done():
+		return nil
+	case <-r.EventCh():
+	}
+
+	if err := r.Update(ctx, NewIntResource(ctrl.TargetNamespace, strconv.Itoa(ctrl.count), 0), func(r resource.Resource) error {
+		r.(*IntResource).value = ctrl.count
+
+		return nil
+	}); err != nil {
+		return fmt.Errorf("error updating value")
+	}
+
+	ctrl.count++
+
+	return fmt.Errorf("failing here")
+}
