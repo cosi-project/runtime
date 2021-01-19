@@ -6,11 +6,14 @@ package runtime
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"log"
 	"sort"
+	"time"
 
 	"github.com/AlekSi/pointer"
+	"github.com/cenkalti/backoff/v4"
 
 	"github.com/talos-systems/os-runtime/pkg/controller"
 	"github.com/talos-systems/os-runtime/pkg/controller/runtime/dependency"
@@ -31,6 +34,8 @@ type adapter struct {
 	managedType      resource.Type
 
 	dependencies []controller.Dependency
+
+	backoff *backoff.ExponentialBackOff
 }
 
 // EventCh implements controller.Runtime interface.
@@ -271,14 +276,50 @@ func (adapter *adapter) triggerReconcile() {
 	}
 }
 
-func (adapter *adapter) run(ctx context.Context) (err error) {
+func (adapter *adapter) run(ctx context.Context) {
+	logger := log.New(adapter.runtime.logger.Writer(), fmt.Sprintf("%s %s: ", adapter.runtime.logger.Prefix(), adapter.name), adapter.runtime.logger.Flags())
+
+	for {
+		err := adapter.runOnce(ctx, logger)
+		if err == nil {
+			return
+		}
+
+		interval := adapter.backoff.NextBackOff()
+
+		logger.Printf("restarting controller in %s", interval)
+
+		select {
+		case <-ctx.Done():
+			return
+		case <-time.After(interval):
+		}
+
+		// schedule reconcile after restart
+		adapter.triggerReconcile()
+	}
+}
+
+func (adapter *adapter) runOnce(ctx context.Context, logger *log.Logger) (err error) {
+	defer func() {
+		if err != nil && errors.Is(err, context.Canceled) {
+			err = nil
+		}
+
+		if err != nil {
+			logger.Printf("controller failed: %s", err)
+		} else {
+			logger.Printf("controller finished")
+		}
+	}()
+
 	defer func() {
 		if p := recover(); p != nil {
 			err = fmt.Errorf("controller %q panicked: %s", adapter.name, p)
 		}
 	}()
 
-	logger := log.New(adapter.runtime.logger.Writer(), fmt.Sprintf("%s %s: ", adapter.runtime.logger.Prefix(), adapter.name), adapter.runtime.logger.Flags())
+	logger.Printf("controller starting")
 
 	err = adapter.ctrl.Run(ctx, adapter, logger)
 

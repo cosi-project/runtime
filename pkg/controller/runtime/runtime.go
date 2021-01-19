@@ -12,7 +12,7 @@ import (
 	"sync"
 
 	"github.com/AlekSi/pointer"
-	"github.com/hashicorp/go-multierror"
+	"github.com/cenkalti/backoff/v4"
 
 	"github.com/talos-systems/os-runtime/pkg/controller"
 	"github.com/talos-systems/os-runtime/pkg/controller/runtime/dependency"
@@ -74,7 +74,12 @@ func (runtime *Runtime) RegisterController(ctrl controller.Controller) error {
 
 		ctrl: ctrl,
 		ch:   make(chan controller.ReconcileEvent, 1),
+
+		backoff: backoff.NewExponentialBackOff(),
 	}
+
+	// disable number of retries limit
+	adapter.backoff.MaxElapsedTime = 0
 
 	if err := adapter.initialize(); err != nil {
 		return fmt.Errorf("error initializing controller %q adapter: %w", name, err)
@@ -95,29 +100,27 @@ func (runtime *Runtime) Run(ctx context.Context) error {
 
 	go runtime.processWatched()
 
-	errCh := make(chan error)
+	var wg sync.WaitGroup
 
 	runtime.controllersMu.RLock()
 
 	for _, adapter := range runtime.controllers {
 		adapter := adapter
 
+		wg.Add(1)
+
 		go func() {
-			errCh <- adapter.run(runtime.runCtx)
+			defer wg.Done()
+
+			adapter.run(runtime.runCtx)
 		}()
 	}
 
-	n := len(runtime.controllers)
-
 	runtime.controllersMu.RUnlock()
 
-	var multiErr *multierror.Error
+	wg.Wait()
 
-	for i := 0; i < n; i++ {
-		multiErr = multierror.Append(multiErr, <-errCh)
-	}
-
-	return multiErr.ErrorOrNil()
+	return nil
 }
 
 func (runtime *Runtime) watch(resourceNamespace resource.Namespace, resourceType resource.Type) error {

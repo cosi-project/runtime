@@ -91,7 +91,7 @@ func (suite *RuntimeSuite) assertStrObjects(ns resource.Namespace, typ resource.
 	}
 }
 
-//nolint: dupl
+//nolint: dupl, unparam
 func (suite *RuntimeSuite) assertIntObjects(ns resource.Namespace, typ resource.Type, ids []string, values []int) retry.RetryableFunc {
 	return func() error {
 		items, err := suite.state.List(suite.ctx, resource.NewMetadata(ns, typ, "", resource.VersionUndefined))
@@ -257,6 +257,20 @@ func (suite *RuntimeSuite) TestSumControllers() {
 
 	suite.Assert().NoError(retry.Constant(10*time.Second, retry.WithUnits(10*time.Millisecond)).
 		Retry(suite.assertIntObjects("target", IntResourceType, []string{"sum"}, []int{2})))
+}
+
+func (suite *RuntimeSuite) TestFailingController() {
+	suite.Require().NoError(suite.runtime.RegisterController(&FailingController{
+		TargetNamespace: "target",
+	}))
+
+	suite.startRuntime()
+
+	suite.Assert().NoError(retry.Constant(5*time.Second, retry.WithUnits(10*time.Millisecond)).
+		Retry(suite.assertIntObjects("target", IntResourceType, []string{"0"}, []int{0})))
+
+	suite.Assert().NoError(retry.Constant(5*time.Second, retry.WithUnits(10*time.Millisecond)).
+		Retry(suite.assertIntObjects("target", IntResourceType, []string{"0", "1"}, []int{0, 1})))
 }
 
 func TestRuntime(t *testing.T) {
