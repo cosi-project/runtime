@@ -259,6 +259,20 @@ func (suite *RuntimeSuite) TestSumControllers() {
 		Retry(suite.assertIntObjects("target", IntResourceType, []string{"sum"}, []int{2})))
 }
 
+func (suite *RuntimeSuite) TestFailingController() {
+	suite.Require().NoError(suite.runtime.RegisterController(&FailingController{
+		TargetNamespace: "target",
+	}))
+
+	suite.startRuntime()
+
+	suite.Assert().NoError(retry.Constant(5*time.Second, retry.WithUnits(10*time.Millisecond)).
+		Retry(suite.assertIntObjects("target", IntResourceType, []string{"0"}, []int{0})))
+
+	suite.Assert().NoError(retry.Constant(5*time.Second, retry.WithUnits(10*time.Millisecond)).
+		Retry(suite.assertIntObjects("target", IntResourceType, []string{"0", "1"}, []int{0, 1})))
+}
+
 func TestRuntime(t *testing.T) {
 	t.Parallel()
 
