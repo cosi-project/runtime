@@ -7,7 +7,6 @@ package dependency
 
 import (
 	"fmt"
-	"log"
 
 	"github.com/talos-systems/os-runtime/pkg/controller"
 )
@@ -28,8 +27,6 @@ func Less(a, b *controller.Dependency) bool {
 
 	aStr := fmt.Sprintf("%s\000%s\000%s", a.Namespace, a.Type, aID)
 	bStr := fmt.Sprintf("%s\000%s\000%s", b.Namespace, b.Type, bID)
-
-	log.Printf("%q, %q", aStr, bStr)
 
 	return aStr < bStr
 }

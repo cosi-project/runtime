@@ -9,6 +9,7 @@ import (
 	"errors"
 	"fmt"
 	"log"
+	"runtime/debug"
 	"sort"
 	"time"
 
@@ -315,7 +316,7 @@ func (adapter *adapter) runOnce(ctx context.Context, logger *log.Logger) (err er
 
 	defer func() {
 		if p := recover(); p != nil {
-			err = fmt.Errorf("controller %q panicked: %s", adapter.name, p)
+			err = fmt.Errorf("controller %q panicked: %s\n\n%s", adapter.name, p, string(debug.Stack()))
 		}
 	}()
 
