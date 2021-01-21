@@ -290,3 +290,61 @@ func (db *Database) GetDependentControllers(dep controller.Dependency) ([]string
 
 	return result, nil
 }
+
+// Export dependency graph.
+func (db *Database) Export() (*controller.DependencyGraph, error) {
+	graph := &controller.DependencyGraph{}
+
+	txn := db.db.Txn(false)
+	defer txn.Abort()
+
+	iter, err := txn.Get(tableManagedResources, "id")
+	if err != nil {
+		return nil, fmt.Errorf("error fetching managed resources: %w", err)
+	}
+
+	for obj := iter.Next(); obj != nil; obj = iter.Next() {
+		model := obj.(*ManagedResource) //nolint: errcheck
+
+		graph.Edges = append(graph.Edges, controller.DependencyEdge{
+			ControllerName:    model.ControllerName,
+			EdgeType:          controller.EdgeManages,
+			ResourceNamespace: model.Namespace,
+			ResourceType:      model.Type,
+		})
+	}
+
+	iter, err = txn.Get(tableControllerDependency, "id")
+	if err != nil {
+		return nil, fmt.Errorf("error fetching dependent resources: %w", err)
+	}
+
+	for obj := iter.Next(); obj != nil; obj = iter.Next() {
+		model := obj.(*ControllerDependency) //nolint: errcheck
+
+		var edgeType controller.DependencyEdgeType
+
+		switch model.Kind {
+		case controller.DependencyStrong:
+			edgeType = controller.EdgeDependsStrong
+		case controller.DependencyWeak:
+			edgeType = controller.EdgeDependsWeak
+		}
+
+		var resourceID resource.ID
+
+		if model.ID != StarID {
+			resourceID = model.ID
+		}
+
+		graph.Edges = append(graph.Edges, controller.DependencyEdge{
+			ControllerName:    model.ControllerName,
+			EdgeType:          edgeType,
+			ResourceNamespace: model.Namespace,
+			ResourceType:      model.Type,
+			ResourceID:        resourceID,
+		})
+	}
+
+	return graph, nil
+}

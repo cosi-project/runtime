@@ -31,7 +31,7 @@ type DependencyKind = int
 // Dependency kinds.
 const (
 	DependencyWeak int = iota
-	DependencyHard
+	DependencyStrong
 )
 
 // Dependency of controller on some resource(s).
@@ -39,8 +39,8 @@ const (
 // Each controller might have multiple dependencies, it might depend on
 // all the objects of some type under namespace, or on specific object by ID.
 //
-// Dependency might be either Weak or Hard. Any kind of dependency triggers
-// cascading reconcile on changes, hard dependencies in addition block deletion of
+// Dependency might be either Weak or Strong. Any kind of dependency triggers
+// cascading reconcile on changes, Strong dependencies in addition block deletion of
 // parent object until all the dependencies are torn down.
 type Dependency struct {
 	Namespace resource.Namespace

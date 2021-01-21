@@ -39,7 +39,7 @@ func (ctrl *IntToStrController) Run(ctx context.Context, r controller.Runtime, l
 		{
 			Namespace: ctrl.SourceNamespace,
 			Type:      IntResourceType,
-			Kind:      controller.DependencyHard,
+			Kind:      controller.DependencyStrong,
 		},
 	}); err != nil {
 		return fmt.Errorf("error setting up dependencies: %w", err)
@@ -137,7 +137,7 @@ func (ctrl *StrToSentenceController) Run(ctx context.Context, r controller.Runti
 		{
 			Namespace: ctrl.SourceNamespace,
 			Type:      StrResourceType,
-			Kind:      controller.DependencyHard,
+			Kind:      controller.DependencyStrong,
 		},
 	}); err != nil {
 		return fmt.Errorf("error setting up dependencies: %w", err)

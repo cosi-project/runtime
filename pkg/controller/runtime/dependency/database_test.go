@@ -72,7 +72,7 @@ func (suite *DatabaseSuite) TestControllerDependency() {
 		Namespace: "state",
 		Type:      "Machine",
 		ID:        pointer.ToString("system"),
-		Kind:      controller.DependencyHard,
+		Kind:      controller.DependencyStrong,
 	}))
 
 	deps, err = suite.db.GetControllerDependencies("ConfigController")
@@ -82,7 +82,7 @@ func (suite *DatabaseSuite) TestControllerDependency() {
 	suite.Assert().Equal("state", deps[0].Namespace)
 	suite.Assert().Equal("Machine", deps[0].Type)
 	suite.Assert().Equal("system", *deps[0].ID)
-	suite.Assert().Equal(controller.DependencyHard, deps[0].Kind)
+	suite.Assert().Equal(controller.DependencyStrong, deps[0].Kind)
 
 	suite.Assert().Equal("user", deps[1].Namespace)
 	suite.Assert().Equal("Config", deps[1].Type)
@@ -146,6 +146,36 @@ func (suite *DatabaseSuite) TestControllerDependency() {
 	})
 	suite.Require().NoError(err)
 	suite.Assert().Empty(ctrls)
+}
+
+func (suite *DatabaseSuite) TestExport() {
+	suite.Require().NoError(suite.db.AddControllerManaged("ControllerBook", "default", "Book"))
+	suite.Require().NoError(suite.db.AddControllerManaged("ControllerTable", "default", "Table"))
+
+	suite.Require().NoError(suite.db.AddControllerDependency("ControllerBook", controller.Dependency{
+		Namespace: "user",
+		Type:      "Config",
+		Kind:      controller.DependencyWeak,
+		ID:        pointer.ToString("config"),
+	}))
+
+	suite.Require().NoError(suite.db.AddControllerDependency("ControllerTable", controller.Dependency{
+		Namespace: "default",
+		Type:      "Book",
+		Kind:      controller.DependencyStrong,
+	}))
+
+	graph, err := suite.db.Export()
+	suite.Require().NoError(err)
+
+	suite.Assert().Equal(&controller.DependencyGraph{
+		Edges: []controller.DependencyEdge{
+			{ControllerName: "ControllerBook", EdgeType: controller.EdgeManages, ResourceNamespace: "default", ResourceType: "Book", ResourceID: ""},
+			{ControllerName: "ControllerTable", EdgeType: controller.EdgeManages, ResourceNamespace: "default", ResourceType: "Table", ResourceID: ""},
+			{ControllerName: "ControllerBook", EdgeType: controller.EdgeDependsWeak, ResourceNamespace: "user", ResourceType: "Config", ResourceID: "config"},
+			{ControllerName: "ControllerTable", EdgeType: controller.EdgeDependsStrong, ResourceNamespace: "default", ResourceType: "Book", ResourceID: ""},
+		},
+	}, graph)
 }
 
 func TestDabaseSuite(t *testing.T) {
