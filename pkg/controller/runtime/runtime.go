@@ -123,6 +123,11 @@ func (runtime *Runtime) Run(ctx context.Context) error {
 	return nil
 }
 
+// GetDependencyGraph returns dependency graph between resources and controllers.
+func (runtime *Runtime) GetDependencyGraph() (*controller.DependencyGraph, error) {
+	return runtime.depDB.Export()
+}
+
 func (runtime *Runtime) watch(resourceNamespace resource.Namespace, resourceType resource.Type) error {
 	runtime.watchedMu.Lock()
 	defer runtime.watchedMu.Unlock()

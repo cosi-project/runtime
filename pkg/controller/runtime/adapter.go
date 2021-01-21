@@ -148,7 +148,7 @@ func (adapter *adapter) checkReadAccess(resourceNamespace resource.Namespace, re
 func (adapter *adapter) checkFinalizerAccess(resourceNamespace resource.Namespace, resourceType resource.Type, resourceID resource.ID) error {
 	// go over cached dependencies here
 	for _, dep := range adapter.dependencies {
-		if dep.Namespace == resourceNamespace && dep.Type == resourceType && dep.Kind == controller.DependencyHard {
+		if dep.Namespace == resourceNamespace && dep.Type == resourceType && dep.Kind == controller.DependencyStrong {
 			// any ID is allowed
 			if dep.ID == nil {
 				return nil
@@ -160,7 +160,7 @@ func (adapter *adapter) checkFinalizerAccess(resourceNamespace resource.Namespac
 		}
 	}
 
-	return fmt.Errorf("attempt to change finalizers for resource %q/%q, not watched with hard dependency by controller %q", resourceNamespace, resourceType, adapter.name)
+	return fmt.Errorf("attempt to change finalizers for resource %q/%q, not watched with Strong dependency by controller %q", resourceNamespace, resourceType, adapter.name)
 }
 
 // Get implements controller.Runtime interface.
