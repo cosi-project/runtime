@@ -80,8 +80,6 @@ func (suite *StateSuite) TestCRD() {
 				ids[i] = list.Items[i].String()
 			}
 
-			sort.Strings(ids)
-
 			suite.Assert().Equal([]string{path2.String(), path1.String()}, ids)
 		} else {
 			suite.Assert().Len(list.Items, 1)

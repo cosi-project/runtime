@@ -6,6 +6,7 @@ package inmem
 
 import (
 	"context"
+	"sort"
 	"sync"
 
 	"github.com/talos-systems/os-runtime/pkg/resource"
@@ -75,7 +76,6 @@ func (collection *ResourceCollection) Get(resourceID resource.ID) (resource.Reso
 // List resources.
 func (collection *ResourceCollection) List() (resource.List, error) {
 	collection.mu.Lock()
-	defer collection.mu.Unlock()
 
 	result := resource.List{
 		Items: make([]resource.Resource, 0, len(collection.storage)),
@@ -84,6 +84,12 @@ func (collection *ResourceCollection) List() (resource.List, error) {
 	for _, res := range collection.storage {
 		result.Items = append(result.Items, res.DeepCopy())
 	}
+
+	collection.mu.Unlock()
+
+	sort.Slice(result.Items, func(i, j int) bool {
+		return result.Items[i].Metadata().ID() < result.Items[j].Metadata().ID()
+	})
 
 	return result, nil
 }
