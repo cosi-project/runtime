@@ -69,6 +69,6 @@ func (state *State) Watch(ctx context.Context, resourcePointer resource.Pointer,
 }
 
 // WatchKind all resources by type.
-func (state *State) WatchKind(ctx context.Context, resourceKind resource.Kind, ch chan<- state.Event) error {
-	return state.getCollection(resourceKind.Type()).WatchAll(ctx, ch)
+func (state *State) WatchKind(ctx context.Context, resourceKind resource.Kind, ch chan<- state.Event, opts ...state.WatchKindOption) error {
+	return state.getCollection(resourceKind.Type()).WatchAll(ctx, ch, opts...)
 }

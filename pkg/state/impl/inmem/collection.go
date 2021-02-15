@@ -254,13 +254,47 @@ func (collection *ResourceCollection) Watch(ctx context.Context, id resource.ID,
 }
 
 // WatchAll for any resource change stored in this collection.
-func (collection *ResourceCollection) WatchAll(ctx context.Context, ch chan<- state.Event) error {
+func (collection *ResourceCollection) WatchAll(ctx context.Context, ch chan<- state.Event, opts ...state.WatchKindOption) error {
+	var options state.WatchKindOptions
+
+	for _, opt := range opts {
+		opt(&options)
+	}
+
 	collection.mu.Lock()
 	defer collection.mu.Unlock()
 
 	pos := collection.writePos
 
+	var bootstrapList []resource.Resource
+
+	if options.BootstrapContents {
+		bootstrapList = make([]resource.Resource, 0, len(collection.storage))
+
+		for _, res := range collection.storage {
+			bootstrapList = append(bootstrapList, res.DeepCopy())
+		}
+
+		sort.Slice(bootstrapList, func(i, j int) bool {
+			return bootstrapList[i].Metadata().ID() < bootstrapList[j].Metadata().ID()
+		})
+	}
+
 	go func() {
+		// send initial contents if they were captured
+		for _, res := range bootstrapList {
+			select {
+			case ch <- state.Event{
+				Type:     state.Created,
+				Resource: res,
+			}:
+			case <-ctx.Done():
+				return
+			}
+		}
+
+		bootstrapList = nil
+
 		for {
 			collection.mu.Lock()
 			// while there's no data to consume (pos == e.writePos), wait for Condition variable signal,

@@ -70,7 +70,7 @@ type CoreState interface {
 	Watch(context.Context, resource.Pointer, chan<- Event, ...WatchOption) error
 
 	// WatchKind watches resources of specific kind (namespace and type).
-	WatchKind(context.Context, resource.Kind, chan<- Event) error
+	WatchKind(context.Context, resource.Kind, chan<- Event, ...WatchKindOption) error
 }
 
 // UpdaterFunc is called on resource to update it to the desired state.

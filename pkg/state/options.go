@@ -45,3 +45,18 @@ type WatchOptions struct{}
 
 // WatchOption builds WatchOptions.
 type WatchOption func(*WatchOptions)
+
+// WatchKindOptions for the CoreState.WatchKind function.
+type WatchKindOptions struct {
+	BootstrapContents bool
+}
+
+// WatchKindOption builds WatchOptions.
+type WatchKindOption func(*WatchKindOptions)
+
+// WithBootstrapContents enables loading initial list of resources as 'created' events for WatchKind API.
+func WithBootstrapContents(enable bool) WatchKindOption {
+	return func(opts *WatchKindOptions) {
+		opts.BootstrapContents = enable
+	}
+}

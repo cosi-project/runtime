@@ -180,6 +180,47 @@ func (suite *StateSuite) TestWatchKind() {
 	case <-time.After(time.Second):
 		suite.FailNow("timed out waiting for event")
 	}
+
+	chWithBootstrap := make(chan state.Event)
+
+	suite.Require().NoError(suite.State.WatchKind(ctx, path1.Metadata(), chWithBootstrap, state.WithBootstrapContents(true)))
+
+	resources, err := suite.State.List(ctx, path1.Metadata())
+	suite.Require().NoError(err)
+
+	for _, res := range resources.Items {
+		select {
+		case event := <-chWithBootstrap:
+			suite.Assert().Equal(state.Created, event.Type)
+			suite.Assert().Equal(res.String(), event.Resource.String())
+			suite.Assert().Equal(res.Metadata().Version(), event.Resource.Metadata().Version())
+		case <-time.After(time.Second):
+			suite.FailNow("timed out waiting for event")
+		}
+	}
+
+	oldVersion = path2.Metadata().Version()
+	path2.Metadata().BumpVersion()
+
+	suite.Require().NoError(suite.State.Update(ctx, oldVersion, path2))
+
+	select {
+	case event := <-ch:
+		suite.Assert().Equal(state.Updated, event.Type)
+		suite.Assert().Equal(path2.String(), event.Resource.String())
+		suite.Assert().Equal(path2.Metadata().Version(), event.Resource.Metadata().Version())
+	case <-time.After(time.Second):
+		suite.FailNow("timed out waiting for event")
+	}
+
+	select {
+	case event := <-chWithBootstrap:
+		suite.Assert().Equal(state.Updated, event.Type)
+		suite.Assert().Equal(path2.String(), event.Resource.String())
+		suite.Assert().Equal(path2.Metadata().Version(), event.Resource.Metadata().Version())
+	case <-time.After(time.Second):
+		suite.FailNow("timed out waiting for event")
+	}
 }
 
 // TestConcurrentFinalizers perform concurrent finalizer updates.
