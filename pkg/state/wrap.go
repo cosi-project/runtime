@@ -31,19 +31,19 @@ func (state coreWrapper) UpdateWithConflicts(ctx context.Context, resourcePointe
 
 		curVersion := current.Metadata().Version()
 
-		new := current.DeepCopy()
+		newResource := current.DeepCopy()
 
-		if err = f(new); err != nil {
+		if err = f(newResource); err != nil {
 			return nil, err
 		}
 
-		if resource.Equal(current, new) {
+		if resource.Equal(current, newResource) {
 			return current, nil
 		}
 
-		new.Metadata().BumpVersion()
+		newResource.Metadata().BumpVersion()
 
-		err = state.Update(ctx, curVersion, new)
+		err = state.Update(ctx, curVersion, newResource)
 		if err == nil {
 			return current, nil
 		}

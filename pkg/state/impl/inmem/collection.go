@@ -24,8 +24,8 @@ type ResourceCollection struct {
 
 	writePos int64
 
-	cap int
-	gap int
+	capacity int
+	gap      int
 
 	ns  resource.Namespace
 	typ resource.Type
@@ -34,17 +34,17 @@ type ResourceCollection struct {
 // NewResourceCollection returns new ResourceCollection.
 func NewResourceCollection(ns resource.Namespace, typ resource.Type) *ResourceCollection {
 	const (
-		cap = 1000
-		gap = 10
+		capacity = 1000
+		gap      = 10
 	)
 
 	collection := &ResourceCollection{
-		ns:      ns,
-		typ:     typ,
-		cap:     cap,
-		gap:     gap,
-		storage: make(map[resource.ID]resource.Resource),
-		stream:  make([]state.Event, cap),
+		ns:       ns,
+		typ:      typ,
+		capacity: capacity,
+		gap:      gap,
+		storage:  make(map[resource.ID]resource.Resource),
+		stream:   make([]state.Event, capacity),
 	}
 
 	collection.c = sync.NewCond(&collection.mu)
@@ -54,7 +54,7 @@ func NewResourceCollection(ns resource.Namespace, typ resource.Type) *ResourceCo
 
 // publish should be called only with collection.mu held.
 func (collection *ResourceCollection) publish(event state.Event) {
-	collection.stream[collection.writePos%int64(collection.cap)] = event
+	collection.stream[collection.writePos%int64(collection.capacity)] = event
 	collection.writePos++
 
 	collection.c.Broadcast()
@@ -173,8 +173,6 @@ func (collection *ResourceCollection) Destroy(ptr resource.Pointer) error {
 }
 
 // Watch for specific resource changes.
-//
-//nolint: gocognit
 func (collection *ResourceCollection) Watch(ctx context.Context, id resource.ID, ch chan<- state.Event) error {
 	collection.mu.Lock()
 	defer collection.mu.Unlock()
@@ -216,7 +214,7 @@ func (collection *ResourceCollection) Watch(ctx context.Context, id resource.ID,
 				}
 			}
 
-			if collection.writePos-pos >= int64(collection.cap) {
+			if collection.writePos-pos >= int64(collection.capacity) {
 				// buffer overrun, there's no way to signal error in this case,
 				// so for now just return
 				collection.mu.Unlock()
@@ -227,7 +225,7 @@ func (collection *ResourceCollection) Watch(ctx context.Context, id resource.ID,
 			var event state.Event
 
 			for pos < collection.writePos {
-				event = collection.stream[pos%int64(collection.cap)]
+				event = collection.stream[pos%int64(collection.capacity)]
 				pos++
 
 				if event.Resource.Metadata().ID() == id {
@@ -311,7 +309,7 @@ func (collection *ResourceCollection) WatchAll(ctx context.Context, ch chan<- st
 				}
 			}
 
-			if collection.writePos-pos >= int64(collection.cap) {
+			if collection.writePos-pos >= int64(collection.capacity) {
 				// buffer overrun, there's no way to signal error in this case,
 				// so for now just return
 				collection.mu.Unlock()
@@ -319,7 +317,7 @@ func (collection *ResourceCollection) WatchAll(ctx context.Context, ch chan<- st
 				return
 			}
 
-			event := collection.stream[pos%int64(collection.cap)]
+			event := collection.stream[pos%int64(collection.capacity)]
 			pos++
 
 			collection.mu.Unlock()

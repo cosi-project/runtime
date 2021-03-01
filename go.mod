@@ -5,6 +5,7 @@ go 1.14
 require (
 	github.com/AlekSi/pointer v1.1.0
 	github.com/cenkalti/backoff/v4 v4.1.0
+	github.com/gertd/go-pluralize v0.1.7
 	github.com/hashicorp/go-memdb v1.3.0
 	github.com/stretchr/testify v1.6.1
 	github.com/talos-systems/go-retry v0.2.0

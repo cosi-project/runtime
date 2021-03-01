@@ -1,6 +1,6 @@
 # THIS FILE WAS AUTOMATICALLY GENERATED, PLEASE DO NOT EDIT.
 #
-# Generated on 2020-12-30T20:27:21Z by kres latest.
+# Generated on 2021-03-01T18:00:23Z by kres latest.
 
 
 # options for analysis running
@@ -128,6 +128,7 @@ linters:
     - wrapcheck
     - paralleltest
     - exhaustivestruct
+    - forbidigo
   disable-all: false
   fast: false
 

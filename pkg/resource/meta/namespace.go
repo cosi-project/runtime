@@ -2,7 +2,7 @@
 // License, v. 2.0. If a copy of the MPL was not distributed with this
 // file, You can obtain one at http://mozilla.org/MPL/2.0/.
 
-package core
+package meta
 
 import (
 	"fmt"
@@ -11,7 +11,7 @@ import (
 )
 
 // NamespaceType is the type of Namespace.
-const NamespaceType = resource.Type("core/namespace")
+const NamespaceType = resource.Type("Namespaces.meta.cosi.dev")
 
 // Namespace provides metadata about namespaces.
 type Namespace struct {
@@ -21,9 +21,7 @@ type Namespace struct {
 
 // NamespaceSpec provides Namespace definition.
 type NamespaceSpec struct {
-	Description  string `yaml:"description"`
-	System       bool   `yaml:"system"`
-	UserWritable bool   `yaml:"userWritable"`
+	Description string `yaml:"description"`
 }
 
 // NewNamespace initializes a Namespace resource.
@@ -64,7 +62,7 @@ func (r *Namespace) DeepCopy() resource.Resource {
 func (r *Namespace) ResourceDefinition() ResourceDefinitionSpec {
 	return ResourceDefinitionSpec{
 		Type:             NamespaceType,
-		Aliases:          []resource.Type{"namespace", "namespaces", "ns"},
 		DefaultNamespace: NamespaceName,
+		Aliases:          []resource.Type{"ns"},
 	}
 }

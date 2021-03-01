@@ -8,7 +8,7 @@ import (
 	"context"
 
 	"github.com/talos-systems/os-runtime/pkg/resource"
-	"github.com/talos-systems/os-runtime/pkg/resource/core"
+	"github.com/talos-systems/os-runtime/pkg/resource/meta"
 	"github.com/talos-systems/os-runtime/pkg/state"
 )
 
@@ -26,14 +26,12 @@ func NewNamespaceRegistry(state state.State) *NamespaceRegistry {
 
 // RegisterDefault registers default namespaces.
 func (registry *NamespaceRegistry) RegisterDefault(ctx context.Context) error {
-	return registry.Register(ctx, core.NamespaceName, "System namespace containing resource and namespace definitions.", true)
+	return registry.Register(ctx, meta.NamespaceName, "Metadata namespace which contains resource and namespace definitions.")
 }
 
 // Register a namespace.
-func (registry *NamespaceRegistry) Register(ctx context.Context, ns resource.Namespace, description string, system bool) error {
-	return registry.state.Create(ctx, core.NewNamespace(ns, core.NamespaceSpec{
-		Description:  description,
-		System:       system,
-		UserWritable: !system,
+func (registry *NamespaceRegistry) Register(ctx context.Context, ns resource.Namespace, description string) error {
+	return registry.state.Create(ctx, meta.NewNamespace(ns, meta.NamespaceSpec{
+		Description: description,
 	}))
 }
