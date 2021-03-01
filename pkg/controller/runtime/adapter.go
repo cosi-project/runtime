@@ -67,14 +67,14 @@ func (adapter *adapter) UpdateDependencies(deps []controller.Dependency) error {
 			break
 		}
 
-		add := false
-		delete := false
+		shouldAdd := false
+		shouldDelete := false
 
 		switch {
 		case i >= len(deps):
-			delete = true
+			shouldDelete = true
 		case j >= len(dbDeps):
-			add = true
+			shouldAdd = true
 		default:
 			dI := deps[i]
 			dJ := dbDeps[j]
@@ -84,15 +84,15 @@ func (adapter *adapter) UpdateDependencies(deps []controller.Dependency) error {
 				i++
 				j++
 			case dependency.EqualKeys(&dI, &dJ):
-				add, delete = true, true
+				shouldAdd, shouldDelete = true, true
 			case dependency.Less(&dI, &dJ):
-				add = true
+				shouldAdd = true
 			default:
-				delete = true
+				shouldDelete = true
 			}
 		}
 
-		if add {
+		if shouldAdd {
 			if err := adapter.runtime.depDB.AddControllerDependency(adapter.name, deps[i]); err != nil {
 				return fmt.Errorf("error adding controller dependency: %w", err)
 			}
@@ -104,7 +104,7 @@ func (adapter *adapter) UpdateDependencies(deps []controller.Dependency) error {
 			i++
 		}
 
-		if delete {
+		if shouldDelete {
 			if err := adapter.runtime.depDB.DeleteControllerDependency(adapter.name, dbDeps[j]); err != nil {
 				return fmt.Errorf("error deleting controller dependency: %w", err)
 			}

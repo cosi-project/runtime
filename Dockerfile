@@ -2,7 +2,7 @@
 
 # THIS FILE WAS AUTOMATICALLY GENERATED, PLEASE DO NOT EDIT.
 #
-# Generated on 2020-12-30T20:27:21Z by kres latest.
+# Generated on 2021-03-01T18:00:23Z by kres latest.
 
 ARG TOOLCHAIN
 
@@ -24,7 +24,7 @@ FROM toolchain AS tools
 ENV GO111MODULE on
 ENV CGO_ENABLED 0
 ENV GOPATH /go
-RUN curl -sfL https://install.goreleaser.com/github.com/golangci/golangci-lint.sh | bash -s -- -b /bin v1.33.0
+RUN curl -sfL https://install.goreleaser.com/github.com/golangci/golangci-lint.sh | bash -s -- -b /bin v1.36.0
 ARG GOFUMPT_VERSION
 RUN cd $(mktemp -d) \
 	&& go mod init tmp \

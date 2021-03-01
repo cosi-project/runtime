@@ -53,7 +53,7 @@ type CoreState interface {
 	// If a resource doesn't exist, error is returned.
 	// On update current version of resource `new` in the state should match
 	// curVersion, otherwise conflict error is returned.
-	Update(ctx context.Context, curVersion resource.Version, new resource.Resource, opts ...UpdateOption) error
+	Update(ctx context.Context, curVersion resource.Version, newResource resource.Resource, opts ...UpdateOption) error
 
 	// Destroy a resource.
 	//
