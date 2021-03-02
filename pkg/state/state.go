@@ -24,6 +24,10 @@ const (
 	Destroyed
 )
 
+func (eventType EventType) String() string {
+	return [...]string{"Created", "Updated", "Destroyed"}[eventType]
+}
+
 // Event is emitted when resource changes.
 type Event struct {
 	Type     EventType
