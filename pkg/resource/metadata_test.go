@@ -99,8 +99,8 @@ id: aaa
 version: 1
 phase: running
 finalizers:
-  - '"resource1'
-  - resource2
+    - '"resource1'
+    - resource2
 `, string(out))
 }
 

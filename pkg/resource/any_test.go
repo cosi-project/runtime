@@ -49,8 +49,8 @@ metadata:
     version: 1
     phase: running
     finalizers:
-      - resource1
-      - resource2
+        - resource1
+        - resource2
 spec:
     value: xyz
     something: [a, b, c]
