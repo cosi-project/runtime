@@ -18,12 +18,12 @@ type Any struct {
 
 type anySpec struct {
 	value interface{}
-	doc   yaml.Node
 	yaml  []byte
 }
 
-func (s anySpec) MarshalYAML() (interface{}, error) {
-	return s.doc.Content[0], nil
+// MarshalYAMLBytes implements RawYAML interface.
+func (s anySpec) MarshalYAMLBytes() ([]byte, error) {
+	return s.yaml, nil
 }
 
 // SpecProto is a protobuf interface of resource spec.
@@ -46,10 +46,6 @@ func NewAnyFromProto(protoMd MetadataProto, protoSpec SpecProto) (*Any, error) {
 	}
 
 	if err = yaml.Unmarshal(any.spec.yaml, &any.spec.value); err != nil {
-		return nil, err
-	}
-
-	if err = yaml.Unmarshal(any.spec.yaml, &any.spec.doc); err != nil {
 		return nil, err
 	}
 

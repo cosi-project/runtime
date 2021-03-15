@@ -2,6 +2,10 @@ module github.com/talos-systems/os-runtime
 
 go 1.14
 
+// forked yaml that introduces RawYAML interface that can be used to provide YAML encoder bytes
+// which are then encoded as a valid YAML block with proper indentiation
+replace gopkg.in/yaml.v3 => github.com/unix4ever/yaml v0.0.0-20210315173758-8fb30b8e5a5b
+
 require (
 	github.com/AlekSi/pointer v1.1.0
 	github.com/cenkalti/backoff/v4 v4.1.0
