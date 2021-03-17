@@ -43,9 +43,9 @@ const (
 // cascading reconcile on changes, Strong dependencies in addition block deletion of
 // parent object until all the dependencies are torn down.
 type Dependency struct {
+	ID        *resource.ID
 	Namespace resource.Namespace
 	Type      resource.Type
-	ID        *resource.ID
 	Kind      DependencyKind
 }
 

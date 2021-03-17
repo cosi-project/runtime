@@ -253,7 +253,7 @@ func (ctrl *SumController) Run(ctx context.Context, r controller.Runtime, logger
 		var sum int
 
 		for _, intRes := range intList.Items {
-			sum += intRes.Spec().(int) //nolint: errcheck
+			sum += intRes.Spec().(int) //nolint: errcheck, forcetypeassert
 		}
 
 		if err = r.Update(ctx, NewIntResource(ctrl.TargetNamespace, "sum", 0), func(r resource.Resource) error {

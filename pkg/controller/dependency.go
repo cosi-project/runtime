@@ -25,9 +25,9 @@ const (
 type DependencyEdge struct {
 	ControllerName string
 
-	EdgeType DependencyEdgeType
-
 	ResourceNamespace resource.Namespace
 	ResourceType      resource.Type
 	ResourceID        resource.ID
+
+	EdgeType DependencyEdgeType
 }

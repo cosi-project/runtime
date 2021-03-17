@@ -30,8 +30,8 @@ func (eventType EventType) String() string {
 
 // Event is emitted when resource changes.
 type Event struct {
-	Type     EventType
 	Resource resource.Resource
+	Type     EventType
 }
 
 // CoreState is the central broker in the system handling state and changes.

@@ -20,8 +20,8 @@ const ResourceDefinitionType = resource.Type("ResourceDefinitions.meta.cosi.dev"
 
 // ResourceDefinition provides metadata about namespaces.
 type ResourceDefinition struct {
-	md   resource.Metadata
 	spec ResourceDefinitionSpec
+	md   resource.Metadata
 }
 
 // PrintColumn describes extra columns to print for the resources.
@@ -32,12 +32,11 @@ type PrintColumn struct {
 
 // ResourceDefinitionSpec provides ResourceDefinition definition.
 type ResourceDefinitionSpec struct {
-	Type         resource.Type   `yaml:"type"`
-	DisplayType  string          `yaml:"displayType"`
-	Aliases      []resource.Type `yaml:"aliases"`
-	PrintColumns []PrintColumn   `yaml:"printColumns"`
-
+	Type             resource.Type      `yaml:"type"`
+	DisplayType      string             `yaml:"displayType"`
 	DefaultNamespace resource.Namespace `yaml:"defaultNamespace"`
+	Aliases          []resource.Type    `yaml:"aliases"`
+	PrintColumns     []PrintColumn      `yaml:"printColumns"`
 }
 
 // ID computes id of the resource definition.

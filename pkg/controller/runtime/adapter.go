@@ -29,14 +29,14 @@ type adapter struct {
 	ctrl controller.Controller
 	ch   chan controller.ReconcileEvent
 
+	backoff *backoff.ExponentialBackOff
+
 	name string
 
 	managedNamespace resource.Namespace
 	managedType      resource.Type
 
 	dependencies []controller.Dependency
-
-	backoff *backoff.ExponentialBackOff
 }
 
 // EventCh implements controller.Runtime interface.

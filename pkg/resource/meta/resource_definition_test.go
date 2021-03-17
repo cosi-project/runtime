@@ -36,7 +36,7 @@ func TestNSSpec(t *testing.T) {
 }
 
 func TestRDSpecValidation(t *testing.T) {
-	for _, tt := range []struct {
+	for _, tt := range []struct { //nolint: govet
 		name          string
 		spec          meta.ResourceDefinitionSpec
 		expectedError string

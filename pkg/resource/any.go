@@ -12,8 +12,8 @@ import (
 
 // Any can hold data from any resource type.
 type Any struct {
-	md   Metadata
 	spec anySpec
+	md   Metadata
 }
 
 type anySpec struct {

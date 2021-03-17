@@ -15,8 +15,8 @@ const NamespaceType = resource.Type("Namespaces.meta.cosi.dev")
 
 // Namespace provides metadata about namespaces.
 type Namespace struct {
-	md   resource.Metadata
 	spec NamespaceSpec
+	md   resource.Metadata
 }
 
 // NamespaceSpec provides Namespace definition.

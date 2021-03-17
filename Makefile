@@ -1,6 +1,6 @@
 # THIS FILE WAS AUTOMATICALLY GENERATED, PLEASE DO NOT EDIT.
 #
-# Generated on 2020-09-25T18:15:38Z by kres ce6bee5-dirty.
+# Generated on 2021-03-16T19:57:49Z by kres 424ae88-dirty.
 
 # common variables
 
@@ -13,6 +13,8 @@ USERNAME ?= talos-systems
 REGISTRY_AND_USERNAME ?= $(REGISTRY)/$(USERNAME)
 GOFUMPT_VERSION ?= abc0db2c416aca0f60ea33c23c76665f6e7ba0b6
 GO_VERSION ?= 1.14
+PROTOBUF_GO_VERSION ?= 1.25.0
+GRPC_GO_VERSION ?= 1.1.0
 TESTPKGS ?= ./...
 KRES_IMAGE ?= ghcr.io/talos-systems/kres:latest
 
@@ -33,8 +35,10 @@ COMMON_ARGS += --build-arg=TAG=$(TAG)
 COMMON_ARGS += --build-arg=USERNAME=$(USERNAME)
 COMMON_ARGS += --build-arg=TOOLCHAIN=$(TOOLCHAIN)
 COMMON_ARGS += --build-arg=GOFUMPT_VERSION=$(GOFUMPT_VERSION)
+COMMON_ARGS += --build-arg=PROTOBUF_GO_VERSION=$(PROTOBUF_GO_VERSION)
+COMMON_ARGS += --build-arg=GRPC_GO_VERSION=$(GRPC_GO_VERSION)
 COMMON_ARGS += --build-arg=TESTPKGS=$(TESTPKGS)
-TOOLCHAIN ?= docker.io/golang:1.15-alpine
+TOOLCHAIN ?= docker.io/golang:1.16-alpine
 
 # help menu
 
@@ -93,6 +97,9 @@ fmt:  ## Formats the source code
 		bash -c "export GO111MODULE=on; export GOPROXY=https://proxy.golang.org; \
 		cd /tmp && go mod init tmp && go get mvdan.cc/gofumpt/gofumports@$(GOFUMPT_VERSION) && \
 		cd - && gofumports -w -local github.com/talos-systems/os-runtime ."
+
+generate:  ## Generate .proto definitions.
+	@$(MAKE) local-$@ DEST=./
 
 .PHONY: base
 base:  ## Prepare base toolchain

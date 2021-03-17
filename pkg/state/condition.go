@@ -13,14 +13,14 @@ type ResourceConditionFunc func(resource.Resource) (bool, error)
 
 // WatchForCondition describes condition WatchFor is waiting for.
 type WatchForCondition struct {
-	// If set, watch only for specified event types.
-	EventTypes []EventType
 	// If set, match only if func returns true.
 	Condition ResourceConditionFunc
-	// If true, wait for the finalizers to empty
-	FinalizersEmpty bool
 	// If set, wait for resource phase to be one of the specified.
 	Phases []resource.Phase
+	// If set, watch only for specified event types.
+	EventTypes []EventType
+	// If true, wait for the finalizers to empty
+	FinalizersEmpty bool
 }
 
 // Matches checks whether event matches a condition.
