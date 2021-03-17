@@ -23,7 +23,7 @@ import (
 	"github.com/talos-systems/os-runtime/pkg/state/impl/namespaced"
 )
 
-type RuntimeSuite struct {
+type RuntimeSuite struct { //nolint: govet
 	suite.Suite
 
 	state state.State
@@ -80,7 +80,7 @@ func (suite *RuntimeSuite) assertStrObjects(ns resource.Namespace, typ resource.
 				return retry.UnexpectedError(err)
 			}
 
-			strValue := r.Spec().(string) //nolint: errcheck
+			strValue := r.Spec().(string) //nolint: errcheck, forcetypeassert
 
 			if strValue != values[i] {
 				return retry.ExpectedError(fmt.Errorf("expected value of %q to be %q, found %q", id, values[i], strValue))
@@ -113,7 +113,7 @@ func (suite *RuntimeSuite) assertIntObjects(ns resource.Namespace, typ resource.
 				return retry.UnexpectedError(err)
 			}
 
-			intValue := r.Spec().(int) //nolint: errcheck
+			intValue := r.Spec().(int) //nolint: errcheck, forcetypeassert
 
 			if intValue != values[i] {
 				return retry.ExpectedError(fmt.Errorf("expected value of %q to be %d, found %d", id, values[i], intValue))

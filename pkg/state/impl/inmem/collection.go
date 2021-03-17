@@ -15,20 +15,21 @@ import (
 
 // ResourceCollection implements slice of State (by resource type).
 type ResourceCollection struct {
-	mu sync.Mutex
-	c  *sync.Cond
+	c *sync.Cond
 
 	storage map[resource.ID]resource.Resource
 
+	ns  resource.Namespace
+	typ resource.Type
+
 	stream []state.Event
+
+	mu sync.Mutex
 
 	writePos int64
 
 	capacity int
 	gap      int
-
-	ns  resource.Namespace
-	typ resource.Type
 }
 
 // NewResourceCollection returns new ResourceCollection.

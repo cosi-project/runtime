@@ -18,9 +18,9 @@ type StateBuilder func(resource.Namespace) state.CoreState
 
 // State implements delegating State for each namespace.
 type State struct {
-	namespaces sync.Map
-
 	builder StateBuilder
+
+	namespaces sync.Map
 }
 
 // NewState initializes new namespaced State.

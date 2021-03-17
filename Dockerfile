@@ -2,7 +2,7 @@
 
 # THIS FILE WAS AUTOMATICALLY GENERATED, PLEASE DO NOT EDIT.
 #
-# Generated on 2021-03-01T18:00:23Z by kres latest.
+# Generated on 2021-03-17T18:43:05Z by kres 424ae88-dirty.
 
 ARG TOOLCHAIN
 
@@ -15,21 +15,31 @@ COPY .markdownlint.json .
 COPY ./README.md ./README.md
 RUN markdownlint --ignore "**/node_modules/**" --ignore '**/hack/chglog/**' --rules /node_modules/sentences-per-line/index.js .
 
+# collects proto specs
+FROM scratch AS proto-specs
+ADD https://raw.githubusercontent.com/smira/specification/resource-proto/proto/v1alpha1/resource/resource.proto /api/v1alpha1/
+
 # base toolchain image
 FROM ${TOOLCHAIN} AS toolchain
-RUN apk --update --no-cache add bash curl build-base
+RUN apk --update --no-cache add bash curl build-base protoc protobuf-dev
 
 # build tools
 FROM toolchain AS tools
 ENV GO111MODULE on
 ENV CGO_ENABLED 0
 ENV GOPATH /go
-RUN curl -sfL https://install.goreleaser.com/github.com/golangci/golangci-lint.sh | bash -s -- -b /bin v1.36.0
+RUN curl -sfL https://install.goreleaser.com/github.com/golangci/golangci-lint.sh | bash -s -- -b /bin v1.38.0
 ARG GOFUMPT_VERSION
 RUN cd $(mktemp -d) \
 	&& go mod init tmp \
 	&& go get mvdan.cc/gofumpt/gofumports@${GOFUMPT_VERSION} \
 	&& mv /go/bin/gofumports /bin/gofumports
+ARG PROTOBUF_GO_VERSION
+RUN go install google.golang.org/protobuf/cmd/protoc-gen-go@v${PROTOBUF_GO_VERSION}
+RUN mv /go/bin/protoc-gen-go /bin
+ARG GRPC_GO_VERSION
+RUN go install google.golang.org/grpc/cmd/protoc-gen-go-grpc@v${GRPC_GO_VERSION}
+RUN mv /go/bin/protoc-gen-go-grpc /bin
 
 # tools and sources
 FROM tools AS base
@@ -40,12 +50,13 @@ RUN --mount=type=cache,target=/go/pkg go mod download
 RUN --mount=type=cache,target=/go/pkg go mod verify
 COPY ./pkg ./pkg
 COPY ./cmd ./cmd
+COPY ./api ./api
 RUN --mount=type=cache,target=/go/pkg go list -mod=readonly all >/dev/null
 
-# builds directory-fun
-FROM base AS directory-fun-build
-WORKDIR /src/cmd/directory-fun
-RUN --mount=type=cache,target=/root/.cache/go-build --mount=type=cache,target=/go/pkg go build -ldflags "-s -w" -o /directory-fun
+# runs protobuf compiler
+FROM tools AS proto-compile
+COPY --from=proto-specs / /
+RUN protoc -I/api --go_out=paths=source_relative:/api --go-grpc_out=paths=source_relative:/api --experimental_allow_proto3_optional /api/v1alpha1/resource.proto
 
 # runs gofumpt
 FROM base AS lint-gofumpt
@@ -68,9 +79,19 @@ FROM base AS unit-tests-run
 ARG TESTPKGS
 RUN --mount=type=cache,target=/root/.cache/go-build --mount=type=cache,target=/go/pkg --mount=type=cache,target=/tmp go test -v -covermode=atomic -coverprofile=coverage.txt -count 1 ${TESTPKGS}
 
-FROM scratch AS directory-fun
-COPY --from=directory-fun-build /directory-fun /directory-fun
+# cleaned up specs and compiled versions
+FROM scratch AS generate
+COPY --from=proto-compile /api/ /api/
 
 FROM scratch AS unit-tests
 COPY --from=unit-tests-run /src/coverage.txt /coverage.txt
+
+# builds directory-fun
+FROM base AS directory-fun-build
+COPY --from=generate / /
+WORKDIR /src/cmd/directory-fun
+RUN --mount=type=cache,target=/root/.cache/go-build --mount=type=cache,target=/go/pkg go build -ldflags "-s -w" -o /directory-fun
+
+FROM scratch AS directory-fun
+COPY --from=directory-fun-build /directory-fun /directory-fun
 

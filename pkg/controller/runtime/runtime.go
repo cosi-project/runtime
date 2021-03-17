@@ -21,7 +21,7 @@ import (
 )
 
 // Runtime implements controller runtime.
-type Runtime struct {
+type Runtime struct { //nolint: govet
 	depDB *dependency.Database
 
 	state  state.State

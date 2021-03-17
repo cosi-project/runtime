@@ -56,7 +56,7 @@ func (r *IntResource) DeepCopy() resource.Resource {
 const StrResourceType = resource.Type("test/str")
 
 // StrResource represents some string value.
-type StrResource struct {
+type StrResource struct { //nolint: govet
 	md    resource.Metadata
 	value string
 }
@@ -98,7 +98,7 @@ func (r *StrResource) DeepCopy() resource.Resource {
 const SententceResourceType = resource.Type("test/sentence")
 
 // StrResource represents some string value.
-type SentenceResource struct {
+type SentenceResource struct { //nolint: govet
 	md    resource.Metadata
 	value string
 }

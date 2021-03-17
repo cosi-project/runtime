@@ -122,7 +122,7 @@ func (db *Database) AddControllerManaged(controllerName string, resourceNamespac
 	}
 
 	if obj != nil {
-		dep := obj.(*ManagedResource) //nolint: errcheck
+		dep := obj.(*ManagedResource) //nolint: errcheck, forcetypeassert
 
 		return fmt.Errorf("duplicate controller managed link: (%q, %q) -> %q", dep.Namespace, dep.Type, dep.ControllerName)
 	}
@@ -133,7 +133,7 @@ func (db *Database) AddControllerManaged(controllerName string, resourceNamespac
 	}
 
 	if obj != nil {
-		dep := obj.(*ManagedResource) //nolint: errcheck
+		dep := obj.(*ManagedResource) //nolint: errcheck, forcetypeassert
 
 		return fmt.Errorf("duplicate controller managed link: (%q, %q) -> %q", dep.Namespace, dep.Type, dep.ControllerName)
 	}
@@ -165,7 +165,7 @@ func (db *Database) GetControllerResource(controllerName string) (resource.Names
 		return "", "", fmt.Errorf("controller %q is not registered", controllerName)
 	}
 
-	dep := obj.(*ManagedResource) //nolint: errcheck
+	dep := obj.(*ManagedResource) //nolint: errcheck, forcetypeassert
 
 	return dep.Namespace, dep.Type, nil
 }
@@ -186,7 +186,7 @@ func (db *Database) GetResourceController(resourceNamespace resource.Namespace, 
 		return "", nil
 	}
 
-	dep := obj.(*ManagedResource) //nolint: errcheck
+	dep := obj.(*ManagedResource) //nolint: errcheck, forcetypeassert
 
 	return dep.ControllerName, nil
 }
@@ -250,7 +250,7 @@ func (db *Database) GetControllerDependencies(controllerName string) ([]controll
 	var result []controller.Dependency
 
 	for obj := iter.Next(); obj != nil; obj = iter.Next() {
-		model := obj.(*ControllerDependency) //nolint: errcheck
+		model := obj.(*ControllerDependency) //nolint: errcheck, forcetypeassert
 
 		dep := controller.Dependency{
 			Namespace: model.Namespace,
@@ -281,7 +281,7 @@ func (db *Database) GetDependentControllers(dep controller.Dependency) ([]string
 	var result []string
 
 	for obj := iter.Next(); obj != nil; obj = iter.Next() {
-		model := obj.(*ControllerDependency) //nolint: errcheck
+		model := obj.(*ControllerDependency) //nolint: errcheck, forcetypeassert
 
 		if dep.ID == nil || model.ID == StarID || model.ID == *dep.ID {
 			result = append(result, model.ControllerName)
@@ -304,7 +304,7 @@ func (db *Database) Export() (*controller.DependencyGraph, error) {
 	}
 
 	for obj := iter.Next(); obj != nil; obj = iter.Next() {
-		model := obj.(*ManagedResource) //nolint: errcheck
+		model := obj.(*ManagedResource) //nolint: errcheck, forcetypeassert
 
 		graph.Edges = append(graph.Edges, controller.DependencyEdge{
 			ControllerName:    model.ControllerName,
@@ -320,7 +320,7 @@ func (db *Database) Export() (*controller.DependencyGraph, error) {
 	}
 
 	for obj := iter.Next(); obj != nil; obj = iter.Next() {
-		model := obj.(*ControllerDependency) //nolint: errcheck
+		model := obj.(*ControllerDependency) //nolint: errcheck, forcetypeassert
 
 		var edgeType controller.DependencyEdgeType
 

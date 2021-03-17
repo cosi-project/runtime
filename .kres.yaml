@@ -24,3 +24,11 @@ spec:
         @$(ARTIFACTS)/directory-fun
   drone:
     enabled: true
+---
+kind: golang.Protobuf
+spec:
+  experimentalFlags:
+    - --experimental_allow_proto3_optional
+  specs:
+    - source: https://raw.githubusercontent.com/smira/specification/resource-proto/proto/v1alpha1/resource/resource.proto
+      subdirectory: v1alpha1/
