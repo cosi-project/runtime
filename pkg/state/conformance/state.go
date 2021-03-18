@@ -281,7 +281,7 @@ func (suite *StateSuite) TestWatchFor() {
 	ns := suite.getNamespace()
 	path1 := NewPathResource(ns, "tmp/one")
 
-	ctx, cancel := context.WithCancel(context.Background())
+	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 	defer cancel()
 
 	var (
@@ -302,11 +302,11 @@ func (suite *StateSuite) TestWatchFor() {
 
 	wg.Wait()
 
-	suite.Assert().NoError(err)
+	suite.Require().NoError(err)
 	suite.Assert().Equal(r.Metadata().String(), path1.Metadata().String())
 
 	r, err = suite.State.WatchFor(ctx, path1.Metadata(), state.WithFinalizerEmpty())
-	suite.Assert().NoError(err)
+	suite.Require().NoError(err)
 	suite.Assert().Equal(r.Metadata().String(), path1.Metadata().String())
 
 	wg.Add(1)
@@ -322,7 +322,7 @@ func (suite *StateSuite) TestWatchFor() {
 	suite.Assert().True(ready)
 
 	wg.Wait()
-	suite.Assert().NoError(err)
+	suite.Require().NoError(err)
 	suite.Assert().Equal(r.Metadata().ID(), path1.Metadata().ID())
 	suite.Assert().Equal(resource.PhaseTearingDown, r.Metadata().Phase())
 

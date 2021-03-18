@@ -4,8 +4,6 @@ package resource;
 
 option go_package = "github.com/talos-systems/os-runtime/api/v1alpha1";
 
-import "google/protobuf/any.proto";
-
 // Metadata represents resource metadata.
 message Metadata {
     string namespace = 1;
