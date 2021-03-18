@@ -1,7 +1,7 @@
 ---
 # THIS FILE WAS AUTOMATICALLY GENERATED, PLEASE DO NOT EDIT.
 #
-# Generated on 2020-11-17T20:11:41Z by kres eb337ab.
+# Generated on 2021-03-18T20:16:50Z by kres 424ae88-dirty.
 
 kind: pipeline
 type: kubernetes
@@ -122,11 +122,11 @@ steps:
   depends_on:
   - base
 
-- name: run-directory-fun
+- name: os-runtime
   pull: always
   image: autonomy/build-container:latest
   commands:
-  - make run-directory-fun
+  - make os-runtime
   volumes:
   - name: outer-docker-socket
     path: /var/outer-run
@@ -137,7 +137,7 @@ steps:
   - name: ssh
     path: /root/.ssh
   depends_on:
-  - directory-fun
+  - base
 
 - name: lint
   pull: always
@@ -155,6 +155,100 @@ steps:
     path: /root/.ssh
   depends_on:
   - base
+
+- name: image-os-runtime
+  pull: always
+  image: autonomy/build-container:latest
+  commands:
+  - make image-os-runtime
+  volumes:
+  - name: outer-docker-socket
+    path: /var/outer-run
+  - name: docker-socket
+    path: /var/run
+  - name: buildx
+    path: /root/.docker/buildx
+  - name: ssh
+    path: /root/.ssh
+  depends_on:
+  - os-runtime
+  - lint
+  - unit-tests
+
+- name: push-os-runtime
+  pull: always
+  image: autonomy/build-container:latest
+  commands:
+  - docker login ghcr.io --username "$${GHCR_USERNAME}" --password "$${GHCR_PASSWORD}"
+  - make image-os-runtime
+  environment:
+    GHCR_PASSWORD:
+      from_secret: ghcr_token
+    GHCR_USERNAME:
+      from_secret: ghcr_username
+    PUSH: true
+  volumes:
+  - name: outer-docker-socket
+    path: /var/outer-run
+  - name: docker-socket
+    path: /var/run
+  - name: buildx
+    path: /root/.docker/buildx
+  - name: ssh
+    path: /root/.ssh
+  when:
+    event:
+      exclude:
+      - pull_request
+  depends_on:
+  - image-os-runtime
+
+- name: push-os-runtime-latest
+  pull: always
+  image: autonomy/build-container:latest
+  commands:
+  - docker login ghcr.io --username "$${GHCR_USERNAME}" --password "$${GHCR_PASSWORD}"
+  - make image-os-runtime TAG=latest
+  environment:
+    GHCR_PASSWORD:
+      from_secret: ghcr_token
+    GHCR_USERNAME:
+      from_secret: ghcr_username
+    PUSH: true
+  volumes:
+  - name: outer-docker-socket
+    path: /var/outer-run
+  - name: docker-socket
+    path: /var/run
+  - name: buildx
+    path: /root/.docker/buildx
+  - name: ssh
+    path: /root/.ssh
+  when:
+    branch:
+    - master
+    event:
+      exclude:
+      - pull_request
+  depends_on:
+  - push-os-runtime
+
+- name: run-directory-fun
+  pull: always
+  image: autonomy/build-container:latest
+  commands:
+  - make run-directory-fun
+  volumes:
+  - name: outer-docker-socket
+    path: /var/outer-run
+  - name: docker-socket
+    path: /var/run
+  - name: buildx
+    path: /root/.docker/buildx
+  - name: ssh
+    path: /root/.ssh
+  depends_on:
+  - directory-fun
 
 services:
 - name: docker

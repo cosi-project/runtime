@@ -2,9 +2,13 @@
 
 # THIS FILE WAS AUTOMATICALLY GENERATED, PLEASE DO NOT EDIT.
 #
-# Generated on 2021-03-17T18:43:05Z by kres 424ae88-dirty.
+# Generated on 2021-03-18T20:16:50Z by kres 424ae88-dirty.
 
 ARG TOOLCHAIN
+
+FROM ghcr.io/talos-systems/ca-certificates:v0.3.0-12-g90722c3 AS image-ca-certificates
+
+FROM ghcr.io/talos-systems/fhs:v0.3.0-12-g90722c3 AS image-fhs
 
 # runs markdownlint
 FROM node:14.8.0-alpine AS lint-markdown
@@ -17,7 +21,8 @@ RUN markdownlint --ignore "**/node_modules/**" --ignore '**/hack/chglog/**' --ru
 
 # collects proto specs
 FROM scratch AS proto-specs
-ADD https://raw.githubusercontent.com/smira/specification/resource-proto/proto/v1alpha1/resource/resource.proto /api/v1alpha1/
+ADD https://raw.githubusercontent.com/smira/specification/resource-proto/proto/v1alpha1/resource.proto /api/v1alpha1/
+ADD https://raw.githubusercontent.com/smira/specification/resource-proto/proto/v1alpha1/state.proto /api/v1alpha1/
 
 # base toolchain image
 FROM ${TOOLCHAIN} AS toolchain
@@ -57,6 +62,7 @@ RUN --mount=type=cache,target=/go/pkg go list -mod=readonly all >/dev/null
 FROM tools AS proto-compile
 COPY --from=proto-specs / /
 RUN protoc -I/api --go_out=paths=source_relative:/api --go-grpc_out=paths=source_relative:/api --experimental_allow_proto3_optional /api/v1alpha1/resource.proto
+RUN protoc -I/api --go_out=paths=source_relative:/api --go-grpc_out=paths=source_relative:/api --experimental_allow_proto3_optional /api/v1alpha1/state.proto
 
 # runs gofumpt
 FROM base AS lint-gofumpt
@@ -92,6 +98,21 @@ COPY --from=generate / /
 WORKDIR /src/cmd/directory-fun
 RUN --mount=type=cache,target=/root/.cache/go-build --mount=type=cache,target=/go/pkg go build -ldflags "-s -w" -o /directory-fun
 
+# builds os-runtime
+FROM base AS os-runtime-build
+COPY --from=generate / /
+WORKDIR /src/cmd/os-runtime
+RUN --mount=type=cache,target=/root/.cache/go-build --mount=type=cache,target=/go/pkg go build -ldflags "-s -w" -o /os-runtime
+
 FROM scratch AS directory-fun
 COPY --from=directory-fun-build /directory-fun /directory-fun
+
+FROM scratch AS os-runtime
+COPY --from=os-runtime-build /os-runtime /os-runtime
+
+FROM scratch AS image-os-runtime
+COPY --from=os-runtime / /
+COPY --from=image-fhs / /
+COPY --from=image-ca-certificates / /
+ENTRYPOINT ["/os-runtime"]
 

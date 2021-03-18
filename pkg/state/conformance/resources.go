@@ -20,6 +20,12 @@ type PathResource struct {
 	md resource.Metadata
 }
 
+type pathSpec struct{}
+
+func (spec pathSpec) MarshalProto() ([]byte, error) {
+	return nil, nil
+}
+
 // NewPathResource creates new PathResource.
 func NewPathResource(ns resource.Namespace, path string) *PathResource {
 	r := &PathResource{
@@ -37,7 +43,7 @@ func (path *PathResource) Metadata() *resource.Metadata {
 
 // Spec implements resource.Resource.
 func (path *PathResource) Spec() interface{} {
-	return nil
+	return pathSpec{}
 }
 
 func (path *PathResource) String() string {
@@ -49,4 +55,15 @@ func (path *PathResource) DeepCopy() resource.Resource {
 	return &PathResource{
 		md: path.md,
 	}
+}
+
+// UnmarshalProto implements protobuf.ResourceUnmarshaler.
+func (path *PathResource) UnmarshalProto(md *resource.Metadata, protoSpec []byte) error {
+	path.md = *md
+
+	if protoSpec != nil {
+		return fmt.Errorf("unexpected non-nil protoSpec")
+	}
+
+	return nil
 }

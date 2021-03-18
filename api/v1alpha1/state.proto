@@ -1,0 +1,151 @@
+syntax = "proto3";
+
+package resource;
+
+option go_package = "github.com/talos-systems/os-runtime/api/v1alpha1";
+
+import "v1alpha1/resource.proto";
+
+enum EventType {
+    CREATED = 0;
+    UPDATED = 1;
+    DESTROYED = 2;
+}
+
+// Event is emitted when resource changes.
+message Event {
+    Resource resource = 1;
+    EventType event_type = 2;
+}
+
+service State {
+	// Get a resource by type and ID.
+	//
+	// If a resource is not found, error is returned.
+	rpc Get(GetRequest) returns (GetResponse);
+
+	// List resources by type.
+	rpc List(ListRequest) returns (stream ListResponse);
+
+	// Create a resource.
+	//
+	// If a resource already exists, Create returns an error.
+	rpc Create(CreateRequest) returns (CreateResponse);
+
+	// Update a resource.
+	//
+	// If a resource doesn't exist, error is returned.
+	// On update current version of resource `new` in the state should match
+	// curVersion, otherwise conflict error is returned.
+	rpc Update(UpdateRequest) returns (UpdateResponse);
+
+	// Destroy a resource.
+	//
+	// If a resource doesn't exist, error is returned.
+	// If a resource has pending finalizers, error is returned.
+	rpc Destroy(DestroyRequest) returns (DestroyResponse);
+
+	// Watch state of a resource by (namespace, type) or a specific resource by (namespace, type, id).
+	//
+	// It's fine to watch for a resource which doesn't exist yet.
+	// Watch is canceled when context gets canceled.
+	// Watch sends initial resource state as the very first event on the channel,
+	// and then sends any updates to the resource as events.
+	rpc Watch(WatchRequest) returns (stream WatchResponse);
+}
+
+// Get RPC
+
+message GetRequest {
+    string namespace = 1;
+    string type = 2;
+    string id = 3;
+
+    GetOptions options = 4;
+}
+
+message GetOptions {
+}
+
+message GetResponse {
+    resource.Resource resource = 1;
+}
+
+// List RPC
+
+message ListRequest {
+    string namespace = 1;
+    string type = 2;
+
+    ListOptions options = 3;
+}
+
+message ListOptions {
+}
+
+message ListResponse {
+    resource.Resource resource = 1;
+}
+
+// Create RPC
+
+message CreateRequest {
+    resource.Resource resource = 1;
+
+    CreateOptions options = 2;
+}
+
+message CreateOptions {
+}
+
+message CreateResponse {
+}
+
+// Update RPC
+
+message UpdateRequest {
+    string current_version = 1;
+    resource.Resource new_resource = 2;
+
+    UpdateOptions options = 3;
+}
+
+message UpdateOptions {
+}
+
+message UpdateResponse {
+}
+
+// Destroy RPC
+
+message DestroyRequest {
+    string namespace = 1;
+    string type = 2;
+    string id = 3;
+
+    DestroyOptions options = 4;
+}
+
+message DestroyOptions {
+}
+
+message DestroyResponse {
+}
+
+// Watch RPC
+
+message WatchRequest {
+    string namespace = 1;
+    string type = 2;
+    optional string id = 3;
+
+    WatchOptions options = 4;
+}
+
+message WatchOptions {
+    bool bootstrap_contents = 1;
+}
+
+message WatchResponse {
+    Event event = 1;
+}

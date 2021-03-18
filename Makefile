@@ -1,6 +1,6 @@
 # THIS FILE WAS AUTOMATICALLY GENERATED, PLEASE DO NOT EDIT.
 #
-# Generated on 2021-03-16T19:57:49Z by kres 424ae88-dirty.
+# Generated on 2021-03-18T20:16:50Z by kres 424ae88-dirty.
 
 # common variables
 
@@ -73,7 +73,7 @@ respectively.
 
 endef
 
-all: unit-tests directory-fun run-directory-fun lint
+all: unit-tests directory-fun os-runtime image-os-runtime run-directory-fun lint
 
 .PHONY: clean
 clean:  ## Cleans up all artifacts.
@@ -124,8 +124,12 @@ $(ARTIFACTS)/directory-fun:
 .PHONY: directory-fun
 directory-fun: $(ARTIFACTS)/directory-fun  ## Builds executable for directory-fun.
 
-run-directory-fun: directory-fun
-	@$(ARTIFACTS)/directory-fun
+.PHONY: $(ARTIFACTS)/os-runtime
+$(ARTIFACTS)/os-runtime:
+	@$(MAKE) local-os-runtime DEST=$(ARTIFACTS)
+
+.PHONY: os-runtime
+os-runtime: $(ARTIFACTS)/os-runtime  ## Builds executable for os-runtime.
 
 .PHONY: lint-markdown
 lint-markdown:  ## Runs markdownlint.
@@ -133,6 +137,13 @@ lint-markdown:  ## Runs markdownlint.
 
 .PHONY: lint
 lint: lint-golangci-lint lint-gofumpt lint-markdown  ## Run all linters for the project.
+
+.PHONY: image-os-runtime
+image-os-runtime:  ## Builds image for os-runtime.
+	@$(MAKE) target-$@ TARGET_ARGS="--tag=$(REGISTRY)/$(USERNAME)/os-runtime:$(TAG)"
+
+run-directory-fun: directory-fun
+	@$(ARTIFACTS)/directory-fun
 
 .PHONY: rekres
 rekres:

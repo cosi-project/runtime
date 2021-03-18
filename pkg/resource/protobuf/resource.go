@@ -7,6 +7,8 @@ package protobuf
 import (
 	"fmt"
 
+	"gopkg.in/yaml.v3"
+
 	"github.com/talos-systems/os-runtime/api/v1alpha1"
 	"github.com/talos-systems/os-runtime/pkg/resource"
 )
@@ -32,7 +34,7 @@ func (s protoSpec) MarshalYAMLBytes() ([]byte, error) {
 }
 
 func (r *Resource) String() string {
-	return fmt.Sprintf("%s(%s)", r.md.Type(), r.md.ID())
+	return fmt.Sprintf("%s(%q)", r.md.Type(), r.md.ID())
 }
 
 // Metadata for the resource.
@@ -75,6 +77,58 @@ func (r *Resource) Marshal() (*v1alpha1.Resource, error) {
 		Spec: &v1alpha1.Spec{
 			ProtoSpec: r.spec.protobuf,
 			YamlSpec:  r.spec.yaml,
+		},
+	}, nil
+}
+
+// ResourceUnmarshaler is an interface which should be implemented by Resource to support conversion from protobuf.Resource.
+type ResourceUnmarshaler interface {
+	UnmarshalProto(*resource.Metadata, []byte) error
+}
+
+// Unmarshal into specific Resource instance.
+func (r *Resource) Unmarshal(res ResourceUnmarshaler) error {
+	return res.UnmarshalProto(&r.md, r.spec.protobuf)
+}
+
+// ProtoMarshaler is an interface which should be implemented by Resource spec to support conversion to protobuf.Resource.
+type ProtoMarshaler interface {
+	MarshalProto() ([]byte, error)
+}
+
+// FromResource converts a resource which supports spec protobuf marshaling to protobuf.Resource.
+func FromResource(r resource.Resource) (*Resource, error) {
+	if protoR, ok := r.(*Resource); ok {
+		return protoR, nil
+	}
+
+	if resource.IsTombstone(r) {
+		// tombstones don't have spec
+		return &Resource{
+			md: r.Metadata().Copy(),
+		}, nil
+	}
+
+	protoMarshaler, ok := r.Spec().(ProtoMarshaler)
+	if !ok {
+		return nil, fmt.Errorf("resource %s doesn't support protobuf marshaling", r)
+	}
+
+	protoBytes, err := protoMarshaler.MarshalProto()
+	if err != nil {
+		return nil, err
+	}
+
+	yamlBytes, err := yaml.Marshal(r.Spec())
+	if err != nil {
+		return nil, err
+	}
+
+	return &Resource{
+		md: r.Metadata().Copy(),
+		spec: protoSpec{
+			protobuf: protoBytes,
+			yaml:     string(yamlBytes),
 		},
 	}, nil
 }
