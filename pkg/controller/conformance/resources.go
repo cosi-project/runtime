@@ -2,13 +2,26 @@
 // License, v. 2.0. If a copy of the MPL was not distributed with this
 // file, You can obtain one at http://mozilla.org/MPL/2.0/.
 
-package runtime_test
+package conformance
 
 import (
+	"encoding/binary"
 	"fmt"
 
 	"github.com/talos-systems/os-runtime/pkg/resource"
 )
+
+// IntegerResource is implemented by resources holding ints.
+type IntegerResource interface {
+	Value() int
+	SetValue(int)
+}
+
+// StringResource is implemented by resources holding strings.
+type StringResource interface {
+	Value() string
+	SetValue(string)
+}
 
 // IntResourceType is the type of IntResource.
 const IntResourceType = resource.Type("test/int")
@@ -16,14 +29,26 @@ const IntResourceType = resource.Type("test/int")
 // IntResource represents some integer value.
 type IntResource struct {
 	md    resource.Metadata
+	value intSpec
+}
+
+type intSpec struct {
 	value int
+}
+
+func (spec intSpec) MarshalProto() ([]byte, error) {
+	buf := make([]byte, binary.MaxVarintLen64)
+
+	n := binary.PutVarint(buf, int64(spec.value))
+
+	return buf[:n], nil
 }
 
 // NewIntResource creates new IntResource.
 func NewIntResource(ns resource.Namespace, id resource.ID, value int) *IntResource {
 	r := &IntResource{
 		md:    resource.NewMetadata(ns, IntResourceType, id, resource.VersionUndefined),
-		value: value,
+		value: intSpec{value},
 	}
 	r.md.BumpVersion()
 
@@ -40,8 +65,18 @@ func (r *IntResource) Spec() interface{} {
 	return r.value
 }
 
+// Value implements IntegerResource.
+func (r *IntResource) Value() int {
+	return r.value.value
+}
+
+// SetValue implements IntegerResource.
+func (r *IntResource) SetValue(v int) {
+	r.value.value = v
+}
+
 func (r *IntResource) String() string {
-	return fmt.Sprintf("IntResource(%q -> %d)", r.md.ID(), r.value)
+	return fmt.Sprintf("IntResource(%q -> %d)", r.md.ID(), r.value.value)
 }
 
 // DeepCopy implements resource.Resource.
@@ -52,20 +87,38 @@ func (r *IntResource) DeepCopy() resource.Resource {
 	}
 }
 
+// UnmarshalProto implements protobuf.ResourceUnmarshaler.
+func (r *IntResource) UnmarshalProto(md *resource.Metadata, protoSpec []byte) error {
+	r.md = *md
+
+	v, _ := binary.Varint(protoSpec)
+	r.value.value = int(v)
+
+	return nil
+}
+
 // StrResourceType is the type of StrResource.
 const StrResourceType = resource.Type("test/str")
 
 // StrResource represents some string value.
 type StrResource struct { //nolint: govet
 	md    resource.Metadata
+	value strSpec
+}
+
+type strSpec struct {
 	value string
+}
+
+func (spec strSpec) MarshalProto() ([]byte, error) {
+	return []byte(spec.value), nil
 }
 
 // NewStrResource creates new StrResource.
 func NewStrResource(ns resource.Namespace, id resource.ID, value string) *StrResource {
 	r := &StrResource{
 		md:    resource.NewMetadata(ns, StrResourceType, id, resource.VersionUndefined),
-		value: value,
+		value: strSpec{value},
 	}
 	r.md.BumpVersion()
 
@@ -82,8 +135,18 @@ func (r *StrResource) Spec() interface{} {
 	return r.value
 }
 
+// Value implements StringResource.
+func (r *StrResource) Value() string {
+	return r.value.value
+}
+
+// SetValue implements StringResource.
+func (r *StrResource) SetValue(v string) {
+	r.value.value = v
+}
+
 func (r *StrResource) String() string {
-	return fmt.Sprintf("StrResource(%q -> %q)", r.md.ID(), r.value)
+	return fmt.Sprintf("StrResource(%q -> %q)", r.md.ID(), r.value.value)
 }
 
 // DeepCopy implements resource.Resource.
@@ -94,20 +157,28 @@ func (r *StrResource) DeepCopy() resource.Resource {
 	}
 }
 
-// SententceResourceType is the type of SentenceResource.
-const SententceResourceType = resource.Type("test/sentence")
+// UnmarshalProto implements protobuf.ResourceUnmarshaler.
+func (r *StrResource) UnmarshalProto(md *resource.Metadata, protoSpec []byte) error {
+	r.md = *md
+	r.value.value = string(protoSpec)
 
-// StrResource represents some string value.
+	return nil
+}
+
+// SentenceResourceType is the type of SentenceResource.
+const SentenceResourceType = resource.Type("test/sentence")
+
+// SentenceResource represents some string value.
 type SentenceResource struct { //nolint: govet
 	md    resource.Metadata
-	value string
+	value strSpec
 }
 
 // NewSentenceResource creates new SentenceResource.
 func NewSentenceResource(ns resource.Namespace, id resource.ID, value string) *SentenceResource {
 	r := &SentenceResource{
-		md:    resource.NewMetadata(ns, SententceResourceType, id, resource.VersionUndefined),
-		value: value,
+		md:    resource.NewMetadata(ns, SentenceResourceType, id, resource.VersionUndefined),
+		value: strSpec{value},
 	}
 	r.md.BumpVersion()
 
@@ -124,8 +195,18 @@ func (r *SentenceResource) Spec() interface{} {
 	return r.value
 }
 
+// Value implements StringResource.
+func (r *SentenceResource) Value() string {
+	return r.value.value
+}
+
+// SetValue implements StringResource.
+func (r *SentenceResource) SetValue(v string) {
+	r.value.value = v
+}
+
 func (r *SentenceResource) String() string {
-	return fmt.Sprintf("SentenceResource(%q -> %q)", r.md.ID(), r.value)
+	return fmt.Sprintf("SentenceResource(%q -> %q)", r.md.ID(), r.value.value)
 }
 
 // DeepCopy implements resource.Resource.
@@ -134,4 +215,12 @@ func (r *SentenceResource) DeepCopy() resource.Resource {
 		md:    r.md,
 		value: r.value,
 	}
+}
+
+// UnmarshalProto implements protobuf.ResourceUnmarshaler.
+func (r *SentenceResource) UnmarshalProto(md *resource.Metadata, protoSpec []byte) error {
+	r.md = *md
+	r.value.value = string(protoSpec)
+
+	return nil
 }

@@ -60,7 +60,9 @@ type Reader interface {
 //
 // Only managed objects can be written to by the controller.
 type Writer interface {
-	Update(context.Context, resource.Resource, func(resource.Resource) error) error
+	Create(context.Context, resource.Resource) error
+	Update(context.Context, resource.Version, resource.Resource) error
+	Modify(context.Context, resource.Resource, func(resource.Resource) error) error
 	Teardown(context.Context, resource.Pointer) (bool, error)
 	Destroy(context.Context, resource.Pointer) error
 

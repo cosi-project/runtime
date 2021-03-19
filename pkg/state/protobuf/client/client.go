@@ -135,6 +135,8 @@ func (adapter *Adapter) Create(ctx context.Context, r resource.Resource, opt ...
 
 	_, err = adapter.client.Create(ctx, &v1alpha1.CreateRequest{
 		Resource: marshaled,
+
+		Options: &v1alpha1.CreateOptions{},
 	})
 
 	if err != nil {
@@ -208,6 +210,8 @@ func (adapter *Adapter) Destroy(ctx context.Context, resourcePointer resource.Po
 		Namespace: resourcePointer.Namespace(),
 		Type:      resourcePointer.Type(),
 		Id:        resourcePointer.ID(),
+
+		Options: &v1alpha1.DestroyOptions{},
 	})
 	if err != nil {
 		switch status.Code(err) { //nolint: exhaustive

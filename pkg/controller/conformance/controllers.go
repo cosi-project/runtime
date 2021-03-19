@@ -2,7 +2,7 @@
 // License, v. 2.0. If a copy of the MPL was not distributed with this
 // file, You can obtain one at http://mozilla.org/MPL/2.0/.
 
-package runtime_test
+package conformance
 
 import (
 	"context"
@@ -70,9 +70,9 @@ func (ctrl *IntToStrController) Run(ctx context.Context, r controller.Runtime, l
 					return fmt.Errorf("error adding finalizer: %w", err)
 				}
 
-				if err = r.Update(ctx, strRes,
+				if err = r.Modify(ctx, strRes,
 					func(r resource.Resource) error {
-						r.(*StrResource).value = strconv.Itoa(intRes.Spec().(int))
+						r.(StringResource).SetValue(strconv.Itoa(intRes.(IntegerResource).Value()))
 
 						return nil
 					}); err != nil {
@@ -126,7 +126,7 @@ func (ctrl *StrToSentenceController) Name() string {
 
 // ManagedResources implements controller.Controller interface.
 func (ctrl *StrToSentenceController) ManagedResources() (resource.Namespace, resource.Type) {
-	return ctrl.TargetNamespace, SententceResourceType
+	return ctrl.TargetNamespace, SentenceResourceType
 }
 
 // Run implements controller.Controller interface.
@@ -168,8 +168,8 @@ func (ctrl *StrToSentenceController) Run(ctx context.Context, r controller.Runti
 					return fmt.Errorf("error adding finalizer: %w", err)
 				}
 
-				if err = r.Update(ctx, sentenceRes, func(r resource.Resource) error {
-					r.(*SentenceResource).value = strRes.(*StrResource).value + " sentence"
+				if err = r.Modify(ctx, sentenceRes, func(r resource.Resource) error {
+					r.(StringResource).SetValue(strRes.(StringResource).Value() + " sentence")
 
 					return nil
 				}); err != nil {
@@ -253,11 +253,11 @@ func (ctrl *SumController) Run(ctx context.Context, r controller.Runtime, logger
 		var sum int
 
 		for _, intRes := range intList.Items {
-			sum += intRes.Spec().(int) //nolint: errcheck, forcetypeassert
+			sum += intRes.(IntegerResource).Value()
 		}
 
-		if err = r.Update(ctx, NewIntResource(ctrl.TargetNamespace, "sum", 0), func(r resource.Resource) error {
-			r.(*IntResource).value = sum
+		if err = r.Modify(ctx, NewIntResource(ctrl.TargetNamespace, "sum", 0), func(r resource.Resource) error {
+			r.(IntegerResource).SetValue(sum)
 
 			return nil
 		}); err != nil {
@@ -291,8 +291,8 @@ func (ctrl *FailingController) Run(ctx context.Context, r controller.Runtime, lo
 	case <-r.EventCh():
 	}
 
-	if err := r.Update(ctx, NewIntResource(ctrl.TargetNamespace, strconv.Itoa(ctrl.count), 0), func(r resource.Resource) error {
-		r.(*IntResource).value = ctrl.count
+	if err := r.Modify(ctx, NewIntResource(ctrl.TargetNamespace, strconv.Itoa(ctrl.count), 0), func(r resource.Resource) error {
+		r.(IntegerResource).SetValue(ctrl.count)
 
 		return nil
 	}); err != nil {

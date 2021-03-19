@@ -2,7 +2,7 @@
 
 # THIS FILE WAS AUTOMATICALLY GENERATED, PLEASE DO NOT EDIT.
 #
-# Generated on 2021-03-18T20:16:50Z by kres 424ae88-dirty.
+# Generated on 2021-03-19T09:56:09Z by kres 424ae88-dirty.
 
 ARG TOOLCHAIN
 
@@ -23,6 +23,7 @@ RUN markdownlint --ignore "**/node_modules/**" --ignore '**/hack/chglog/**' --ru
 FROM scratch AS proto-specs
 ADD https://raw.githubusercontent.com/smira/specification/resource-proto/proto/v1alpha1/resource.proto /api/v1alpha1/
 ADD https://raw.githubusercontent.com/smira/specification/resource-proto/proto/v1alpha1/state.proto /api/v1alpha1/
+ADD https://raw.githubusercontent.com/smira/specification/resource-proto/proto/v1alpha1/runtime.proto /api/v1alpha1/
 
 # base toolchain image
 FROM ${TOOLCHAIN} AS toolchain
@@ -63,6 +64,7 @@ FROM tools AS proto-compile
 COPY --from=proto-specs / /
 RUN protoc -I/api --go_out=paths=source_relative:/api --go-grpc_out=paths=source_relative:/api --experimental_allow_proto3_optional /api/v1alpha1/resource.proto
 RUN protoc -I/api --go_out=paths=source_relative:/api --go-grpc_out=paths=source_relative:/api --experimental_allow_proto3_optional /api/v1alpha1/state.proto
+RUN protoc -I/api --go_out=paths=source_relative:/api --go-grpc_out=paths=source_relative:/api --experimental_allow_proto3_optional /api/v1alpha1/runtime.proto
 
 # runs gofumpt
 FROM base AS lint-gofumpt

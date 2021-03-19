@@ -19,3 +19,11 @@ type Controller interface {
 
 	Run(context.Context, Runtime, *log.Logger) error
 }
+
+// Engine is the entrypoint into Controller Runtime.
+type Engine interface {
+	// RegisterController registers new controller.
+	RegisterController(ctrl Controller) error
+	// Run the controllers.
+	Run(ctx context.Context) error
+}

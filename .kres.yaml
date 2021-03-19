@@ -34,3 +34,5 @@ spec:
       subdirectory: v1alpha1/
     - source: https://raw.githubusercontent.com/smira/specification/resource-proto/proto/v1alpha1/state.proto
       subdirectory: v1alpha1/
+    - source: https://raw.githubusercontent.com/smira/specification/resource-proto/proto/v1alpha1/runtime.proto
+      subdirectory: v1alpha1/
