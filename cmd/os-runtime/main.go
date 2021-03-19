@@ -18,6 +18,8 @@ import (
 	"google.golang.org/grpc"
 
 	"github.com/talos-systems/os-runtime/api/v1alpha1"
+	runtimeserver "github.com/talos-systems/os-runtime/pkg/controller/protobuf/server"
+	"github.com/talos-systems/os-runtime/pkg/controller/runtime"
 	"github.com/talos-systems/os-runtime/pkg/state"
 	"github.com/talos-systems/os-runtime/pkg/state/impl/inmem"
 	"github.com/talos-systems/os-runtime/pkg/state/impl/namespaced"
@@ -58,8 +60,19 @@ func run() error {
 
 	inmemState := state.WrapCore(namespaced.NewState(inmem.Build))
 
+	logger := log.New(log.Writer(), "controller-runtime: ", log.Flags())
+
+	controllerRuntime, err := runtime.NewRuntime(inmemState, logger)
+	if err != nil {
+		return fmt.Errorf("error setting up controller runtime: %w", err)
+	}
+
+	grpcRuntime := runtimeserver.NewRuntime(controllerRuntime)
+
 	grpcServer := grpc.NewServer()
 	v1alpha1.RegisterStateServer(grpcServer, server.NewState(inmemState))
+	v1alpha1.RegisterControllerRuntimeServer(grpcServer, grpcRuntime)
+	v1alpha1.RegisterControllerAdapterServer(grpcServer, grpcRuntime)
 
 	log.Printf("starting os-runtime service on %q", socketPath)
 

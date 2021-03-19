@@ -1,6 +1,6 @@
 module github.com/talos-systems/os-runtime
 
-go 1.14
+go 1.16
 
 // forked yaml that introduces RawYAML interface that can be used to provide YAML encoder bytes
 // which are then encoded as a valid YAML block with proper indentiation
@@ -13,7 +13,7 @@ require (
 	github.com/golang/protobuf v1.4.3
 	github.com/hashicorp/go-memdb v1.3.0
 	github.com/stretchr/testify v1.6.1
-	github.com/talos-systems/go-retry v0.2.0
+	github.com/talos-systems/go-retry v0.2.1-0.20210119124456-b9dc1a990133
 	go.uber.org/goleak v1.1.10
 	golang.org/x/sync v0.0.0-20190423024810-112230192c58
 	google.golang.org/grpc v1.36.0

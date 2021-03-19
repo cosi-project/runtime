@@ -190,8 +190,28 @@ func (adapter *adapter) WatchFor(ctx context.Context, resourcePointer resource.P
 	return adapter.runtime.state.WatchFor(ctx, resourcePointer, opts...)
 }
 
+// Create implements controller.Runtime interface.
+func (adapter *adapter) Create(ctx context.Context, r resource.Resource) error {
+	if r.Metadata().Namespace() != adapter.managedNamespace || r.Metadata().Type() != adapter.managedType {
+		return fmt.Errorf("resource %q/%q is not managed by controller %q, create attempted on %q",
+			r.Metadata().Namespace(), r.Metadata().Type(), adapter.name, r.Metadata().ID())
+	}
+
+	return adapter.runtime.state.Create(ctx, r)
+}
+
 // Update implements controller.Runtime interface.
-func (adapter *adapter) Update(ctx context.Context, emptyResource resource.Resource, updateFunc func(resource.Resource) error) error {
+func (adapter *adapter) Update(ctx context.Context, curVersion resource.Version, newResource resource.Resource) error {
+	if newResource.Metadata().Namespace() != adapter.managedNamespace || newResource.Metadata().Type() != adapter.managedType {
+		return fmt.Errorf("resource %q/%q is not managed by controller %q, create attempted on %q",
+			newResource.Metadata().Namespace(), newResource.Metadata().Type(), adapter.name, newResource.Metadata().ID())
+	}
+
+	return adapter.runtime.state.Update(ctx, curVersion, newResource)
+}
+
+// Modify implements controller.Runtime interface.
+func (adapter *adapter) Modify(ctx context.Context, emptyResource resource.Resource, updateFunc func(resource.Resource) error) error {
 	if emptyResource.Metadata().Namespace() != adapter.managedNamespace || emptyResource.Metadata().Type() != adapter.managedType {
 		return fmt.Errorf("resource %q/%q is not managed by controller %q, update attempted on %q",
 			emptyResource.Metadata().Namespace(), emptyResource.Metadata().Type(), adapter.name, emptyResource.Metadata().ID())

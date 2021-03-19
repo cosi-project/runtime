@@ -1,0 +1,229 @@
+syntax = "proto3";
+
+package runtime;
+
+option go_package = "github.com/talos-systems/os-runtime/api/v1alpha1";
+
+import "v1alpha1/resource.proto";
+
+service ControllerRuntime {
+    // RegisterController registers controller and establishes token for ControllerAdapter calls.
+    rpc RegisterController(RegisterControllerRequest) returns (RegisterControllerResponse);
+    // Start should be called when controllers were registered.
+    rpc Start(StartRequest) returns (StartResponse);
+    // Stop controller runtime.
+    rpc Stop(StopRequest) returns (StopResponse);
+}
+
+service ControllerAdapter {
+    // ReconcileEvents sends message on each reconcile event for the controller.
+    rpc ReconcileEvents(ReconcileEventsRequest) returns (stream ReconcileEventsResponse);
+    // QueueReconcile queues another reconcile event.
+    rpc QueueReconcile(QueueReconcileRequest) returns (QueueReconcileResponse);
+    // UpdateDependencies updates list of controller dependencies.
+    rpc UpdateDependencies(UpdateDependenciesRequest) returns (UpdateDependenciesResponse);
+
+    // Reader APIs.
+	rpc Get(RuntimeGetRequest) returns (RuntimeGetResponse);
+	rpc List(RuntimeListRequest) returns (stream RuntimeListResponse);
+	rpc WatchFor(RuntimeWatchForRequest) returns (RuntimeWatchForResponse);
+
+    // Writer APIs.
+	rpc Create(RuntimeCreateRequest) returns (RuntimeCreateResponse);
+	rpc Update(RuntimeUpdateRequest) returns (RuntimeUpdateResponse);
+	rpc Teardown(RuntimeTeardownRequest) returns (RuntimeTeardownResponse);
+	rpc Destroy(RuntimeDestroyRequest) returns (RuntimeDestroyResponse);
+
+	rpc AddFinalizer(RuntimeAddFinalizerRequest) returns (RuntimeAddFinalizerResponse);
+	rpc RemoveFinalizer(RuntimeRemoveFinalizerRequest) returns (RuntimeRemoveFinalizerResponse);
+}
+
+// RegisterController RPC
+
+message RegisterControllerRequest {
+    string controller_name = 1;
+    ManagedResources managed_resources = 2;
+}
+
+message ManagedResources {
+    string namespace = 1;
+    string type = 2;
+}
+
+message RegisterControllerResponse {
+    string controller_token = 1;
+}
+
+// Start RPC
+
+message StartRequest{
+}
+
+message StartResponse{
+}
+
+// Stop RPC
+
+message StopRequest{
+}
+
+message StopResponse{
+}
+
+// ReconcileEvents RPC
+
+message ReconcileEventsRequest {
+    string controller_token = 1;
+}
+
+message ReconcileEventsResponse {
+}
+
+// QueueReconcile RPC
+
+message QueueReconcileRequest {
+    string controller_token = 1;
+}
+
+message QueueReconcileResponse {
+}
+
+// UpdateDependencies RPC
+
+message UpdateDependenciesRequest {
+    string controller_token = 1;
+    repeated Dependency dependencies = 2;
+}
+
+enum DependencyKind {
+    WEAK = 0;
+    STRONG = 1;
+}
+
+message Dependency {
+    DependencyKind kind = 1;
+    string namespace = 2;
+    string type = 3;
+    optional string id = 4;
+}
+
+message UpdateDependenciesResponse {
+}
+
+// Get RPC
+
+message RuntimeGetRequest {
+    string controller_token = 1;
+    string namespace = 2;
+    string type = 3;
+    string id = 4;
+}
+
+message RuntimeGetResponse {
+    resource.Resource resource = 1;
+}
+
+// List RPC
+
+message RuntimeListRequest {
+    string controller_token = 1;
+    string namespace = 2;
+    string type = 3;
+}
+
+message RuntimeListResponse {
+    resource.Resource resource = 1;
+}
+
+
+// WatchFor RPC
+
+message RuntimeWatchForRequest {
+    string controller_token = 1;
+    string namespace = 2;
+    string type = 3;
+    string id = 4;
+
+    ConditionFinalizersEmpty finalizers_empty = 5;
+}
+
+message ConditionFinalizersEmpty {
+}
+
+message RuntimeWatchForResponse {
+    resource.Resource resource = 1;
+}
+
+// Create RPC
+
+message RuntimeCreateRequest {
+    string controller_token = 1;
+    resource.Resource resource = 2;
+}
+
+message RuntimeCreateResponse {
+}
+
+// Update RPC
+
+message RuntimeUpdateRequest {
+    string controller_token = 1;
+    string current_version = 2;
+    resource.Resource new_resource = 3;
+}
+
+message RuntimeUpdateResponse {
+}
+
+// Teardown RPC
+
+message RuntimeTeardownRequest {
+    string controller_token = 1;
+    string namespace = 2;
+    string type = 3;
+    string id = 4;
+}
+
+message RuntimeTeardownResponse {
+    bool ready = 1;
+}
+
+// Destroy RPC
+
+message RuntimeDestroyRequest {
+    string controller_token = 1;
+    string namespace = 2;
+    string type = 3;
+    string id = 4;
+}
+
+message RuntimeDestroyResponse {
+}
+
+// AddFinalizer RPC
+
+message RuntimeAddFinalizerRequest {
+    string controller_token = 1;
+    string namespace = 2;
+    string type = 3;
+    string id = 4;
+
+    repeated string finalizers = 5;
+}
+
+message RuntimeAddFinalizerResponse {
+}
+
+// RemoveFinalizer RPC
+
+message RuntimeRemoveFinalizerRequest {
+    string controller_token = 1;
+    string namespace = 2;
+    string type = 3;
+    string id = 4;
+
+    repeated string finalizers = 5;
+}
+
+message RuntimeRemoveFinalizerResponse {
+}
