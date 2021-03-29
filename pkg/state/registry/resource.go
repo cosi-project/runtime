@@ -50,5 +50,5 @@ func (registry *ResourceRegistry) Register(ctx context.Context, r resource.Resou
 		return fmt.Errorf("error registering resource %s: %w", r, err)
 	}
 
-	return registry.state.Create(ctx, r)
+	return registry.state.Create(ctx, r, state.WithCreateOwner(meta.Owner))
 }

@@ -16,9 +16,10 @@ type DependencyEdgeType int
 
 // Controller graph edge types.
 const (
-	EdgeManages DependencyEdgeType = iota
-	EdgeDependsStrong
-	EdgeDependsWeak
+	EdgeOutputExclusive DependencyEdgeType = iota
+	EdgeOutputShared
+	EdgeInputStrong
+	EdgeInputWeak
 )
 
 // DependencyEdge represents relationship between controller and resource(s).

@@ -29,13 +29,19 @@ type Runtime struct { //nolint: govet
 
 	watchCh   chan state.Event
 	watchedMu sync.Mutex
-	watched   map[string]struct{}
+	watched   map[watchKey]struct{}
 
-	controllersMu sync.RWMutex
-	controllers   map[string]*adapter
+	controllersMu      sync.RWMutex
+	controllersCond    *sync.Cond
+	controllersRunning int
+	controllers        map[string]*adapter
 
-	runCtx       context.Context
-	runCtxCancel context.CancelFunc
+	runCtx context.Context
+}
+
+type watchKey struct {
+	Namespace resource.Namespace
+	Type      resource.Type
 }
 
 // NewRuntime initializes controller runtime object.
@@ -45,8 +51,10 @@ func NewRuntime(st state.State, logger *log.Logger) (*Runtime, error) {
 		logger:      logger,
 		controllers: make(map[string]*adapter),
 		watchCh:     make(chan state.Event),
-		watched:     make(map[string]struct{}),
+		watched:     make(map[watchKey]struct{}),
 	}
+
+	runtime.controllersCond = sync.NewCond(&runtime.controllersMu)
 
 	var err error
 
@@ -90,35 +98,78 @@ func (runtime *Runtime) RegisterController(ctrl controller.Controller) error {
 
 	runtime.controllers[name] = adapter
 
-	return nil
-}
-
-// Run all the controller loops.
-func (runtime *Runtime) Run(ctx context.Context) error {
-	runtime.runCtx, runtime.runCtxCancel = context.WithCancel(ctx)
-	defer runtime.runCtxCancel()
-
-	go runtime.processWatched()
-
-	var wg sync.WaitGroup
-
-	runtime.controllersMu.RLock()
-
-	for _, adapter := range runtime.controllers {
-		adapter := adapter
-
-		wg.Add(1)
+	if runtime.runCtx != nil {
+		// runtime has already been started
+		runtime.controllersRunning++
 
 		go func() {
-			defer wg.Done()
+			defer func() {
+				runtime.controllersMu.Lock()
+				defer runtime.controllersMu.Unlock()
+
+				runtime.controllersRunning--
+
+				runtime.controllersCond.Signal()
+			}()
 
 			adapter.run(runtime.runCtx)
 		}()
 	}
 
-	runtime.controllersMu.RUnlock()
+	return nil
+}
 
-	wg.Wait()
+// Run all the controller loops.
+func (runtime *Runtime) Run(ctx context.Context) error {
+	if err := func() error {
+		runtime.controllersMu.Lock()
+		defer runtime.controllersMu.Unlock()
+
+		if runtime.runCtx != nil {
+			return fmt.Errorf("runtime has already been started")
+		}
+
+		runtime.runCtx = ctx
+
+		if err := runtime.setupWatches(); err != nil {
+			return err
+		}
+
+		go runtime.processWatched()
+
+		for _, adapter := range runtime.controllers {
+			adapter := adapter
+
+			runtime.controllersRunning++
+
+			go func() {
+				defer func() {
+					runtime.controllersMu.Lock()
+					defer runtime.controllersMu.Unlock()
+
+					runtime.controllersRunning--
+
+					runtime.controllersCond.Signal()
+				}()
+
+				adapter.run(runtime.runCtx)
+			}()
+		}
+
+		return nil
+	}(); err != nil {
+		return err
+	}
+
+	<-runtime.runCtx.Done()
+
+	runtime.controllersMu.Lock()
+
+	for runtime.controllersRunning > 0 {
+		runtime.controllersCond.Wait()
+	}
+
+	runtime.controllersMu.Unlock()
 
 	return nil
 }
@@ -128,17 +179,40 @@ func (runtime *Runtime) GetDependencyGraph() (*controller.DependencyGraph, error
 	return runtime.depDB.Export()
 }
 
+func (runtime *Runtime) setupWatches() error {
+	runtime.watchedMu.Lock()
+	defer runtime.watchedMu.Unlock()
+
+	for key := range runtime.watched {
+		kind := resource.NewMetadata(key.Namespace, key.Type, "", resource.Version{})
+
+		if err := runtime.state.WatchKind(runtime.runCtx, kind, runtime.watchCh); err != nil {
+			return err
+		}
+	}
+
+	return nil
+}
+
 func (runtime *Runtime) watch(resourceNamespace resource.Namespace, resourceType resource.Type) error {
 	runtime.watchedMu.Lock()
 	defer runtime.watchedMu.Unlock()
 
-	key := fmt.Sprintf("%s\000%s", resourceNamespace, resourceType)
+	key := watchKey{
+		Namespace: resourceNamespace,
+		Type:      resourceType,
+	}
 
 	if _, exists := runtime.watched[key]; exists {
 		return nil
 	}
 
 	runtime.watched[key] = struct{}{}
+
+	// watch is called with controllersMu locked, so this access is synchronized
+	if runtime.runCtx == nil {
+		return nil
+	}
 
 	kind := resource.NewMetadata(resourceNamespace, resourceType, "", resource.Version{})
 
@@ -157,7 +231,7 @@ func (runtime *Runtime) processWatched() {
 
 		md := e.Resource.Metadata()
 
-		controllers, err := runtime.depDB.GetDependentControllers(controller.Dependency{
+		controllers, err := runtime.depDB.GetDependentControllers(controller.Input{
 			Namespace: md.Namespace(),
 			Type:      md.Type(),
 			ID:        pointer.ToString(md.ID()),

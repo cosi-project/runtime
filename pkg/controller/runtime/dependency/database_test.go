@@ -27,69 +27,116 @@ func (suite *DatabaseSuite) SetupTest() {
 	suite.Require().NoError(err)
 }
 
-func (suite *DatabaseSuite) TestControllerManaged() {
-	suite.Require().NoError(suite.db.AddControllerManaged("ControllerBook", "default", "Book"))
-	suite.Require().NoError(suite.db.AddControllerManaged("ControllerTable", "default", "Table"))
+func (suite *DatabaseSuite) TestControllerOutputs() {
+	suite.Require().NoError(suite.db.AddControllerOutput("ControllerBook", controller.Output{
+		Kind: controller.OutputExclusive,
+		Type: "Book",
+	}))
+	suite.Require().NoError(suite.db.AddControllerOutput("ControllerTable", controller.Output{
+		Kind: controller.OutputExclusive,
+		Type: "Table",
+	}))
 
-	suite.Require().EqualError(suite.db.AddControllerManaged("ControllerTable", "default", "Book"), `duplicate controller managed link: ("default", "Book") -> "ControllerBook"`)
-	suite.Require().EqualError(suite.db.AddControllerManaged("ControllerTable", "default", "Desk"), `duplicate controller managed link: ("default", "Table") -> "ControllerTable"`)
+	suite.Require().EqualError(suite.db.AddControllerOutput("ControllerTable", controller.Output{
+		Kind: controller.OutputExclusive,
+		Type: "Book",
+	}), `resource "Book" is already managed in exclusive mode by "ControllerBook"`)
 
-	suite.Require().NoError(suite.db.AddControllerManaged("ControllerDesk", "desky", "Table"))
+	suite.Require().NoError(suite.db.AddControllerOutput("ControllerTable", controller.Output{
+		Kind: controller.OutputExclusive,
+		Type: "Desk",
+	}))
 
-	controller, err := suite.db.GetResourceController("default", "Table")
+	suite.Require().NoError(suite.db.AddControllerOutput("ControllerBook", controller.Output{
+		Kind: controller.OutputShared,
+		Type: "Magazine",
+	}))
+	suite.Require().NoError(suite.db.AddControllerOutput("ControllerBook", controller.Output{
+		Kind: controller.OutputShared,
+		Type: "Journal",
+	}))
+	suite.Require().NoError(suite.db.AddControllerOutput("ControllerTable", controller.Output{
+		Kind: controller.OutputShared,
+		Type: "Magazine",
+	}))
+
+	suite.Require().EqualError(suite.db.AddControllerOutput("ControllerFoo", controller.Output{
+		Kind: controller.OutputExclusive,
+		Type: "Journal",
+	}), `resource "Journal" is already managed in shared mode by "ControllerBook"`)
+
+	suite.Require().EqualError(suite.db.AddControllerOutput("ControllerBook", controller.Output{
+		Kind: controller.OutputShared,
+		Type: "Magazine",
+	}), `duplicate shared controller output: "Magazine" -> "ControllerBook"`)
+
+	ctrl, err := suite.db.GetResourceExclusiveController("Table")
 	suite.Require().NoError(err)
-	suite.Assert().Equal("ControllerTable", controller)
+	suite.Assert().Equal("ControllerTable", ctrl)
 
-	controller, err = suite.db.GetResourceController("default", "Desk")
+	ctrl, err = suite.db.GetResourceExclusiveController("Magazine")
 	suite.Require().NoError(err)
-	suite.Assert().Empty(controller)
+	suite.Assert().Empty(ctrl)
 
-	namespace, typ, err := suite.db.GetControllerResource("ControllerBook")
+	outputs, err := suite.db.GetControllerOutputs("ControllerBook")
 	suite.Require().NoError(err)
-	suite.Assert().Equal("default", namespace)
-	suite.Assert().Equal("Book", typ)
+	suite.Require().Len(outputs, 3)
 
-	_, _, err = suite.db.GetControllerResource("ControllerWardrobe")
-	suite.Require().EqualError(err, `controller "ControllerWardrobe" is not registered`)
+	suite.Assert().Equal(controller.Output{
+		Type: "Book",
+		Kind: controller.OutputExclusive,
+	}, outputs[0])
+	suite.Assert().Equal(controller.Output{
+		Type: "Journal",
+		Kind: controller.OutputShared,
+	}, outputs[1])
+	suite.Assert().Equal(controller.Output{
+		Type: "Magazine",
+		Kind: controller.OutputShared,
+	}, outputs[2])
+
+	outputs, err = suite.db.GetControllerOutputs("ControllerWardrobe")
+	suite.Require().NoError(err)
+	suite.Assert().Empty(outputs)
 }
 
 func (suite *DatabaseSuite) TestControllerDependency() {
-	suite.Require().NoError(suite.db.AddControllerDependency("ConfigController", controller.Dependency{
+	suite.Require().NoError(suite.db.AddControllerInput("ConfigController", controller.Input{
 		Namespace: "user",
 		Type:      "Config",
-		Kind:      controller.DependencyWeak,
+		Kind:      controller.InputWeak,
 	}))
 
-	deps, err := suite.db.GetControllerDependencies("ConfigController")
+	deps, err := suite.db.GetControllerInputs("ConfigController")
 	suite.Require().NoError(err)
 	suite.Assert().Len(deps, 1)
 	suite.Assert().Equal("user", deps[0].Namespace)
 	suite.Assert().Equal("Config", deps[0].Type)
 	suite.Assert().Nil(deps[0].ID)
-	suite.Assert().Equal(controller.DependencyWeak, deps[0].Kind)
+	suite.Assert().Equal(controller.InputWeak, deps[0].Kind)
 
-	suite.Require().NoError(suite.db.AddControllerDependency("ConfigController", controller.Dependency{
+	suite.Require().NoError(suite.db.AddControllerInput("ConfigController", controller.Input{
 		Namespace: "state",
 		Type:      "Machine",
 		ID:        pointer.ToString("system"),
-		Kind:      controller.DependencyStrong,
+		Kind:      controller.InputStrong,
 	}))
 
-	deps, err = suite.db.GetControllerDependencies("ConfigController")
+	deps, err = suite.db.GetControllerInputs("ConfigController")
 	suite.Require().NoError(err)
 	suite.Assert().Len(deps, 2)
 
 	suite.Assert().Equal("state", deps[0].Namespace)
 	suite.Assert().Equal("Machine", deps[0].Type)
 	suite.Assert().Equal("system", *deps[0].ID)
-	suite.Assert().Equal(controller.DependencyStrong, deps[0].Kind)
+	suite.Assert().Equal(controller.InputStrong, deps[0].Kind)
 
 	suite.Assert().Equal("user", deps[1].Namespace)
 	suite.Assert().Equal("Config", deps[1].Type)
 	suite.Assert().Nil(deps[1].ID)
-	suite.Assert().Equal(controller.DependencyWeak, deps[1].Kind)
+	suite.Assert().Equal(controller.InputWeak, deps[1].Kind)
 
-	ctrls, err := suite.db.GetDependentControllers(controller.Dependency{
+	ctrls, err := suite.db.GetDependentControllers(controller.Input{
 		Namespace: "user",
 		Type:      "Config",
 		ID:        pointer.ToString("config"),
@@ -97,21 +144,21 @@ func (suite *DatabaseSuite) TestControllerDependency() {
 	suite.Require().NoError(err)
 	suite.Assert().Equal([]string{"ConfigController"}, ctrls)
 
-	ctrls, err = suite.db.GetDependentControllers(controller.Dependency{
+	ctrls, err = suite.db.GetDependentControllers(controller.Input{
 		Namespace: "user",
 		Type:      "Config",
 	})
 	suite.Require().NoError(err)
 	suite.Assert().Equal([]string{"ConfigController"}, ctrls)
 
-	ctrls, err = suite.db.GetDependentControllers(controller.Dependency{
+	ctrls, err = suite.db.GetDependentControllers(controller.Input{
 		Namespace: "user",
 		Type:      "Spec",
 	})
 	suite.Require().NoError(err)
 	suite.Assert().Empty(ctrls)
 
-	ctrls, err = suite.db.GetDependentControllers(controller.Dependency{
+	ctrls, err = suite.db.GetDependentControllers(controller.Input{
 		Namespace: "state",
 		Type:      "Machine",
 		ID:        pointer.ToString("node"),
@@ -119,7 +166,7 @@ func (suite *DatabaseSuite) TestControllerDependency() {
 	suite.Require().NoError(err)
 	suite.Assert().Empty(ctrls)
 
-	ctrls, err = suite.db.GetDependentControllers(controller.Dependency{
+	ctrls, err = suite.db.GetDependentControllers(controller.Input{
 		Namespace: "state",
 		Type:      "Machine",
 		ID:        pointer.ToString("system"),
@@ -127,20 +174,20 @@ func (suite *DatabaseSuite) TestControllerDependency() {
 	suite.Require().NoError(err)
 	suite.Assert().Equal([]string{"ConfigController"}, ctrls)
 
-	ctrls, err = suite.db.GetDependentControllers(controller.Dependency{
+	ctrls, err = suite.db.GetDependentControllers(controller.Input{
 		Namespace: "state",
 		Type:      "Machine",
 	})
 	suite.Require().NoError(err)
 	suite.Assert().Equal([]string{"ConfigController"}, ctrls)
 
-	suite.Require().NoError(suite.db.DeleteControllerDependency("ConfigController", controller.Dependency{
+	suite.Require().NoError(suite.db.DeleteControllerInput("ConfigController", controller.Input{
 		Namespace: "state",
 		Type:      "Machine",
 		ID:        pointer.ToString("system"),
 	}))
 
-	ctrls, err = suite.db.GetDependentControllers(controller.Dependency{
+	ctrls, err = suite.db.GetDependentControllers(controller.Input{
 		Namespace: "state",
 		Type:      "Machine",
 	})
@@ -149,20 +196,38 @@ func (suite *DatabaseSuite) TestControllerDependency() {
 }
 
 func (suite *DatabaseSuite) TestExport() {
-	suite.Require().NoError(suite.db.AddControllerManaged("ControllerBook", "default", "Book"))
-	suite.Require().NoError(suite.db.AddControllerManaged("ControllerTable", "default", "Table"))
+	suite.Require().NoError(suite.db.AddControllerOutput("ControllerBook", controller.Output{
+		Kind: controller.OutputExclusive,
+		Type: "Book",
+	}))
+	suite.Require().NoError(suite.db.AddControllerOutput("ControllerTable", controller.Output{
+		Kind: controller.OutputExclusive,
+		Type: "Table",
+	}))
+	suite.Require().NoError(suite.db.AddControllerOutput("ControllerBook", controller.Output{
+		Kind: controller.OutputShared,
+		Type: "Magazine",
+	}))
+	suite.Require().NoError(suite.db.AddControllerOutput("ControllerBook", controller.Output{
+		Kind: controller.OutputShared,
+		Type: "Journal",
+	}))
+	suite.Require().NoError(suite.db.AddControllerOutput("ControllerTable", controller.Output{
+		Kind: controller.OutputShared,
+		Type: "Magazine",
+	}))
 
-	suite.Require().NoError(suite.db.AddControllerDependency("ControllerBook", controller.Dependency{
+	suite.Require().NoError(suite.db.AddControllerInput("ControllerBook", controller.Input{
 		Namespace: "user",
 		Type:      "Config",
-		Kind:      controller.DependencyWeak,
+		Kind:      controller.InputWeak,
 		ID:        pointer.ToString("config"),
 	}))
 
-	suite.Require().NoError(suite.db.AddControllerDependency("ControllerTable", controller.Dependency{
+	suite.Require().NoError(suite.db.AddControllerInput("ControllerTable", controller.Input{
 		Namespace: "default",
 		Type:      "Book",
-		Kind:      controller.DependencyStrong,
+		Kind:      controller.InputStrong,
 	}))
 
 	graph, err := suite.db.Export()
@@ -170,10 +235,13 @@ func (suite *DatabaseSuite) TestExport() {
 
 	suite.Assert().Equal(&controller.DependencyGraph{
 		Edges: []controller.DependencyEdge{
-			{ControllerName: "ControllerBook", EdgeType: controller.EdgeManages, ResourceNamespace: "default", ResourceType: "Book", ResourceID: ""},
-			{ControllerName: "ControllerTable", EdgeType: controller.EdgeManages, ResourceNamespace: "default", ResourceType: "Table", ResourceID: ""},
-			{ControllerName: "ControllerBook", EdgeType: controller.EdgeDependsWeak, ResourceNamespace: "user", ResourceType: "Config", ResourceID: "config"},
-			{ControllerName: "ControllerTable", EdgeType: controller.EdgeDependsStrong, ResourceNamespace: "default", ResourceType: "Book", ResourceID: ""},
+			{ControllerName: "ControllerBook", EdgeType: controller.EdgeOutputExclusive, ResourceNamespace: "", ResourceType: "Book", ResourceID: ""},
+			{ControllerName: "ControllerTable", EdgeType: controller.EdgeOutputExclusive, ResourceNamespace: "", ResourceType: "Table", ResourceID: ""},
+			{ControllerName: "ControllerBook", EdgeType: controller.EdgeOutputShared, ResourceNamespace: "", ResourceType: "Journal", ResourceID: ""},
+			{ControllerName: "ControllerBook", EdgeType: controller.EdgeOutputShared, ResourceNamespace: "", ResourceType: "Magazine", ResourceID: ""},
+			{ControllerName: "ControllerTable", EdgeType: controller.EdgeOutputShared, ResourceNamespace: "", ResourceType: "Magazine", ResourceID: ""},
+			{ControllerName: "ControllerBook", EdgeType: controller.EdgeInputWeak, ResourceNamespace: "user", ResourceType: "Config", ResourceID: "config"},
+			{ControllerName: "ControllerTable", EdgeType: controller.EdgeInputStrong, ResourceNamespace: "default", ResourceType: "Book", ResourceID: ""},
 		},
 	}, graph)
 }

@@ -186,8 +186,8 @@ type ControllerAdapterClient interface {
 	ReconcileEvents(ctx context.Context, in *ReconcileEventsRequest, opts ...grpc.CallOption) (ControllerAdapter_ReconcileEventsClient, error)
 	// QueueReconcile queues another reconcile event.
 	QueueReconcile(ctx context.Context, in *QueueReconcileRequest, opts ...grpc.CallOption) (*QueueReconcileResponse, error)
-	// UpdateDependencies updates list of controller dependencies.
-	UpdateDependencies(ctx context.Context, in *UpdateDependenciesRequest, opts ...grpc.CallOption) (*UpdateDependenciesResponse, error)
+	// UpdateInputs updates list of controller inputs.
+	UpdateInputs(ctx context.Context, in *UpdateInputsRequest, opts ...grpc.CallOption) (*UpdateInputsResponse, error)
 	// Reader APIs.
 	Get(ctx context.Context, in *RuntimeGetRequest, opts ...grpc.CallOption) (*RuntimeGetResponse, error)
 	List(ctx context.Context, in *RuntimeListRequest, opts ...grpc.CallOption) (ControllerAdapter_ListClient, error)
@@ -250,9 +250,9 @@ func (c *controllerAdapterClient) QueueReconcile(ctx context.Context, in *QueueR
 	return out, nil
 }
 
-func (c *controllerAdapterClient) UpdateDependencies(ctx context.Context, in *UpdateDependenciesRequest, opts ...grpc.CallOption) (*UpdateDependenciesResponse, error) {
-	out := new(UpdateDependenciesResponse)
-	err := c.cc.Invoke(ctx, "/runtime.ControllerAdapter/UpdateDependencies", in, out, opts...)
+func (c *controllerAdapterClient) UpdateInputs(ctx context.Context, in *UpdateInputsRequest, opts ...grpc.CallOption) (*UpdateInputsResponse, error) {
+	out := new(UpdateInputsResponse)
+	err := c.cc.Invoke(ctx, "/runtime.ControllerAdapter/UpdateInputs", in, out, opts...)
 	if err != nil {
 		return nil, err
 	}
@@ -371,8 +371,8 @@ type ControllerAdapterServer interface {
 	ReconcileEvents(*ReconcileEventsRequest, ControllerAdapter_ReconcileEventsServer) error
 	// QueueReconcile queues another reconcile event.
 	QueueReconcile(context.Context, *QueueReconcileRequest) (*QueueReconcileResponse, error)
-	// UpdateDependencies updates list of controller dependencies.
-	UpdateDependencies(context.Context, *UpdateDependenciesRequest) (*UpdateDependenciesResponse, error)
+	// UpdateInputs updates list of controller inputs.
+	UpdateInputs(context.Context, *UpdateInputsRequest) (*UpdateInputsResponse, error)
 	// Reader APIs.
 	Get(context.Context, *RuntimeGetRequest) (*RuntimeGetResponse, error)
 	List(*RuntimeListRequest, ControllerAdapter_ListServer) error
@@ -397,8 +397,8 @@ func (UnimplementedControllerAdapterServer) ReconcileEvents(*ReconcileEventsRequ
 func (UnimplementedControllerAdapterServer) QueueReconcile(context.Context, *QueueReconcileRequest) (*QueueReconcileResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method QueueReconcile not implemented")
 }
-func (UnimplementedControllerAdapterServer) UpdateDependencies(context.Context, *UpdateDependenciesRequest) (*UpdateDependenciesResponse, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method UpdateDependencies not implemented")
+func (UnimplementedControllerAdapterServer) UpdateInputs(context.Context, *UpdateInputsRequest) (*UpdateInputsResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method UpdateInputs not implemented")
 }
 func (UnimplementedControllerAdapterServer) Get(context.Context, *RuntimeGetRequest) (*RuntimeGetResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method Get not implemented")
@@ -479,20 +479,20 @@ func _ControllerAdapter_QueueReconcile_Handler(srv interface{}, ctx context.Cont
 	return interceptor(ctx, in, info, handler)
 }
 
-func _ControllerAdapter_UpdateDependencies_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(UpdateDependenciesRequest)
+func _ControllerAdapter_UpdateInputs_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(UpdateInputsRequest)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
 	if interceptor == nil {
-		return srv.(ControllerAdapterServer).UpdateDependencies(ctx, in)
+		return srv.(ControllerAdapterServer).UpdateInputs(ctx, in)
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
-		FullMethod: "/runtime.ControllerAdapter/UpdateDependencies",
+		FullMethod: "/runtime.ControllerAdapter/UpdateInputs",
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(ControllerAdapterServer).UpdateDependencies(ctx, req.(*UpdateDependenciesRequest))
+		return srv.(ControllerAdapterServer).UpdateInputs(ctx, req.(*UpdateInputsRequest))
 	}
 	return interceptor(ctx, in, info, handler)
 }
@@ -674,8 +674,8 @@ var ControllerAdapter_ServiceDesc = grpc.ServiceDesc{
 			Handler:    _ControllerAdapter_QueueReconcile_Handler,
 		},
 		{
-			MethodName: "UpdateDependencies",
-			Handler:    _ControllerAdapter_UpdateDependencies_Handler,
+			MethodName: "UpdateInputs",
+			Handler:    _ControllerAdapter_UpdateInputs_Handler,
 		},
 		{
 			MethodName: "Get",

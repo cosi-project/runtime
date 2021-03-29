@@ -33,10 +33,8 @@ type adapter struct {
 
 	name string
 
-	managedNamespace resource.Namespace
-	managedType      resource.Type
-
-	dependencies []controller.Dependency
+	inputs  []controller.Input
+	outputs []controller.Output
 }
 
 // EventCh implements controller.Runtime interface.
@@ -50,12 +48,12 @@ func (adapter *adapter) QueueReconcile() {
 }
 
 // UpdateDependencies implements controller.Runtime interface.
-func (adapter *adapter) UpdateDependencies(deps []controller.Dependency) error {
+func (adapter *adapter) UpdateInputs(deps []controller.Input) error {
 	sort.Slice(deps, func(i, j int) bool {
 		return dependency.Less(&deps[i], &deps[j])
 	})
 
-	dbDeps, err := adapter.runtime.depDB.GetControllerDependencies(adapter.name)
+	dbDeps, err := adapter.runtime.depDB.GetControllerInputs(adapter.name)
 	if err != nil {
 		return fmt.Errorf("error fetching controller dependencies: %w", err)
 	}
@@ -93,7 +91,7 @@ func (adapter *adapter) UpdateDependencies(deps []controller.Dependency) error {
 		}
 
 		if shouldAdd {
-			if err := adapter.runtime.depDB.AddControllerDependency(adapter.name, deps[i]); err != nil {
+			if err := adapter.runtime.depDB.AddControllerInput(adapter.name, deps[i]); err != nil {
 				return fmt.Errorf("error adding controller dependency: %w", err)
 			}
 
@@ -105,7 +103,7 @@ func (adapter *adapter) UpdateDependencies(deps []controller.Dependency) error {
 		}
 
 		if shouldDelete {
-			if err := adapter.runtime.depDB.DeleteControllerDependency(adapter.name, dbDeps[j]); err != nil {
+			if err := adapter.runtime.depDB.DeleteControllerInput(adapter.name, dbDeps[j]); err != nil {
 				return fmt.Errorf("error deleting controller dependency: %w", err)
 			}
 
@@ -113,18 +111,28 @@ func (adapter *adapter) UpdateDependencies(deps []controller.Dependency) error {
 		}
 	}
 
-	adapter.dependencies = append([]controller.Dependency(nil), deps...)
+	adapter.inputs = append([]controller.Input(nil), deps...)
 
 	return nil
 }
 
+func (adapter *adapter) isOutput(resourceType resource.Type) bool {
+	for _, output := range adapter.outputs {
+		if output.Type == resourceType {
+			return true
+		}
+	}
+
+	return false
+}
+
 func (adapter *adapter) checkReadAccess(resourceNamespace resource.Namespace, resourceType resource.Type, resourceID *resource.ID) error {
-	if adapter.managedNamespace == resourceNamespace && adapter.managedType == resourceType {
+	if adapter.isOutput(resourceType) {
 		return nil
 	}
 
 	// go over cached dependencies here
-	for _, dep := range adapter.dependencies {
+	for _, dep := range adapter.inputs {
 		if dep.Namespace == resourceNamespace && dep.Type == resourceType {
 			// any ID is allowed
 			if dep.ID == nil {
@@ -142,13 +150,13 @@ func (adapter *adapter) checkReadAccess(resourceNamespace resource.Namespace, re
 		}
 	}
 
-	return fmt.Errorf("attempt to query resource %q/%q, not watched or managed by controller %q", resourceNamespace, resourceType, adapter.name)
+	return fmt.Errorf("attempt to query resource %q/%q, not input or output for controller %q", resourceNamespace, resourceType, adapter.name)
 }
 
 func (adapter *adapter) checkFinalizerAccess(resourceNamespace resource.Namespace, resourceType resource.Type, resourceID resource.ID) error {
 	// go over cached dependencies here
-	for _, dep := range adapter.dependencies {
-		if dep.Namespace == resourceNamespace && dep.Type == resourceType && dep.Kind == controller.DependencyStrong {
+	for _, dep := range adapter.inputs {
+		if dep.Namespace == resourceNamespace && dep.Type == resourceType && dep.Kind == controller.InputStrong {
 			// any ID is allowed
 			if dep.ID == nil {
 				return nil
@@ -160,7 +168,7 @@ func (adapter *adapter) checkFinalizerAccess(resourceNamespace resource.Namespac
 		}
 	}
 
-	return fmt.Errorf("attempt to change finalizers for resource %q/%q, not watched with Strong dependency by controller %q", resourceNamespace, resourceType, adapter.name)
+	return fmt.Errorf("attempt to change finalizers for resource %q/%q, not an input with Strong dependency for controller %q", resourceNamespace, resourceType, adapter.name)
 }
 
 // Get implements controller.Runtime interface.
@@ -192,28 +200,28 @@ func (adapter *adapter) WatchFor(ctx context.Context, resourcePointer resource.P
 
 // Create implements controller.Runtime interface.
 func (adapter *adapter) Create(ctx context.Context, r resource.Resource) error {
-	if r.Metadata().Namespace() != adapter.managedNamespace || r.Metadata().Type() != adapter.managedType {
-		return fmt.Errorf("resource %q/%q is not managed by controller %q, create attempted on %q",
+	if !adapter.isOutput(r.Metadata().Type()) {
+		return fmt.Errorf("resource %q/%q is not an output for controller %q, create attempted on %q",
 			r.Metadata().Namespace(), r.Metadata().Type(), adapter.name, r.Metadata().ID())
 	}
 
-	return adapter.runtime.state.Create(ctx, r)
+	return adapter.runtime.state.Create(ctx, r, state.WithCreateOwner(adapter.name))
 }
 
 // Update implements controller.Runtime interface.
 func (adapter *adapter) Update(ctx context.Context, curVersion resource.Version, newResource resource.Resource) error {
-	if newResource.Metadata().Namespace() != adapter.managedNamespace || newResource.Metadata().Type() != adapter.managedType {
-		return fmt.Errorf("resource %q/%q is not managed by controller %q, create attempted on %q",
+	if !adapter.isOutput(newResource.Metadata().Type()) {
+		return fmt.Errorf("resource %q/%q is not an output for controller %q, create attempted on %q",
 			newResource.Metadata().Namespace(), newResource.Metadata().Type(), adapter.name, newResource.Metadata().ID())
 	}
 
-	return adapter.runtime.state.Update(ctx, curVersion, newResource)
+	return adapter.runtime.state.Update(ctx, curVersion, newResource, state.WithUpdateOwner(adapter.name))
 }
 
 // Modify implements controller.Runtime interface.
 func (adapter *adapter) Modify(ctx context.Context, emptyResource resource.Resource, updateFunc func(resource.Resource) error) error {
-	if emptyResource.Metadata().Namespace() != adapter.managedNamespace || emptyResource.Metadata().Type() != adapter.managedType {
-		return fmt.Errorf("resource %q/%q is not managed by controller %q, update attempted on %q",
+	if !adapter.isOutput(emptyResource.Metadata().Type()) {
+		return fmt.Errorf("resource %q/%q is not an output for controller %q, update attempted on %q",
 			emptyResource.Metadata().Namespace(), emptyResource.Metadata().Type(), adapter.name, emptyResource.Metadata().ID())
 	}
 
@@ -225,13 +233,13 @@ func (adapter *adapter) Modify(ctx context.Context, emptyResource resource.Resou
 				return err
 			}
 
-			return adapter.runtime.state.Create(ctx, emptyResource)
+			return adapter.runtime.state.Create(ctx, emptyResource, state.WithCreateOwner(adapter.name))
 		}
 
 		return fmt.Errorf("error querying current object state: %w", err)
 	}
 
-	_, err = adapter.runtime.state.UpdateWithConflicts(ctx, emptyResource.Metadata(), updateFunc)
+	_, err = adapter.runtime.state.UpdateWithConflicts(ctx, emptyResource.Metadata(), updateFunc, state.WithUpdateOwner(adapter.name))
 
 	return err
 }
@@ -245,7 +253,7 @@ func (adapter *adapter) AddFinalizer(ctx context.Context, resourcePointer resour
 	return adapter.runtime.state.AddFinalizer(ctx, resourcePointer, fins...)
 }
 
-// RemoveFinalizer impleemnts controller.Runtime interface.
+// RemoveFinalizer implements controller.Runtime interface.
 func (adapter *adapter) RemoveFinalizer(ctx context.Context, resourcePointer resource.Pointer, fins ...resource.Finalizer) error {
 	if err := adapter.checkFinalizerAccess(resourcePointer.Namespace(), resourcePointer.Type(), resourcePointer.ID()); err != nil {
 		return err
@@ -261,28 +269,35 @@ func (adapter *adapter) RemoveFinalizer(ctx context.Context, resourcePointer res
 
 // Teardown implements controller.Runtime interface.
 func (adapter *adapter) Teardown(ctx context.Context, resourcePointer resource.Pointer) (bool, error) {
-	if resourcePointer.Namespace() != adapter.managedNamespace || resourcePointer.Type() != adapter.managedType {
-		return false, fmt.Errorf("resource %q/%q is not managed by controller %q, teardown attempted on %q", resourcePointer.Namespace(), resourcePointer.Type(), adapter.name, resourcePointer.ID())
+	if !adapter.isOutput(resourcePointer.Type()) {
+		return false, fmt.Errorf("resource %q/%q is not an output for controller %q, teardown attempted on %q", resourcePointer.Namespace(), resourcePointer.Type(), adapter.name, resourcePointer.ID())
 	}
 
-	return adapter.runtime.state.Teardown(ctx, resourcePointer)
+	return adapter.runtime.state.Teardown(ctx, resourcePointer, state.WithTeardownOwner(adapter.name))
 }
 
 // Destroy implements controller.Runtime interface.
 func (adapter *adapter) Destroy(ctx context.Context, resourcePointer resource.Pointer) error {
-	if resourcePointer.Namespace() != adapter.managedNamespace || resourcePointer.Type() != adapter.managedType {
-		return fmt.Errorf("resource %q/%q is not managed by controller %q, destroy attempted on %q", resourcePointer.Namespace(), resourcePointer.Type(), adapter.name, resourcePointer.ID())
+	if !adapter.isOutput(resourcePointer.Type()) {
+		return fmt.Errorf("resource %q/%q is not an output for controller %q, destroy attempted on %q", resourcePointer.Namespace(), resourcePointer.Type(), adapter.name, resourcePointer.ID())
 	}
 
-	return adapter.runtime.state.Destroy(ctx, resourcePointer)
+	return adapter.runtime.state.Destroy(ctx, resourcePointer, state.WithDestroyOwner(adapter.name))
 }
 
 func (adapter *adapter) initialize() error {
 	adapter.name = adapter.ctrl.Name()
-	adapter.managedNamespace, adapter.managedType = adapter.ctrl.ManagedResources()
 
-	if err := adapter.runtime.depDB.AddControllerManaged(adapter.name, adapter.managedNamespace, adapter.managedType); err != nil {
-		return fmt.Errorf("error registering in dependency database: %w", err)
+	adapter.outputs = append([]controller.Output(nil), adapter.ctrl.Outputs()...)
+
+	for _, output := range adapter.outputs {
+		if err := adapter.runtime.depDB.AddControllerOutput(adapter.name, output); err != nil {
+			return fmt.Errorf("error registering in dependency database: %w", err)
+		}
+	}
+
+	if err := adapter.UpdateInputs(adapter.ctrl.Inputs()); err != nil {
+		return fmt.Errorf("error registering initial inputs: %w", err)
 	}
 
 	return nil

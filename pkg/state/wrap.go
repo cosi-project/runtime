@@ -22,7 +22,7 @@ type coreWrapper struct {
 }
 
 // UpdateWithConflicts automatically handles conflicts on update.
-func (state coreWrapper) UpdateWithConflicts(ctx context.Context, resourcePointer resource.Pointer, f UpdaterFunc) (resource.Resource, error) {
+func (state coreWrapper) UpdateWithConflicts(ctx context.Context, resourcePointer resource.Pointer, f UpdaterFunc, opts ...UpdateOption) (resource.Resource, error) {
 	for {
 		current, err := state.Get(ctx, resourcePointer)
 		if err != nil {
@@ -43,12 +43,12 @@ func (state coreWrapper) UpdateWithConflicts(ctx context.Context, resourcePointe
 
 		newResource.Metadata().BumpVersion()
 
-		err = state.Update(ctx, curVersion, newResource)
+		err = state.Update(ctx, curVersion, newResource, opts...)
 		if err == nil {
 			return current, nil
 		}
 
-		if IsConflictError(err) {
+		if IsConflictError(err) && !IsOwnerConflictError(err) {
 			continue
 		}
 
@@ -98,6 +98,12 @@ func (state coreWrapper) WatchFor(ctx context.Context, pointer resource.Pointer,
 // It's not an error to tear down a resource which is already being torn down.
 // Teardown returns a flag telling whether it's fine to destroy a resource.
 func (state coreWrapper) Teardown(ctx context.Context, resourcePointer resource.Pointer, opts ...TeardownOption) (bool, error) {
+	var options TeardownOptions
+
+	for _, opt := range opts {
+		opt(&options)
+	}
+
 	res, err := state.Get(ctx, resourcePointer)
 	if err != nil {
 		return false, err
@@ -108,7 +114,7 @@ func (state coreWrapper) Teardown(ctx context.Context, resourcePointer resource.
 			r.Metadata().SetPhase(resource.PhaseTearingDown)
 
 			return nil
-		})
+		}, WithUpdateOwner(options.Owner))
 		if err != nil {
 			return false, err
 		}
@@ -119,26 +125,36 @@ func (state coreWrapper) Teardown(ctx context.Context, resourcePointer resource.
 
 // AddFinalizer adds finalizer to resource metadata handling conflicts.
 func (state coreWrapper) AddFinalizer(ctx context.Context, resourcePointer resource.Pointer, fins ...resource.Finalizer) error {
-	_, err := state.UpdateWithConflicts(ctx, resourcePointer, func(r resource.Resource) error {
+	current, err := state.Get(ctx, resourcePointer)
+	if err != nil {
+		return err
+	}
+
+	_, err = state.UpdateWithConflicts(ctx, resourcePointer, func(r resource.Resource) error {
 		for _, fin := range fins {
 			r.Metadata().Finalizers().Add(fin)
 		}
 
 		return nil
-	})
+	}, WithUpdateOwner(current.Metadata().Owner()))
 
 	return err
 }
 
 // RemoveFinalizer removes finalizer from resource metadata handling conflicts.
 func (state coreWrapper) RemoveFinalizer(ctx context.Context, resourcePointer resource.Pointer, fins ...resource.Finalizer) error {
-	_, err := state.UpdateWithConflicts(ctx, resourcePointer, func(r resource.Resource) error {
+	current, err := state.Get(ctx, resourcePointer)
+	if err != nil {
+		return err
+	}
+
+	_, err = state.UpdateWithConflicts(ctx, resourcePointer, func(r resource.Resource) error {
 		for _, fin := range fins {
 			r.Metadata().Finalizers().Remove(fin)
 		}
 
 		return nil
-	})
+	}, WithUpdateOwner(current.Metadata().Owner()))
 
 	return err
 }

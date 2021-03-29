@@ -87,7 +87,7 @@ type State interface {
 	CoreState
 
 	// UpdateWithConflicts automatically handles conflicts on update.
-	UpdateWithConflicts(context.Context, resource.Pointer, UpdaterFunc) (resource.Resource, error)
+	UpdateWithConflicts(context.Context, resource.Pointer, UpdaterFunc, ...UpdateOption) (resource.Resource, error)
 
 	// WatchFor watches for resource to reach all of the specified conditions.
 	WatchFor(context.Context, resource.Pointer, ...WatchForConditionFunc) (resource.Resource, error)

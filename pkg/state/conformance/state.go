@@ -122,6 +122,63 @@ func (suite *StateSuite) TestCRD() {
 	suite.Require().NoError(suite.State.Create(ctx, path1))
 }
 
+// TestCRDWithOwners verifies create, read, update, delete with owners.
+func (suite *StateSuite) TestCRDWithOwners() {
+	path1 := NewPathResource(suite.getNamespace(), "owner1/var/run")
+	path2 := NewPathResource(suite.getNamespace(), "owner2/var/lib")
+
+	owner1, owner2 := "owner1", "owner2"
+
+	suite.Require().NotEqual(path1.String(), path2.String())
+
+	ctx := context.Background()
+
+	suite.Require().NoError(suite.State.Create(ctx, path1, state.WithCreateOwner(owner1)))
+	suite.Require().NoError(suite.State.Create(ctx, path2, state.WithCreateOwner(owner2)))
+
+	r, err := suite.State.Get(ctx, path1.Metadata())
+	suite.Require().NoError(err)
+	suite.Assert().Equal(path1.String(), r.String())
+	suite.Assert().Equal(owner1, r.Metadata().Owner())
+
+	r, err = suite.State.Get(ctx, path2.Metadata())
+	suite.Require().NoError(err)
+	suite.Assert().Equal(path2.String(), r.String())
+	suite.Assert().Equal(owner2, r.Metadata().Owner())
+
+	oldVersion := r.Metadata().Version()
+	r.Metadata().BumpVersion()
+
+	err = suite.State.Update(ctx, oldVersion, r)
+	suite.Assert().Error(err)
+	suite.Assert().True(state.IsConflictError(err))
+
+	err = suite.State.Update(ctx, oldVersion, r, state.WithUpdateOwner(owner1))
+	suite.Assert().Error(err)
+	suite.Assert().True(state.IsConflictError(err))
+
+	err = suite.State.Update(ctx, oldVersion, r, state.WithUpdateOwner(owner2))
+	suite.Assert().NoError(err)
+
+	_, err = suite.State.Teardown(ctx, path1.Metadata())
+	suite.Assert().Error(err)
+	suite.Assert().True(state.IsConflictError(err))
+
+	destroyReady, err := suite.State.Teardown(ctx, path1.Metadata(), state.WithTeardownOwner(owner1))
+	suite.Require().NoError(err)
+	suite.Assert().True(destroyReady)
+
+	err = suite.State.Destroy(ctx, path1.Metadata(), state.WithDestroyOwner(owner2))
+	suite.Assert().Error(err)
+	suite.Assert().True(state.IsConflictError(err))
+
+	suite.Require().NoError(suite.State.Destroy(ctx, path1.Metadata(), state.WithDestroyOwner(owner1)))
+
+	// Add/RemoveFinalizers set correct owner
+	suite.Assert().NoError(suite.State.AddFinalizer(ctx, path2.Metadata(), "fin1"))
+	suite.Assert().NoError(suite.State.RemoveFinalizer(ctx, path2.Metadata(), "fin1"))
+}
+
 // TestWatchKind verifies WatchKind API.
 func (suite *StateSuite) TestWatchKind() {
 	ns := suite.getNamespace()

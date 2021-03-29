@@ -5,40 +5,80 @@
 package state
 
 // GetOptions for the CoreState.Get function.
-type GetOptions struct{}
+type GetOptions struct {
+	Owner string
+}
 
 // GetOption builds GetOptions.
 type GetOption func(*GetOptions)
 
 // ListOptions for the CoreState.List function.
-type ListOptions struct{}
+type ListOptions struct {
+	Owner string
+}
 
 // ListOption builds ListOptions.
 type ListOption func(*ListOptions)
 
 // CreateOptions for the CoreState.Create function.
-type CreateOptions struct{}
+type CreateOptions struct {
+	Owner string
+}
 
 // CreateOption builds CreateOptions.
 type CreateOption func(*CreateOptions)
 
+// WithCreateOwner sets an owner for the created object.
+func WithCreateOwner(owner string) CreateOption {
+	return func(opts *CreateOptions) {
+		opts.Owner = owner
+	}
+}
+
 // UpdateOptions for the CoreState.Update function.
-type UpdateOptions struct{}
+type UpdateOptions struct {
+	Owner string
+}
 
 // UpdateOption builds UpdateOptions.
 type UpdateOption func(*UpdateOptions)
 
+// WithUpdateOwner checks an owner on the object being updated.
+func WithUpdateOwner(owner string) UpdateOption {
+	return func(opts *UpdateOptions) {
+		opts.Owner = owner
+	}
+}
+
 // TeardownOptions for the CoreState.Teardown function.
-type TeardownOptions struct{}
+type TeardownOptions struct {
+	Owner string
+}
+
+// WithTeardownOwner checks an owner on the object being torn down.
+func WithTeardownOwner(owner string) TeardownOption {
+	return func(opts *TeardownOptions) {
+		opts.Owner = owner
+	}
+}
 
 // TeardownOption builds TeardownOptions.
 type TeardownOption func(*TeardownOptions)
 
 // DestroyOptions for the CoreState.Destroy function.
-type DestroyOptions struct{}
+type DestroyOptions struct {
+	Owner string
+}
 
 // DestroyOption builds DestroyOptions.
 type DestroyOption func(*DestroyOptions)
+
+// WithDestroyOwner checks an owner on the object being destroyed.
+func WithDestroyOwner(owner string) DestroyOption {
+	return func(opts *DestroyOptions) {
+		opts.Owner = owner
+	}
+}
 
 // WatchOptions for the CoreState.Watch function.
 type WatchOptions struct{}

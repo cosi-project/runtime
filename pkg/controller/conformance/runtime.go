@@ -133,6 +133,8 @@ func (suite *RuntimeSuite) TearDownTest() {
 	suite.Assert().NoError(suite.State.Create(context.Background(), NewIntResource("ints", "xxx", 0)))
 	suite.Assert().NoError(suite.State.Create(context.Background(), NewStrResource("strings", "xxx", "")))
 	suite.Assert().NoError(suite.State.Create(context.Background(), NewIntResource("source", "xxx", 0)))
+	suite.Assert().NoError(suite.State.Create(context.Background(), NewIntResource("source1", "xxx", 0)))
+	suite.Assert().NoError(suite.State.Create(context.Background(), NewIntResource("source2", "xxx", 0)))
 
 	if suite.TearDownRuntime != nil {
 		suite.TearDownRuntime()
@@ -245,6 +247,8 @@ func (suite *RuntimeSuite) TestSumControllers() {
 	suite.Require().NoError(suite.Runtime.RegisterController(&SumController{
 		SourceNamespace: "source",
 		TargetNamespace: "target",
+		TargetID:        "sum",
+		ControllerName:  "SumController",
 	}))
 
 	suite.startRuntime()
@@ -262,6 +266,41 @@ func (suite *RuntimeSuite) TestSumControllers() {
 
 	suite.Assert().NoError(retry.Constant(10*time.Second, retry.WithUnits(10*time.Millisecond)).
 		Retry(suite.assertIntObjects("target", IntResourceType, []string{"sum"}, []int{2})))
+}
+
+// TestCascadingSumControllers ...
+func (suite *RuntimeSuite) TestCascadingSumControllers() {
+	suite.startRuntime()
+
+	suite.Require().NoError(suite.Runtime.RegisterController(&SumController{
+		SourceNamespace: "source1",
+		TargetNamespace: "source",
+		TargetID:        "sum1",
+		ControllerName:  "SumController1",
+	}))
+	suite.Require().NoError(suite.Runtime.RegisterController(&SumController{
+		SourceNamespace: "source2",
+		TargetNamespace: "source",
+		TargetID:        "sum2",
+		ControllerName:  "SumController2",
+	}))
+	suite.Require().NoError(suite.Runtime.RegisterController(&SumController{
+		SourceNamespace: "source",
+		TargetNamespace: "target",
+		TargetID:        "sum",
+		ControllerName:  "SumController",
+	}))
+
+	suite.Assert().NoError(retry.Constant(10*time.Second, retry.WithUnits(10*time.Millisecond)).
+		Retry(suite.assertIntObjects("target", IntResourceType, []string{"sum"}, []int{0})))
+
+	suite.Assert().NoError(suite.State.Create(suite.ctx, NewIntResource("source1", "one", 1)))
+	suite.Assert().NoError(suite.State.Create(suite.ctx, NewIntResource("source1", "two", 2)))
+	suite.Assert().NoError(suite.State.Create(suite.ctx, NewIntResource("source2", "three", 3)))
+	suite.Assert().NoError(suite.State.Create(suite.ctx, NewIntResource("source2", "four", 4)))
+
+	suite.Assert().NoError(retry.Constant(10*time.Second, retry.WithUnits(10*time.Millisecond)).
+		Retry(suite.assertIntObjects("target", IntResourceType, []string{"sum"}, []int{10})))
 }
 
 // TestFailingController ...

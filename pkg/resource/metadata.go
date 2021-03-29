@@ -17,6 +17,7 @@ type Metadata struct {
 	typ   Type
 	id    ID
 	ver   Version
+	owner Owner
 	fins  Finalizers
 	phase Phase
 }
@@ -90,6 +91,24 @@ func (md *Metadata) SetPhase(newPhase Phase) {
 	md.phase = newPhase
 }
 
+// Owner returns resource owner.
+func (md Metadata) Owner() Owner {
+	return md.owner
+}
+
+// SetOwner sets the resource owner.
+//
+// Owner can be set only once.
+func (md *Metadata) SetOwner(owner Owner) error {
+	if md.owner == "" || md.owner == owner {
+		md.owner = owner
+
+		return nil
+	}
+
+	return fmt.Errorf("owner is already set to %q", md.owner)
+}
+
 // String implements fmt.Stringer.
 func (md Metadata) String() string {
 	return fmt.Sprintf("%s(%s/%s@%s)", md.typ, md.ns, md.id, md.ver)
@@ -97,7 +116,7 @@ func (md Metadata) String() string {
 
 // Equal tests two metadata objects for equality.
 func (md Metadata) Equal(other Metadata) bool {
-	equal := md.ns == other.ns && md.typ == other.typ && md.id == other.id && md.phase == other.phase && md.ver.Equal(other.ver)
+	equal := md.ns == other.ns && md.typ == other.typ && md.id == other.id && md.phase == other.phase && md.owner == other.owner && md.ver.Equal(other.ver)
 	if !equal {
 		return false
 	}
@@ -187,6 +206,14 @@ func (md *Metadata) MarshalYAML() (interface{}, error) {
 				},
 				{
 					Kind:  yaml.ScalarNode,
+					Value: "owner",
+				},
+				{
+					Kind:  yaml.ScalarNode,
+					Value: md.owner,
+				},
+				{
+					Kind:  yaml.ScalarNode,
 					Value: "phase",
 				},
 				{
@@ -205,6 +232,7 @@ type MetadataProto interface {
 	GetId() string
 	GetVersion() string
 	GetPhase() string
+	GetOwner() string
 	GetFinalizers() []string
 }
 
@@ -222,6 +250,10 @@ func NewMetadataFromProto(proto MetadataProto) (Metadata, error) {
 
 	md := NewMetadata(proto.GetNamespace(), proto.GetType(), proto.GetId(), ver)
 	md.SetPhase(phase)
+
+	if err := md.SetOwner(proto.GetOwner()); err != nil {
+		return md, err
+	}
 
 	for _, fin := range proto.GetFinalizers() {
 		md.Finalizers().Add(fin)

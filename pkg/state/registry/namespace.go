@@ -33,5 +33,5 @@ func (registry *NamespaceRegistry) RegisterDefault(ctx context.Context) error {
 func (registry *NamespaceRegistry) Register(ctx context.Context, ns resource.Namespace, description string) error {
 	return registry.state.Create(ctx, meta.NewNamespace(ns, meta.NamespaceSpec{
 		Description: description,
-	}))
+	}), state.WithCreateOwner(meta.Owner))
 }

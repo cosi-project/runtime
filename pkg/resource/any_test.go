@@ -47,6 +47,7 @@ metadata:
     type: type
     id: aaa
     version: 1
+    owner: FooController
     phase: running
     finalizers:
         - resource1

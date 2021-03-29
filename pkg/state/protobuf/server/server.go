@@ -105,11 +105,13 @@ func (server *State) Create(ctx context.Context, req *v1alpha1.CreateRequest) (*
 		return nil, err
 	}
 
-	err = server.state.Create(ctx, r)
+	err = server.state.Create(ctx, r, state.WithCreateOwner(req.GetOptions().GetOwner()))
 
 	switch {
 	case state.IsNotFoundError(err):
 		return nil, status.Error(codes.NotFound, err.Error())
+	case state.IsOwnerConflictError(err):
+		return nil, status.Error(codes.PermissionDenied, err.Error())
 	case state.IsConflictError(err):
 		return nil, status.Error(codes.AlreadyExists, err.Error())
 	case err != nil:
@@ -140,11 +142,13 @@ func (server *State) Update(ctx context.Context, req *v1alpha1.UpdateRequest) (*
 		return nil, status.Error(codes.InvalidArgument, err.Error())
 	}
 
-	err = server.state.Update(ctx, currentVersion, r)
+	err = server.state.Update(ctx, currentVersion, r, state.WithUpdateOwner(req.GetOptions().GetOwner()))
 
 	switch {
 	case state.IsNotFoundError(err):
 		return nil, status.Error(codes.NotFound, err.Error())
+	case state.IsOwnerConflictError(err):
+		return nil, status.Error(codes.PermissionDenied, err.Error())
 	case state.IsConflictError(err):
 		return nil, status.Error(codes.FailedPrecondition, err.Error())
 	case err != nil:
@@ -159,11 +163,17 @@ func (server *State) Update(ctx context.Context, req *v1alpha1.UpdateRequest) (*
 // If a resource doesn't exist, error is returned.
 // If a resource has pending finalizers, error is returned.
 func (server *State) Destroy(ctx context.Context, req *v1alpha1.DestroyRequest) (*v1alpha1.DestroyResponse, error) {
-	err := server.state.Destroy(ctx, resource.NewMetadata(req.Namespace, req.Type, req.Id, resource.VersionUndefined))
+	err := server.state.Destroy(
+		ctx,
+		resource.NewMetadata(req.Namespace, req.Type, req.Id, resource.VersionUndefined),
+		state.WithDestroyOwner(req.GetOptions().GetOwner()),
+	)
 
 	switch {
 	case state.IsNotFoundError(err):
 		return nil, status.Error(codes.NotFound, err.Error())
+	case state.IsOwnerConflictError(err):
+		return nil, status.Error(codes.PermissionDenied, err.Error())
 	case state.IsConflictError(err):
 		return nil, status.Error(codes.FailedPrecondition, err.Error())
 	case err != nil:

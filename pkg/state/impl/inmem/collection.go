@@ -96,8 +96,13 @@ func (collection *ResourceCollection) List() (resource.List, error) {
 }
 
 // Create a resource.
-func (collection *ResourceCollection) Create(resource resource.Resource) error {
+func (collection *ResourceCollection) Create(resource resource.Resource, owner string) error {
 	resource = resource.DeepCopy()
+
+	if err := resource.Metadata().SetOwner(owner); err != nil {
+		return err
+	}
+
 	id := resource.Metadata().ID()
 
 	collection.mu.Lock()
@@ -117,7 +122,7 @@ func (collection *ResourceCollection) Create(resource resource.Resource) error {
 }
 
 // Update a resource.
-func (collection *ResourceCollection) Update(curVersion resource.Version, newResource resource.Resource) error {
+func (collection *ResourceCollection) Update(curVersion resource.Version, newResource resource.Resource, owner string) error {
 	newResource = newResource.DeepCopy()
 	id := newResource.Metadata().ID()
 
@@ -127,6 +132,10 @@ func (collection *ResourceCollection) Update(curVersion resource.Version, newRes
 	curResource, exists := collection.storage[id]
 	if !exists {
 		return ErrNotFound(newResource.Metadata())
+	}
+
+	if curResource.Metadata().Owner() != owner {
+		return ErrOwnerConflict(curResource.Metadata(), curResource.Metadata().Owner())
 	}
 
 	if newResource.Metadata().Version().Equal(curVersion) {
@@ -148,7 +157,7 @@ func (collection *ResourceCollection) Update(curVersion resource.Version, newRes
 }
 
 // Destroy a resource.
-func (collection *ResourceCollection) Destroy(ptr resource.Pointer) error {
+func (collection *ResourceCollection) Destroy(ptr resource.Pointer, owner string) error {
 	id := ptr.ID()
 
 	collection.mu.Lock()
@@ -157,6 +166,10 @@ func (collection *ResourceCollection) Destroy(ptr resource.Pointer) error {
 	resource, exists := collection.storage[id]
 	if !exists {
 		return ErrNotFound(ptr)
+	}
+
+	if resource.Metadata().Owner() != owner {
+		return ErrOwnerConflict(resource.Metadata(), resource.Metadata().Owner())
 	}
 
 	if !resource.Metadata().Finalizers().Empty() {

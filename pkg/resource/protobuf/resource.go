@@ -71,6 +71,7 @@ func (r *Resource) Marshal() (*v1alpha1.Resource, error) {
 			Type:       r.md.Type(),
 			Id:         r.md.ID(),
 			Version:    r.md.Version().String(),
+			Owner:      r.md.Owner(),
 			Phase:      r.md.Phase().String(),
 			Finalizers: *r.md.Finalizers(),
 		},
