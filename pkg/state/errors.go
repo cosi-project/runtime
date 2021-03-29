@@ -29,3 +29,15 @@ func IsConflictError(err error) bool {
 
 	return errors.As(err, &i)
 }
+
+// ErrOwnerConflict should be implemented by owner conflict errors.
+type ErrOwnerConflict interface {
+	OwnerConflictError()
+}
+
+// IsOwnerConflictError checks if err is owner conflict error.
+func IsOwnerConflictError(err error) bool {
+	var i ErrOwnerConflict
+
+	return errors.As(err, &i)
+}

@@ -9,3 +9,6 @@ import "github.com/talos-systems/os-runtime/pkg/resource"
 
 // NamespaceName is the name of 'meta' namespace.
 const NamespaceName resource.Namespace = "meta"
+
+// Owner is the owner for the 'meta' objects.
+const Owner resource.Owner = "meta"

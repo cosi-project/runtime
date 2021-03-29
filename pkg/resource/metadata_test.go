@@ -85,11 +85,13 @@ func TestMetadataMarshalYAML(t *testing.T) {
 type: type
 id: aaa
 version: 1
+owner:
 phase: running
 `, string(out))
 
 	md.Finalizers().Add("\"resource1")
 	md.Finalizers().Add("resource2")
+	assert.NoError(t, md.SetOwner("FooController"))
 
 	out, err = yaml.Marshal(&md)
 	assert.NoError(t, err)
@@ -97,6 +99,7 @@ phase: running
 type: type
 id: aaa
 version: 1
+owner: FooController
 phase: running
 finalizers:
     - '"resource1'
@@ -127,6 +130,10 @@ func (p *protoMd) GetPhase() string {
 	return resource.PhaseRunning.String()
 }
 
+func (p *protoMd) GetOwner() string {
+	return "FooController"
+}
+
 func (p *protoMd) GetFinalizers() []string {
 	return []string{"resource1", "resource2"}
 }
@@ -138,6 +145,7 @@ func TestNewMedataFromProto(t *testing.T) {
 	other := resource.NewMetadata("default", "type", "aaa", resource.VersionUndefined)
 	other.BumpVersion()
 
+	assert.NoError(t, other.SetOwner("FooController"))
 	other.Finalizers().Add("resource1")
 	other.Finalizers().Add("resource2")
 

@@ -10,8 +10,9 @@ message Metadata {
     string type = 2;
     string id = 3;
     string version = 4;
-    string phase = 5;
-    repeated string finalizers = 6;
+    string owner = 5;
+    string phase = 6;
+    repeated string finalizers = 7;
 }
 
 // Spec defines content of the resource.

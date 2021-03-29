@@ -46,17 +46,21 @@ type controllerBridge struct {
 	adapterWait chan struct{}
 	adapter     controller.Runtime
 
-	name             string
-	managedNamespace resource.Namespace
-	managedType      resource.Type
+	name    string
+	inputs  []controller.Input
+	outputs []controller.Output
 }
 
 func (bridge *controllerBridge) Name() string {
 	return bridge.name
 }
 
-func (bridge *controllerBridge) ManagedResources() (resource.Namespace, resource.Type) {
-	return bridge.managedNamespace, bridge.managedType
+func (bridge *controllerBridge) Outputs() []controller.Output {
+	return bridge.outputs
+}
+
+func (bridge *controllerBridge) Inputs() []controller.Input {
+	return bridge.inputs
 }
 
 func (bridge *controllerBridge) Run(ctx context.Context, adapter controller.Runtime, logger *log.Logger) error {
@@ -68,12 +72,48 @@ func (bridge *controllerBridge) Run(ctx context.Context, adapter controller.Runt
 	return nil
 }
 
+func convertInputs(protoInputs []*v1alpha1.ControllerInput) []controller.Input {
+	inputs := make([]controller.Input, len(protoInputs))
+
+	for i := range protoInputs {
+		inputs[i].Namespace = protoInputs[i].Namespace
+		inputs[i].Type = protoInputs[i].Type
+		inputs[i].ID = protoInputs[i].Id
+
+		switch protoInputs[i].Kind {
+		case v1alpha1.ControllerInputKind_STRONG:
+			inputs[i].Kind = controller.InputStrong
+		case v1alpha1.ControllerInputKind_WEAK:
+			inputs[i].Kind = controller.InputWeak
+		}
+	}
+
+	return inputs
+}
+
+func convertOutputs(protoOutputs []*v1alpha1.ControllerOutput) []controller.Output {
+	outputs := make([]controller.Output, len(protoOutputs))
+
+	for i := range protoOutputs {
+		outputs[i].Type = protoOutputs[i].Type
+
+		switch protoOutputs[i].Kind {
+		case v1alpha1.ControllerOutputKind_EXCLUSIVE:
+			outputs[i].Kind = controller.OutputExclusive
+		case v1alpha1.ControllerOutputKind_SHARED:
+			outputs[i].Kind = controller.OutputShared
+		}
+	}
+
+	return outputs
+}
+
 // RegisterController registers controller and establishes token for ControllerAdapter calls.
 func (runtime *Runtime) RegisterController(ctx context.Context, req *v1alpha1.RegisterControllerRequest) (*v1alpha1.RegisterControllerResponse, error) {
 	bridge := &controllerBridge{
-		name:             req.ControllerName,
-		managedNamespace: req.ManagedResources.Namespace,
-		managedType:      req.ManagedResources.Type,
+		name:    req.ControllerName,
+		inputs:  convertInputs(req.Inputs),
+		outputs: convertOutputs(req.Outputs),
 
 		adapterWait: make(chan struct{}),
 	}
@@ -191,33 +231,18 @@ func (runtime *Runtime) QueueReconcile(ctx context.Context, req *v1alpha1.QueueR
 	return &v1alpha1.QueueReconcileResponse{}, nil
 }
 
-// UpdateDependencies updates list of controller dependencies.
-func (runtime *Runtime) UpdateDependencies(ctx context.Context, req *v1alpha1.UpdateDependenciesRequest) (*v1alpha1.UpdateDependenciesResponse, error) {
+// UpdateInputs updates the list of controller inputs.
+func (runtime *Runtime) UpdateInputs(ctx context.Context, req *v1alpha1.UpdateInputsRequest) (*v1alpha1.UpdateInputsResponse, error) {
 	bridge, err := runtime.getBridge(ctx, req.ControllerToken)
 	if err != nil {
 		return nil, err
 	}
 
-	deps := make([]controller.Dependency, len(req.Dependencies))
-
-	for i := range deps {
-		deps[i].Namespace = req.Dependencies[i].Namespace
-		deps[i].Type = req.Dependencies[i].Type
-		deps[i].ID = req.Dependencies[i].Id
-
-		switch req.Dependencies[i].Kind {
-		case v1alpha1.DependencyKind_STRONG:
-			deps[i].Kind = controller.DependencyStrong
-		case v1alpha1.DependencyKind_WEAK:
-			deps[i].Kind = controller.DependencyWeak
-		}
-	}
-
-	if err = bridge.adapter.UpdateDependencies(deps); err != nil {
+	if err = bridge.adapter.UpdateInputs(convertInputs(req.Inputs)); err != nil {
 		return nil, err
 	}
 
-	return &v1alpha1.UpdateDependenciesResponse{}, nil
+	return &v1alpha1.UpdateInputsResponse{}, nil
 }
 
 // Get a resource.

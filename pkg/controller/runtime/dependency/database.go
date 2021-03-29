@@ -20,8 +20,9 @@ type Database struct {
 }
 
 const (
-	tableManagedResources     = "managed_resources"
-	tableControllerDependency = "controller_dependency"
+	tableExclusiveOutputs = "exclusive_outputs"
+	tableSharedOutputs    = "shared_outputs"
+	tableInputs           = "inputs"
 )
 
 // NewDatabase creates new Database.
@@ -32,8 +33,27 @@ func NewDatabase() (*Database, error) {
 
 	db.db, err = memdb.NewMemDB(&memdb.DBSchema{
 		Tables: map[string]*memdb.TableSchema{
-			tableManagedResources: {
-				Name: tableManagedResources,
+			tableExclusiveOutputs: {
+				Name: tableExclusiveOutputs,
+				Indexes: map[string]*memdb.IndexSchema{
+					"id": {
+						Name:   "id",
+						Unique: true,
+						Indexer: &memdb.StringFieldIndex{
+							Field: "Type",
+						},
+					},
+					"controller": {
+						Name:   "controller",
+						Unique: false,
+						Indexer: &memdb.StringFieldIndex{
+							Field: "ControllerName",
+						},
+					},
+				},
+			},
+			tableSharedOutputs: {
+				Name: tableSharedOutputs,
 				Indexes: map[string]*memdb.IndexSchema{
 					"id": {
 						Name:   "id",
@@ -41,7 +61,7 @@ func NewDatabase() (*Database, error) {
 						Indexer: &memdb.CompoundIndex{
 							Indexes: []memdb.Indexer{
 								&memdb.StringFieldIndex{
-									Field: "Namespace",
+									Field: "ControllerName",
 								},
 								&memdb.StringFieldIndex{
 									Field: "Type",
@@ -51,15 +71,22 @@ func NewDatabase() (*Database, error) {
 					},
 					"controller": {
 						Name:   "controller",
-						Unique: true,
+						Unique: false,
 						Indexer: &memdb.StringFieldIndex{
 							Field: "ControllerName",
 						},
 					},
+					"type": {
+						Name:   "type",
+						Unique: false,
+						Indexer: &memdb.StringFieldIndex{
+							Field: "Type",
+						},
+					},
 				},
 			},
-			tableControllerDependency: {
-				Name: tableControllerDependency,
+			tableInputs: {
+				Name: tableInputs,
 				Indexes: map[string]*memdb.IndexSchema{
 					"id": {
 						Name:   "id",
@@ -111,39 +138,61 @@ func NewDatabase() (*Database, error) {
 	return db, nil
 }
 
-// AddControllerManaged tracks which resource is managed by which controller.
-func (db *Database) AddControllerManaged(controllerName string, resourceNamespace resource.Namespace, resourceType resource.Type) error {
+// AddControllerOutput tracks which resource is managed by which controller.
+func (db *Database) AddControllerOutput(controllerName string, out controller.Output) error {
 	txn := db.db.Txn(true)
 	defer txn.Abort()
 
-	obj, err := txn.First(tableManagedResources, "id", resourceNamespace, resourceType)
+	obj, err := txn.First(tableExclusiveOutputs, "id", out.Type)
 	if err != nil {
-		return fmt.Errorf("error quering controller managed: %w", err)
+		return fmt.Errorf("error quering controller outputs: %w", err)
 	}
 
 	if obj != nil {
-		dep := obj.(*ManagedResource) //nolint: errcheck, forcetypeassert
+		dep := obj.(*ControllerOutput) //nolint: errcheck, forcetypeassert
 
-		return fmt.Errorf("duplicate controller managed link: (%q, %q) -> %q", dep.Namespace, dep.Type, dep.ControllerName)
+		return fmt.Errorf("resource %q is already managed in exclusive mode by %q", dep.Type, dep.ControllerName)
 	}
 
-	obj, err = txn.First(tableManagedResources, "controller", controllerName)
-	if err != nil {
-		return fmt.Errorf("error quering controller managed: %w", err)
-	}
+	switch out.Kind {
+	case controller.OutputExclusive:
+		obj, err = txn.First(tableSharedOutputs, "type", out.Type)
+		if err != nil {
+			return fmt.Errorf("error quering controller outputs: %w", err)
+		}
 
-	if obj != nil {
-		dep := obj.(*ManagedResource) //nolint: errcheck, forcetypeassert
+		if obj != nil {
+			dep := obj.(*ControllerOutput) //nolint: errcheck, forcetypeassert
 
-		return fmt.Errorf("duplicate controller managed link: (%q, %q) -> %q", dep.Namespace, dep.Type, dep.ControllerName)
-	}
+			return fmt.Errorf("resource %q is already managed in shared mode by %q", dep.Type, dep.ControllerName)
+		}
 
-	if err = txn.Insert(tableManagedResources, &ManagedResource{
-		Namespace:      resourceNamespace,
-		Type:           resourceType,
-		ControllerName: controllerName,
-	}); err != nil {
-		return fmt.Errorf("error adding controller managed resource: %w", err)
+		if err = txn.Insert(tableExclusiveOutputs, &ControllerOutput{
+			Type:           out.Type,
+			ControllerName: controllerName,
+			Kind:           out.Kind,
+		}); err != nil {
+			return fmt.Errorf("error adding controller exclusive output: %w", err)
+		}
+	case controller.OutputShared:
+		obj, err = txn.First(tableSharedOutputs, "id", controllerName, out.Type)
+		if err != nil {
+			return fmt.Errorf("error quering controller outputs: %w", err)
+		}
+
+		if obj != nil {
+			dep := obj.(*ControllerOutput) //nolint: errcheck, forcetypeassert
+
+			return fmt.Errorf("duplicate shared controller output: %q -> %q", dep.Type, dep.ControllerName)
+		}
+
+		if err = txn.Insert(tableSharedOutputs, &ControllerOutput{
+			Type:           out.Type,
+			ControllerName: controllerName,
+			Kind:           out.Kind,
+		}); err != nil {
+			return fmt.Errorf("error adding controller exclusive output: %w", err)
+		}
 	}
 
 	txn.Commit()
@@ -151,52 +200,71 @@ func (db *Database) AddControllerManaged(controllerName string, resourceNamespac
 	return nil
 }
 
-// GetControllerResource returns resource managed by controller.
-func (db *Database) GetControllerResource(controllerName string) (resource.Namespace, resource.Type, error) {
+// GetControllerOutputs returns resource managed by controller.
+func (db *Database) GetControllerOutputs(controllerName string) ([]controller.Output, error) {
 	txn := db.db.Txn(false)
 	defer txn.Abort()
 
-	obj, err := txn.First(tableManagedResources, "controller", controllerName)
+	result := []controller.Output{}
+
+	obj, err := txn.First(tableExclusiveOutputs, "controller", controllerName)
 	if err != nil {
-		return "", "", fmt.Errorf("error quering controller managed: %w", err)
+		return nil, fmt.Errorf("error quering exclusive controller outputs: %w", err)
 	}
 
-	if obj == nil {
-		return "", "", fmt.Errorf("controller %q is not registered", controllerName)
+	if obj != nil {
+		dep := obj.(*ControllerOutput) //nolint: errcheck, forcetypeassert
+
+		result = append(result, controller.Output{
+			Type: dep.Type,
+			Kind: dep.Kind,
+		})
 	}
 
-	dep := obj.(*ManagedResource) //nolint: errcheck, forcetypeassert
+	iter, err := txn.Get(tableSharedOutputs, "controller", controllerName)
+	if err != nil {
+		return nil, fmt.Errorf("error fetching controller dependencies: %w", err)
+	}
 
-	return dep.Namespace, dep.Type, nil
+	for obj := iter.Next(); obj != nil; obj = iter.Next() {
+		dep := obj.(*ControllerOutput) //nolint: errcheck, forcetypeassert
+
+		result = append(result, controller.Output{
+			Type: dep.Type,
+			Kind: dep.Kind,
+		})
+	}
+
+	return result, nil
 }
 
-// GetResourceController returns controller which manages a resource.
+// GetResourceExclusiveController returns controller which has a resource as exclusive output.
 //
-// If no controller manages a resource, empty string is returned.
-func (db *Database) GetResourceController(resourceNamespace resource.Namespace, resourceType resource.Type) (string, error) {
+// If no controller manages a resource in exclusive mode, empty string is returned.
+func (db *Database) GetResourceExclusiveController(resourceType resource.Type) (string, error) {
 	txn := db.db.Txn(false)
 	defer txn.Abort()
 
-	obj, err := txn.First(tableManagedResources, "id", resourceNamespace, resourceType)
+	obj, err := txn.First(tableExclusiveOutputs, "id", resourceType)
 	if err != nil {
-		return "", fmt.Errorf("error quering controller managed: %w", err)
+		return "", fmt.Errorf("error quering exclusive outputs: %w", err)
 	}
 
 	if obj == nil {
 		return "", nil
 	}
 
-	dep := obj.(*ManagedResource) //nolint: errcheck, forcetypeassert
+	dep := obj.(*ControllerOutput) //nolint: errcheck, forcetypeassert
 
 	return dep.ControllerName, nil
 }
 
-// AddControllerDependency adds a dependency of controller on a resource.
-func (db *Database) AddControllerDependency(controllerName string, dep controller.Dependency) error {
+// AddControllerInput adds a dependency of controller on a resource.
+func (db *Database) AddControllerInput(controllerName string, dep controller.Input) error {
 	txn := db.db.Txn(true)
 	defer txn.Abort()
 
-	model := ControllerDependency{
+	model := ControllerInput{
 		ControllerName: controllerName,
 		Namespace:      dep.Namespace,
 		Type:           dep.Type,
@@ -209,7 +277,7 @@ func (db *Database) AddControllerDependency(controllerName string, dep controlle
 		model.ID = StarID
 	}
 
-	if err := txn.Insert(tableControllerDependency, &model); err != nil {
+	if err := txn.Insert(tableInputs, &model); err != nil {
 		return fmt.Errorf("error adding controller managed resource: %w", err)
 	}
 
@@ -218,8 +286,8 @@ func (db *Database) AddControllerDependency(controllerName string, dep controlle
 	return nil
 }
 
-// DeleteControllerDependency adds a dependency of controller on a resource.
-func (db *Database) DeleteControllerDependency(controllerName string, dep controller.Dependency) error {
+// DeleteControllerInput adds a dependency of controller on a resource.
+func (db *Database) DeleteControllerInput(controllerName string, dep controller.Input) error {
 	txn := db.db.Txn(true)
 	defer txn.Abort()
 
@@ -228,7 +296,7 @@ func (db *Database) DeleteControllerDependency(controllerName string, dep contro
 		resourceID = *dep.ID
 	}
 
-	if _, err := txn.DeleteAll(tableControllerDependency, "id", controllerName, dep.Namespace, dep.Type, resourceID); err != nil {
+	if _, err := txn.DeleteAll(tableInputs, "id", controllerName, dep.Namespace, dep.Type, resourceID); err != nil {
 		return fmt.Errorf("error deleting controller managed resource: %w", err)
 	}
 
@@ -237,22 +305,22 @@ func (db *Database) DeleteControllerDependency(controllerName string, dep contro
 	return nil
 }
 
-// GetControllerDependencies returns a list of controller dependencies.
-func (db *Database) GetControllerDependencies(controllerName string) ([]controller.Dependency, error) {
+// GetControllerInputs returns a list of controller dependencies.
+func (db *Database) GetControllerInputs(controllerName string) ([]controller.Input, error) {
 	txn := db.db.Txn(false)
 	defer txn.Abort()
 
-	iter, err := txn.Get(tableControllerDependency, "controller", controllerName)
+	iter, err := txn.Get(tableInputs, "controller", controllerName)
 	if err != nil {
 		return nil, fmt.Errorf("error fetching controller dependencies: %w", err)
 	}
 
-	var result []controller.Dependency
+	var result []controller.Input
 
 	for obj := iter.Next(); obj != nil; obj = iter.Next() {
-		model := obj.(*ControllerDependency) //nolint: errcheck, forcetypeassert
+		model := obj.(*ControllerInput) //nolint: errcheck, forcetypeassert
 
-		dep := controller.Dependency{
+		dep := controller.Input{
 			Namespace: model.Namespace,
 			Type:      model.Type,
 			Kind:      model.Kind,
@@ -269,11 +337,11 @@ func (db *Database) GetControllerDependencies(controllerName string) ([]controll
 }
 
 // GetDependentControllers returns a list of controllers which depend on resource change.
-func (db *Database) GetDependentControllers(dep controller.Dependency) ([]string, error) {
+func (db *Database) GetDependentControllers(dep controller.Input) ([]string, error) {
 	txn := db.db.Txn(false)
 	defer txn.Abort()
 
-	iter, err := txn.Get(tableControllerDependency, "resource", dep.Namespace, dep.Type)
+	iter, err := txn.Get(tableInputs, "resource", dep.Namespace, dep.Type)
 	if err != nil {
 		return nil, fmt.Errorf("error fetching dependent resources: %w", err)
 	}
@@ -281,7 +349,7 @@ func (db *Database) GetDependentControllers(dep controller.Dependency) ([]string
 	var result []string
 
 	for obj := iter.Next(); obj != nil; obj = iter.Next() {
-		model := obj.(*ControllerDependency) //nolint: errcheck, forcetypeassert
+		model := obj.(*ControllerInput) //nolint: errcheck, forcetypeassert
 
 		if dep.ID == nil || model.ID == StarID || model.ID == *dep.ID {
 			result = append(result, model.ControllerName)
@@ -298,37 +366,51 @@ func (db *Database) Export() (*controller.DependencyGraph, error) {
 	txn := db.db.Txn(false)
 	defer txn.Abort()
 
-	iter, err := txn.Get(tableManagedResources, "id")
+	iter, err := txn.Get(tableExclusiveOutputs, "id")
 	if err != nil {
-		return nil, fmt.Errorf("error fetching managed resources: %w", err)
+		return nil, fmt.Errorf("error fetching exclusive outputs: %w", err)
 	}
 
 	for obj := iter.Next(); obj != nil; obj = iter.Next() {
-		model := obj.(*ManagedResource) //nolint: errcheck, forcetypeassert
+		model := obj.(*ControllerOutput) //nolint: errcheck, forcetypeassert
 
 		graph.Edges = append(graph.Edges, controller.DependencyEdge{
-			ControllerName:    model.ControllerName,
-			EdgeType:          controller.EdgeManages,
-			ResourceNamespace: model.Namespace,
-			ResourceType:      model.Type,
+			ControllerName: model.ControllerName,
+			EdgeType:       controller.EdgeOutputExclusive,
+			ResourceType:   model.Type,
 		})
 	}
 
-	iter, err = txn.Get(tableControllerDependency, "id")
+	iter, err = txn.Get(tableSharedOutputs, "id")
+	if err != nil {
+		return nil, fmt.Errorf("error fetching shared outputs: %w", err)
+	}
+
+	for obj := iter.Next(); obj != nil; obj = iter.Next() {
+		model := obj.(*ControllerOutput) //nolint: errcheck, forcetypeassert
+
+		graph.Edges = append(graph.Edges, controller.DependencyEdge{
+			ControllerName: model.ControllerName,
+			EdgeType:       controller.EdgeOutputShared,
+			ResourceType:   model.Type,
+		})
+	}
+
+	iter, err = txn.Get(tableInputs, "id")
 	if err != nil {
 		return nil, fmt.Errorf("error fetching dependent resources: %w", err)
 	}
 
 	for obj := iter.Next(); obj != nil; obj = iter.Next() {
-		model := obj.(*ControllerDependency) //nolint: errcheck, forcetypeassert
+		model := obj.(*ControllerInput) //nolint: errcheck, forcetypeassert
 
 		var edgeType controller.DependencyEdgeType
 
 		switch model.Kind {
-		case controller.DependencyStrong:
-			edgeType = controller.EdgeDependsStrong
-		case controller.DependencyWeak:
-			edgeType = controller.EdgeDependsWeak
+		case controller.InputStrong:
+			edgeType = controller.EdgeInputStrong
+		case controller.InputWeak:
+			edgeType = controller.EdgeInputWeak
 		}
 
 		var resourceID resource.ID

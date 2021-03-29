@@ -96,6 +96,7 @@ message CreateRequest {
 }
 
 message CreateOptions {
+    string owner = 1;
 }
 
 message CreateResponse {
@@ -111,6 +112,7 @@ message UpdateRequest {
 }
 
 message UpdateOptions {
+    string owner = 1;
 }
 
 message UpdateResponse {
@@ -127,6 +129,7 @@ message DestroyRequest {
 }
 
 message DestroyOptions {
+    string owner = 1;
 }
 
 message DestroyResponse {

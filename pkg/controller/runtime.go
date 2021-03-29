@@ -19,34 +19,51 @@ type Runtime interface {
 	EventCh() <-chan ReconcileEvent
 	QueueReconcile()
 
-	UpdateDependencies([]Dependency) error
+	UpdateInputs([]Input) error
 
 	Reader
 	Writer
 }
 
-// DependencyKind for dependencies.
-type DependencyKind = int
+// InputKind for inputs.
+type InputKind = int
 
-// Dependency kinds.
+// Input kinds.
 const (
-	DependencyWeak int = iota
-	DependencyStrong
+	InputWeak InputKind = iota
+	InputStrong
 )
 
-// Dependency of controller on some resource(s).
+// Input of the controller (dependency on some resource(s)).
 //
-// Each controller might have multiple dependencies, it might depend on
+// Each controller might have multiple inputs, it might depend on
 // all the objects of some type under namespace, or on specific object by ID.
 //
-// Dependency might be either Weak or Strong. Any kind of dependency triggers
+// Input might be either Weak or Strong. Any kind of input triggers
 // cascading reconcile on changes, Strong dependencies in addition block deletion of
 // parent object until all the dependencies are torn down.
-type Dependency struct {
+type Input struct {
 	ID        *resource.ID
 	Namespace resource.Namespace
 	Type      resource.Type
-	Kind      DependencyKind
+	Kind      InputKind
+}
+
+// OutputKind for outputs.
+type OutputKind = int
+
+// Output kinds.
+const (
+	OutputExclusive OutputKind = iota
+	OutputShared
+)
+
+// Output of the controller.
+//
+// Controller can only modify resources which are declared as outputs.
+type Output struct {
+	Type resource.Type
+	Kind OutputKind
 }
 
 // Reader provides read-only access to the state.
@@ -58,7 +75,7 @@ type Reader interface {
 
 // Writer provides write access to the state.
 //
-// Only managed objects can be written to by the controller.
+// Only output objects can be written to by the controller.
 type Writer interface {
 	Create(context.Context, resource.Resource) error
 	Update(context.Context, resource.Version, resource.Resource) error

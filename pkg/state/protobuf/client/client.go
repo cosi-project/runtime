@@ -136,13 +136,17 @@ func (adapter *Adapter) Create(ctx context.Context, r resource.Resource, opt ...
 	_, err = adapter.client.Create(ctx, &v1alpha1.CreateRequest{
 		Resource: marshaled,
 
-		Options: &v1alpha1.CreateOptions{},
+		Options: &v1alpha1.CreateOptions{
+			Owner: opts.Owner,
+		},
 	})
 
 	if err != nil {
 		switch status.Code(err) { //nolint: exhaustive
 		case codes.NotFound:
 			return eNotFound{err}
+		case codes.PermissionDenied:
+			return eOwnerConflict{eConflict{err}}
 		case codes.AlreadyExists:
 			return eConflict{err}
 		default:
@@ -178,13 +182,17 @@ func (adapter *Adapter) Update(ctx context.Context, curVersion resource.Version,
 	_, err = adapter.client.Update(ctx, &v1alpha1.UpdateRequest{
 		CurrentVersion: curVersion.String(),
 		NewResource:    marshaled,
-		Options:        &v1alpha1.UpdateOptions{},
+		Options: &v1alpha1.UpdateOptions{
+			Owner: opts.Owner,
+		},
 	})
 
 	if err != nil {
 		switch status.Code(err) { //nolint: exhaustive
 		case codes.NotFound:
 			return eNotFound{err}
+		case codes.PermissionDenied:
+			return eOwnerConflict{eConflict{err}}
 		case codes.FailedPrecondition:
 			return eConflict{err}
 		default:
@@ -211,12 +219,16 @@ func (adapter *Adapter) Destroy(ctx context.Context, resourcePointer resource.Po
 		Type:      resourcePointer.Type(),
 		Id:        resourcePointer.ID(),
 
-		Options: &v1alpha1.DestroyOptions{},
+		Options: &v1alpha1.DestroyOptions{
+			Owner: opts.Owner,
+		},
 	})
 	if err != nil {
 		switch status.Code(err) { //nolint: exhaustive
 		case codes.NotFound:
 			return eNotFound{err}
+		case codes.PermissionDenied:
+			return eOwnerConflict{eConflict{err}}
 		case codes.FailedPrecondition:
 			return eConflict{err}
 		default:

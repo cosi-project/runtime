@@ -8,14 +8,13 @@ package controller
 import (
 	"context"
 	"log"
-
-	"github.com/talos-systems/os-runtime/pkg/resource"
 )
 
 // Controller interface should be implemented by Controllers.
 type Controller interface {
 	Name() string
-	ManagedResources() (resource.Namespace, resource.Type)
+	Inputs() []Input
+	Outputs() []Output
 
 	Run(context.Context, Runtime, *log.Logger) error
 }

@@ -26,25 +26,31 @@ func (ctrl *IntToStrController) Name() string {
 	return "IntToStrController"
 }
 
-// ManagedResources implements controller.Controller interface.
-func (ctrl *IntToStrController) ManagedResources() (resource.Namespace, resource.Type) {
-	return ctrl.TargetNamespace, StrResourceType
+// Inputs implements controller.Controller interface.
+func (ctrl *IntToStrController) Inputs() []controller.Input {
+	return []controller.Input{
+		{
+			Namespace: ctrl.SourceNamespace,
+			Type:      IntResourceType,
+			Kind:      controller.InputStrong,
+		},
+	}
+}
+
+// Outputs implements controller.Controller interface.
+func (ctrl *IntToStrController) Outputs() []controller.Output {
+	return []controller.Output{
+		{
+			Type: StrResourceType,
+			Kind: controller.OutputExclusive,
+		},
+	}
 }
 
 // Run implements controller.Controller interface.
 //
 //nolint: gocognit
 func (ctrl *IntToStrController) Run(ctx context.Context, r controller.Runtime, logger *log.Logger) error {
-	if err := r.UpdateDependencies([]controller.Dependency{
-		{
-			Namespace: ctrl.SourceNamespace,
-			Type:      IntResourceType,
-			Kind:      controller.DependencyStrong,
-		},
-	}); err != nil {
-		return fmt.Errorf("error setting up dependencies: %w", err)
-	}
-
 	sourceMd := resource.NewMetadata(ctrl.SourceNamespace, IntResourceType, "", resource.VersionUndefined)
 
 	for {
@@ -124,20 +130,30 @@ func (ctrl *StrToSentenceController) Name() string {
 	return "StrToSentenceController"
 }
 
-// ManagedResources implements controller.Controller interface.
-func (ctrl *StrToSentenceController) ManagedResources() (resource.Namespace, resource.Type) {
-	return ctrl.TargetNamespace, SentenceResourceType
+// Inputs implements controller.Controller interface.
+func (ctrl *StrToSentenceController) Inputs() []controller.Input {
+	return nil
+}
+
+// Outputs implements controller.Controller interface.
+func (ctrl *StrToSentenceController) Outputs() []controller.Output {
+	return []controller.Output{
+		{
+			Type: SentenceResourceType,
+			Kind: controller.OutputExclusive,
+		},
+	}
 }
 
 // Run implements controller.Controller interface.
 //
 //nolint: gocognit
 func (ctrl *StrToSentenceController) Run(ctx context.Context, r controller.Runtime, logger *log.Logger) error {
-	if err := r.UpdateDependencies([]controller.Dependency{
+	if err := r.UpdateInputs([]controller.Input{
 		{
 			Namespace: ctrl.SourceNamespace,
 			Type:      StrResourceType,
-			Kind:      controller.DependencyStrong,
+			Kind:      controller.InputStrong,
 		},
 	}); err != nil {
 		return fmt.Errorf("error setting up dependencies: %w", err)
@@ -212,25 +228,37 @@ func (ctrl *StrToSentenceController) Run(ctx context.Context, r controller.Runti
 type SumController struct {
 	SourceNamespace resource.Namespace
 	TargetNamespace resource.Namespace
+	TargetID        resource.ID
+	ControllerName  string
 }
 
 // Name implements controller.Controller interface.
 func (ctrl *SumController) Name() string {
-	return "SumController"
+	return ctrl.ControllerName
 }
 
-// ManagedResources implements controller.Controller interface.
-func (ctrl *SumController) ManagedResources() (resource.Namespace, resource.Type) {
-	return ctrl.TargetNamespace, IntResourceType
+// Inputs implements controller.Controller interface.
+func (ctrl *SumController) Inputs() []controller.Input {
+	return nil
+}
+
+// Outputs implements controller.Controller interface.
+func (ctrl *SumController) Outputs() []controller.Output {
+	return []controller.Output{
+		{
+			Type: IntResourceType,
+			Kind: controller.OutputShared,
+		},
+	}
 }
 
 // Run implements controller.Controller interface.
 func (ctrl *SumController) Run(ctx context.Context, r controller.Runtime, logger *log.Logger) error {
-	if err := r.UpdateDependencies([]controller.Dependency{
+	if err := r.UpdateInputs([]controller.Input{
 		{
 			Namespace: ctrl.SourceNamespace,
 			Type:      IntResourceType,
-			Kind:      controller.DependencyWeak,
+			Kind:      controller.InputWeak,
 		},
 	}); err != nil {
 		return fmt.Errorf("error setting up dependencies: %w", err)
@@ -256,12 +284,12 @@ func (ctrl *SumController) Run(ctx context.Context, r controller.Runtime, logger
 			sum += intRes.(IntegerResource).Value()
 		}
 
-		if err = r.Modify(ctx, NewIntResource(ctrl.TargetNamespace, "sum", 0), func(r resource.Resource) error {
+		if err = r.Modify(ctx, NewIntResource(ctrl.TargetNamespace, ctrl.TargetID, 0), func(r resource.Resource) error {
 			r.(IntegerResource).SetValue(sum)
 
 			return nil
 		}); err != nil {
-			return fmt.Errorf("error updating sum")
+			return fmt.Errorf("error updating sum: %w", err)
 		}
 	}
 }
@@ -278,9 +306,19 @@ func (ctrl *FailingController) Name() string {
 	return "FailingController"
 }
 
-// ManagedResources implements controller.Controller interface.
-func (ctrl *FailingController) ManagedResources() (resource.Namespace, resource.Type) {
-	return ctrl.TargetNamespace, IntResourceType
+// Inputs implements controller.Controller interface.
+func (ctrl *FailingController) Inputs() []controller.Input {
+	return nil
+}
+
+// Outputs implements controller.Controller interface.
+func (ctrl *FailingController) Outputs() []controller.Output {
+	return []controller.Output{
+		{
+			Type: IntResourceType,
+			Kind: controller.OutputExclusive,
+		},
+	}
 }
 
 // Run implements controller.Controller interface.

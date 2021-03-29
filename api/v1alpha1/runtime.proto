@@ -20,8 +20,8 @@ service ControllerAdapter {
     rpc ReconcileEvents(ReconcileEventsRequest) returns (stream ReconcileEventsResponse);
     // QueueReconcile queues another reconcile event.
     rpc QueueReconcile(QueueReconcileRequest) returns (QueueReconcileResponse);
-    // UpdateDependencies updates list of controller dependencies.
-    rpc UpdateDependencies(UpdateDependenciesRequest) returns (UpdateDependenciesResponse);
+    // UpdateInputs updates list of controller inputs.
+    rpc UpdateInputs(UpdateInputsRequest) returns (UpdateInputsResponse);
 
     // Reader APIs.
 	rpc Get(RuntimeGetRequest) returns (RuntimeGetResponse);
@@ -38,16 +38,34 @@ service ControllerAdapter {
 	rpc RemoveFinalizer(RuntimeRemoveFinalizerRequest) returns (RuntimeRemoveFinalizerResponse);
 }
 
+enum ControllerInputKind {
+    WEAK = 0;
+    STRONG = 1;
+}
+
+message ControllerInput {
+    ControllerInputKind kind = 1;
+    string namespace = 2;
+    string type = 3;
+    optional string id = 4;
+}
+
+enum ControllerOutputKind {
+    EXCLUSIVE = 0;
+    SHARED = 1;
+}
+
+message ControllerOutput {
+    string type = 2;
+    ControllerOutputKind kind = 3;
+}
+
 // RegisterController RPC
 
 message RegisterControllerRequest {
     string controller_name = 1;
-    ManagedResources managed_resources = 2;
-}
-
-message ManagedResources {
-    string namespace = 1;
-    string type = 2;
+    repeated ControllerInput inputs = 2;
+    repeated ControllerOutput outputs = 3;
 }
 
 message RegisterControllerResponse {
@@ -88,26 +106,14 @@ message QueueReconcileRequest {
 message QueueReconcileResponse {
 }
 
-// UpdateDependencies RPC
+// UpdateInputs RPC
 
-message UpdateDependenciesRequest {
+message UpdateInputsRequest {
     string controller_token = 1;
-    repeated Dependency dependencies = 2;
+    repeated ControllerInput inputs = 2;
 }
 
-enum DependencyKind {
-    WEAK = 0;
-    STRONG = 1;
-}
-
-message Dependency {
-    DependencyKind kind = 1;
-    string namespace = 2;
-    string type = 3;
-    optional string id = 4;
-}
-
-message UpdateDependenciesResponse {
+message UpdateInputsResponse {
 }
 
 // Get RPC

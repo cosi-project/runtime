@@ -14,7 +14,7 @@ import (
 // Less compares two controller.Dependency objects.
 //
 // This sort order is compatible with the way memdb handles ordering.
-func Less(a, b *controller.Dependency) bool {
+func Less(a, b *controller.Input) bool {
 	aID := StarID
 	if a.ID != nil {
 		aID = *a.ID
@@ -32,12 +32,12 @@ func Less(a, b *controller.Dependency) bool {
 }
 
 // Equal checks if two controller.Dependency objects are completely equivalent.
-func Equal(a, b *controller.Dependency) bool {
+func Equal(a, b *controller.Input) bool {
 	return EqualKeys(a, b) && a.Kind == b.Kind
 }
 
 // EqualKeys checks if two controller.Dependency objects have equal (conflicting) keys.
-func EqualKeys(a, b *controller.Dependency) bool {
+func EqualKeys(a, b *controller.Input) bool {
 	if a.Namespace != b.Namespace || a.Type != b.Type {
 		return false
 	}

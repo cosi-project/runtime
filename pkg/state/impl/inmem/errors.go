@@ -29,6 +29,12 @@ type eConflict struct {
 
 func (eConflict) ConflictError() {}
 
+type eOwnerConflict struct {
+	eConflict
+}
+
+func (eOwnerConflict) OwnerConflictError() {}
+
 // ErrAlreadyExists generates error compatible with state.ErrConflict.
 func ErrAlreadyExists(r resource.Reference) error {
 	return eConflict{
@@ -54,5 +60,14 @@ func ErrUpdateSameVersion(r resource.Reference, version resource.Version) error 
 func ErrPendingFinalizers(r resource.Metadata) error {
 	return eConflict{
 		fmt.Errorf("resource %s has pending finalizers %s", r, r.Finalizers()),
+	}
+}
+
+// ErrOwnerConflict generates error compatible with state.ErrConflict.
+func ErrOwnerConflict(r resource.Reference, owner string) error {
+	return eOwnerConflict{
+		eConflict{
+			fmt.Errorf("resource %s is owned by %q", r, owner),
+		},
 	}
 }

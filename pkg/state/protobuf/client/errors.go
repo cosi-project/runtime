@@ -15,3 +15,9 @@ type eConflict struct {
 }
 
 func (eConflict) ConflictError() {}
+
+type eOwnerConflict struct {
+	eConflict
+}
+
+func (eOwnerConflict) OwnerConflictError() {}

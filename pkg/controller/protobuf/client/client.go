@@ -33,7 +33,11 @@ type Adapter struct {
 
 	logger *log.Logger
 
-	controllers sync.Map
+	controllersCond    *sync.Cond
+	controllersCtx     context.Context
+	controllers        []*controllerAdapter
+	controllersMu      sync.Mutex
+	controllersRunning int
 }
 
 // RuntimeClient implements both controller runtime APIs.
@@ -44,22 +48,62 @@ type RuntimeClient interface {
 
 // NewAdapter returns new Adapter from the gRPC client.
 func NewAdapter(client RuntimeClient, logger *log.Logger) *Adapter {
-	return &Adapter{
+	adapter := &Adapter{
 		client: client,
 		logger: logger,
 	}
+
+	adapter.controllersCond = sync.NewCond(&adapter.controllersMu)
+
+	return adapter
+}
+
+func convertInputs(inputs []controller.Input) []*v1alpha1.ControllerInput {
+	protoInputs := make([]*v1alpha1.ControllerInput, len(inputs))
+
+	for i := range protoInputs {
+		protoInputs[i] = &v1alpha1.ControllerInput{
+			Namespace: inputs[i].Namespace,
+			Type:      inputs[i].Type,
+			Id:        inputs[i].ID,
+		}
+
+		switch inputs[i].Kind {
+		case controller.InputStrong:
+			protoInputs[i].Kind = v1alpha1.ControllerInputKind_STRONG
+		case controller.InputWeak:
+			protoInputs[i].Kind = v1alpha1.ControllerInputKind_WEAK
+		}
+	}
+
+	return protoInputs
+}
+
+func convertOutputs(outputs []controller.Output) []*v1alpha1.ControllerOutput {
+	protoOutputs := make([]*v1alpha1.ControllerOutput, len(outputs))
+
+	for i := range protoOutputs {
+		protoOutputs[i] = &v1alpha1.ControllerOutput{
+			Type: outputs[i].Type,
+		}
+
+		switch outputs[i].Kind {
+		case controller.OutputExclusive:
+			protoOutputs[i].Kind = v1alpha1.ControllerOutputKind_EXCLUSIVE
+		case controller.OutputShared:
+			protoOutputs[i].Kind = v1alpha1.ControllerOutputKind_SHARED
+		}
+	}
+
+	return protoOutputs
 }
 
 // RegisterController registers new controller.
 func (adapter *Adapter) RegisterController(ctrl controller.Controller) error {
-	namespace, typ := ctrl.ManagedResources()
-
 	resp, err := adapter.client.RegisterController(context.Background(), &v1alpha1.RegisterControllerRequest{
 		ControllerName: ctrl.Name(),
-		ManagedResources: &v1alpha1.ManagedResources{
-			Namespace: namespace,
-			Type:      typ,
-		},
+		Inputs:         convertInputs(ctrl.Inputs()),
+		Outputs:        convertOutputs(ctrl.Outputs()),
 	})
 	if err != nil {
 		return err
@@ -79,7 +123,27 @@ func (adapter *Adapter) RegisterController(ctrl controller.Controller) error {
 	// disable number of retries limit
 	ctrlAdapter.backoff.MaxElapsedTime = 0
 
-	adapter.controllers.Store(resp.ControllerToken, ctrlAdapter)
+	adapter.controllersMu.Lock()
+	defer adapter.controllersMu.Unlock()
+
+	adapter.controllers = append(adapter.controllers, ctrlAdapter)
+
+	if adapter.controllersCtx != nil {
+		adapter.controllersRunning++
+
+		go func() {
+			defer func() {
+				adapter.controllersMu.Lock()
+				defer adapter.controllersMu.Unlock()
+
+				adapter.controllersRunning--
+
+				adapter.controllersCond.Signal()
+			}()
+
+			ctrlAdapter.run(adapter.controllersCtx)
+		}()
+	}
 
 	return nil
 }
@@ -99,28 +163,44 @@ func (adapter *Adapter) Run(ctx context.Context) error {
 		adapter.client.Stop(context.TODO(), &v1alpha1.StopRequest{}) //nolint: errcheck
 	}()
 
-	return adapter.RunControllers(ctx)
+	return adapter.runControllers(ctx)
 }
 
-// RunControllers just runs the registered controllers, it assumes that runtime is was started some other way.
-func (adapter *Adapter) RunControllers(ctx context.Context) error {
-	var wg sync.WaitGroup
+// runControllers just runs the registered controllers, it assumes that runtime was started some other way.
+func (adapter *Adapter) runControllers(ctx context.Context) error {
+	adapter.controllersMu.Lock()
+	adapter.controllersCtx = ctx
 
-	adapter.controllers.Range(func(_, value interface{}) bool {
-		ctrlAdapter := value.(*controllerAdapter) //nolint: errcheck, forcetypeassert
+	for _, ctrlAdapter := range adapter.controllers {
+		ctrlAdapter := ctrlAdapter
 
-		wg.Add(1)
+		adapter.controllersRunning++
 
 		go func() {
-			defer wg.Done()
+			defer func() {
+				adapter.controllersMu.Lock()
+				defer adapter.controllersMu.Unlock()
+
+				adapter.controllersRunning--
+
+				adapter.controllersCond.Signal()
+			}()
 
 			ctrlAdapter.run(ctx)
 		}()
+	}
 
-		return true
-	})
+	adapter.controllersMu.Unlock()
 
-	wg.Wait()
+	<-ctx.Done()
+
+	adapter.controllersMu.Lock()
+
+	for adapter.controllersRunning > 0 {
+		adapter.controllersCond.Wait()
+	}
+
+	adapter.controllersMu.Unlock()
 
 	return nil
 }
@@ -222,7 +302,7 @@ func (ctrlAdapter *controllerAdapter) establishEventChannel() {
 			return
 		}
 
-		interval := ctrlAdapter.backoff.NextBackOff()
+		interval := backoff.NextBackOff()
 
 		select {
 		case <-ctrlAdapter.ctx.Done():
@@ -252,28 +332,11 @@ func (ctrlAdapter *controllerAdapter) QueueReconcile() {
 	}
 }
 
-func (ctrlAdapter *controllerAdapter) UpdateDependencies(deps []controller.Dependency) error {
-	protoDeps := make([]*v1alpha1.Dependency, len(deps))
-
-	for i := range protoDeps {
-		protoDeps[i] = &v1alpha1.Dependency{
-			Namespace: deps[i].Namespace,
-			Type:      deps[i].Type,
-			Id:        deps[i].ID,
-		}
-
-		switch deps[i].Kind {
-		case controller.DependencyStrong:
-			protoDeps[i].Kind = v1alpha1.DependencyKind_STRONG
-		case controller.DependencyWeak:
-			protoDeps[i].Kind = v1alpha1.DependencyKind_WEAK
-		}
-	}
-
-	_, err := ctrlAdapter.adapter.client.UpdateDependencies(ctrlAdapter.ctx, &v1alpha1.UpdateDependenciesRequest{
+func (ctrlAdapter *controllerAdapter) UpdateInputs(inputs []controller.Input) error {
+	_, err := ctrlAdapter.adapter.client.UpdateInputs(ctrlAdapter.ctx, &v1alpha1.UpdateInputsRequest{
 		ControllerToken: ctrlAdapter.token,
 
-		Dependencies: protoDeps,
+		Inputs: convertInputs(inputs),
 	})
 
 	return err

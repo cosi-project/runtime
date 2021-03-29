@@ -32,6 +32,7 @@ func TestMarshalUnmarshal(t *testing.T) {
 			Type:       "typ",
 			Id:         "id",
 			Version:    "3",
+			Owner:      "FooController",
 			Phase:      "running",
 			Finalizers: []string{"a1", "a2"},
 		},
@@ -62,5 +63,7 @@ func TestMarshalUnmarshal(t *testing.T) {
 	yy, err := yaml.Marshal(y)
 	require.NoError(t, err)
 
-	assert.Equal(t, "metadata:\n    namespace: ns\n    type: typ\n    id: id\n    version: 3\n    phase: running\n    finalizers:\n        - a1\n        - a2\nspec:\n    true\n", string(yy))
+	assert.Equal(t,
+		"metadata:\n    namespace: ns\n    type: typ\n    id: id\n    version: 3\n    owner: FooController\n    phase: running\n    finalizers:\n        - a1\n        - a2\nspec:\n    true\n",
+		string(yy))
 }

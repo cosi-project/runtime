@@ -19,54 +19,54 @@ func TestLess(t *testing.T) {
 
 	for _, testCase := range []struct {
 		Name     string
-		A, B     controller.Dependency
+		A, B     controller.Input
 		Expected bool
 	}{
 		{
 			Name: "equal",
-			A: controller.Dependency{
+			A: controller.Input{
 				Namespace: "default",
 				Type:      "Config",
 				ID:        pointer.ToString("id"),
-				Kind:      controller.DependencyStrong,
+				Kind:      controller.InputStrong,
 			},
-			B: controller.Dependency{
+			B: controller.Input{
 				Namespace: "default",
 				Type:      "Config",
 				ID:        pointer.ToString("id"),
-				Kind:      controller.DependencyStrong,
+				Kind:      controller.InputStrong,
 			},
 			Expected: false,
 		},
 		{
 			Name: "lessId",
-			A: controller.Dependency{
+			A: controller.Input{
 				Namespace: "default",
 				Type:      "Config",
 				ID:        pointer.ToString("id"),
-				Kind:      controller.DependencyStrong,
+				Kind:      controller.InputStrong,
 			},
-			B: controller.Dependency{
+			B: controller.Input{
 				Namespace: "default",
 				Type:      "Config",
 				ID:        pointer.ToString("jd"),
-				Kind:      controller.DependencyStrong,
+				Kind:      controller.InputStrong,
 			},
 			Expected: true,
 		},
 		{
 			Name: "moreType",
-			A: controller.Dependency{
+			A: controller.Input{
 				Namespace: "default",
 				Type:      "Data",
 				ID:        nil,
-				Kind:      controller.DependencyStrong,
+				Kind:      controller.InputStrong,
 			},
-			B: controller.Dependency{
+			B: controller.Input{
 				Namespace: "default",
 				Type:      "Config",
 				ID:        nil,
-				Kind:      controller.DependencyStrong,
+				Kind:      controller.InputStrong,
 			},
 			Expected: false,
 		},
@@ -86,102 +86,102 @@ func TestEqual(t *testing.T) {
 
 	for _, testCase := range []struct {
 		Name     string
-		A, B     controller.Dependency
+		A, B     controller.Input
 		Expected bool
 	}{
 		{
 			Name: "equal",
-			A: controller.Dependency{
+			A: controller.Input{
 				Namespace: "default",
 				Type:      "Config",
 				ID:        pointer.ToString("id"),
-				Kind:      controller.DependencyStrong,
+				Kind:      controller.InputStrong,
 			},
-			B: controller.Dependency{
+			B: controller.Input{
 				Namespace: "default",
 				Type:      "Config",
 				ID:        pointer.ToString("id"),
-				Kind:      controller.DependencyStrong,
+				Kind:      controller.InputStrong,
 			},
 			Expected: true,
 		},
 		{
 			Name: "id",
-			A: controller.Dependency{
+			A: controller.Input{
 				Namespace: "default",
 				Type:      "Config",
 				ID:        pointer.ToString("id"),
-				Kind:      controller.DependencyStrong,
+				Kind:      controller.InputStrong,
 			},
-			B: controller.Dependency{
+			B: controller.Input{
 				Namespace: "default",
 				Type:      "Config",
 				ID:        pointer.ToString("jd"),
-				Kind:      controller.DependencyStrong,
+				Kind:      controller.InputStrong,
 			},
 			Expected: false,
 		},
 		{
 			Name: "idNil",
-			A: controller.Dependency{
+			A: controller.Input{
 				Namespace: "default",
 				Type:      "Config",
 				ID:        pointer.ToString("id"),
-				Kind:      controller.DependencyStrong,
+				Kind:      controller.InputStrong,
 			},
-			B: controller.Dependency{
+			B: controller.Input{
 				Namespace: "default",
 				Type:      "Config",
 				ID:        nil,
-				Kind:      controller.DependencyStrong,
+				Kind:      controller.InputStrong,
 			},
 			Expected: false,
 		},
 		{
 			Name: "idsNil",
-			A: controller.Dependency{
+			A: controller.Input{
 				Namespace: "default",
 				Type:      "Config",
 				ID:        nil,
-				Kind:      controller.DependencyStrong,
+				Kind:      controller.InputStrong,
 			},
-			B: controller.Dependency{
+			B: controller.Input{
 				Namespace: "default",
 				Type:      "Config",
 				ID:        nil,
-				Kind:      controller.DependencyStrong,
+				Kind:      controller.InputStrong,
 			},
 			Expected: true,
 		},
 		{
 			Name: "kind",
-			A: controller.Dependency{
+			A: controller.Input{
 				Namespace: "default",
 				Type:      "Config",
 				ID:        nil,
-				Kind:      controller.DependencyStrong,
+				Kind:      controller.InputStrong,
 			},
-			B: controller.Dependency{
+			B: controller.Input{
 				Namespace: "default",
 				Type:      "Config",
 				ID:        nil,
-				Kind:      controller.DependencyWeak,
+				Kind:      controller.InputWeak,
 			},
 			Expected: false,
 		},
 		{
 			Name: "ns",
-			A: controller.Dependency{
+			A: controller.Input{
 				Namespace: "user",
 				Type:      "Config",
 				ID:        pointer.ToString("id"),
-				Kind:      controller.DependencyStrong,
+				Kind:      controller.InputStrong,
 			},
-			B: controller.Dependency{
+			B: controller.Input{
 				Namespace: "default",
 				Type:      "Config",
 				ID:        pointer.ToString("id"),
-				Kind:      controller.DependencyStrong,
+				Kind:      controller.InputStrong,
 			},
 			Expected: false,
 		},
@@ -201,70 +201,70 @@ func TestEqualKeys(t *testing.T) {
 
 	for _, testCase := range []struct {
 		Name     string
-		A, B     controller.Dependency
+		A, B     controller.Input
 		Expected bool
 	}{
 		{
 			Name: "equal",
-			A: controller.Dependency{
+			A: controller.Input{
 				Namespace: "default",
 				Type:      "Config",
 				ID:        pointer.ToString("id"),
-				Kind:      controller.DependencyStrong,
+				Kind:      controller.InputStrong,
 			},
-			B: controller.Dependency{
+			B: controller.Input{
 				Namespace: "default",
 				Type:      "Config",
 				ID:        pointer.ToString("id"),
-				Kind:      controller.DependencyStrong,
+				Kind:      controller.InputStrong,
 			},
 			Expected: true,
 		},
 		{
 			Name: "kind",
-			A: controller.Dependency{
+			A: controller.Input{
 				Namespace: "default",
 				Type:      "Config",
 				ID:        pointer.ToString("id"),
-				Kind:      controller.DependencyWeak,
+				Kind:      controller.InputWeak,
 			},
-			B: controller.Dependency{
+			B: controller.Input{
 				Namespace: "default",
 				Type:      "Config",
 				ID:        pointer.ToString("id"),
-				Kind:      controller.DependencyStrong,
+				Kind:      controller.InputStrong,
 			},
 			Expected: true,
 		},
 		{
 			Name: "id",
-			A: controller.Dependency{
+			A: controller.Input{
 				Namespace: "default",
 				Type:      "Config",
 				ID:        pointer.ToString("id"),
-				Kind:      controller.DependencyStrong,
+				Kind:      controller.InputStrong,
 			},
-			B: controller.Dependency{
+			B: controller.Input{
 				Namespace: "default",
 				Type:      "Config",
 				ID:        pointer.ToString("jd"),
-				Kind:      controller.DependencyStrong,
+				Kind:      controller.InputStrong,
 			},
 			Expected: false,
 		},
 		{
 			Name: "idNil",
-			A: controller.Dependency{
+			A: controller.Input{
 				Namespace: "default",
 				Type:      "Config",
 				ID:        pointer.ToString("id"),
-				Kind:      controller.DependencyStrong,
+				Kind:      controller.InputStrong,
 			},
-			B: controller.Dependency{
+			B: controller.Input{
 				Namespace: "default",
 				Type:      "Config",
 				ID:        nil,
-				Kind:      controller.DependencyStrong,
+				Kind:      controller.InputStrong,
 			},
 			Expected: false,
 		},

@@ -9,21 +9,21 @@ import (
 	"github.com/talos-systems/os-runtime/pkg/resource"
 )
 
-// ManagedResource tracks which objects are managed by controllers.
-type ManagedResource struct {
-	Namespace      resource.Namespace
+// ControllerOutput tracks which objects are managed by controllers.
+type ControllerOutput struct {
 	Type           resource.Type
 	ControllerName string
+	Kind           controller.OutputKind
 }
 
 // StarID denotes ID value which matches any other ID.
 const StarID = "*"
 
-// ControllerDependency tracks dependencies of the controller.
-type ControllerDependency struct {
+// ControllerInput tracks inputs of the controller.
+type ControllerInput struct {
 	ControllerName string
 	Namespace      resource.Namespace
 	Type           resource.Type
 	ID             resource.ID
-	Kind           controller.DependencyKind
+	Kind           controller.InputKind
 }
