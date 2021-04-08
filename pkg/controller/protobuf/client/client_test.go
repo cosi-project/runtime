@@ -9,8 +9,8 @@ import (
 
 	"github.com/stretchr/testify/assert"
 
-	"github.com/talos-systems/os-runtime/pkg/controller"
-	"github.com/talos-systems/os-runtime/pkg/controller/protobuf/client"
+	"github.com/cosi-project/runtime/pkg/controller"
+	"github.com/cosi-project/runtime/pkg/controller/protobuf/client"
 )
 
 func TestInterface(t *testing.T) {

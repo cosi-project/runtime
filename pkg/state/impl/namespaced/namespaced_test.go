@@ -10,11 +10,11 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/suite"
 
-	"github.com/talos-systems/os-runtime/pkg/resource"
-	"github.com/talos-systems/os-runtime/pkg/state"
-	"github.com/talos-systems/os-runtime/pkg/state/conformance"
-	"github.com/talos-systems/os-runtime/pkg/state/impl/inmem"
-	"github.com/talos-systems/os-runtime/pkg/state/impl/namespaced"
+	"github.com/cosi-project/runtime/pkg/resource"
+	"github.com/cosi-project/runtime/pkg/state"
+	"github.com/cosi-project/runtime/pkg/state/conformance"
+	"github.com/cosi-project/runtime/pkg/state/impl/inmem"
+	"github.com/cosi-project/runtime/pkg/state/impl/namespaced"
 )
 
 func TestInterfaces(t *testing.T) {

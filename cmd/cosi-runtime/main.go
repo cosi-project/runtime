@@ -17,19 +17,19 @@ import (
 	"golang.org/x/sync/errgroup"
 	"google.golang.org/grpc"
 
-	"github.com/talos-systems/os-runtime/api/v1alpha1"
-	runtimeserver "github.com/talos-systems/os-runtime/pkg/controller/protobuf/server"
-	"github.com/talos-systems/os-runtime/pkg/controller/runtime"
-	"github.com/talos-systems/os-runtime/pkg/state"
-	"github.com/talos-systems/os-runtime/pkg/state/impl/inmem"
-	"github.com/talos-systems/os-runtime/pkg/state/impl/namespaced"
-	"github.com/talos-systems/os-runtime/pkg/state/protobuf/server"
+	"github.com/cosi-project/runtime/api/v1alpha1"
+	runtimeserver "github.com/cosi-project/runtime/pkg/controller/protobuf/server"
+	"github.com/cosi-project/runtime/pkg/controller/runtime"
+	"github.com/cosi-project/runtime/pkg/state"
+	"github.com/cosi-project/runtime/pkg/state/impl/inmem"
+	"github.com/cosi-project/runtime/pkg/state/impl/namespaced"
+	"github.com/cosi-project/runtime/pkg/state/protobuf/server"
 )
 
 var socketPath string
 
 func main() {
-	flag.StringVar(&socketPath, "socket-path", "/var/run/os-runtime.sock", "path to the UNIX socket to listen on")
+	flag.StringVar(&socketPath, "socket-path", "/var/run/cosi-runtime.sock", "path to the UNIX socket to listen on")
 	flag.Parse()
 
 	if err := run(); err != nil {
@@ -74,7 +74,7 @@ func run() error {
 	v1alpha1.RegisterControllerRuntimeServer(grpcServer, grpcRuntime)
 	v1alpha1.RegisterControllerAdapterServer(grpcServer, grpcRuntime)
 
-	log.Printf("starting os-runtime service on %q", socketPath)
+	log.Printf("starting cosi-runtime service on %q", socketPath)
 
 	var eg errgroup.Group
 

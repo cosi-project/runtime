@@ -8,7 +8,7 @@ package state
 import (
 	"context"
 
-	"github.com/talos-systems/os-runtime/pkg/resource"
+	"github.com/cosi-project/runtime/pkg/resource"
 )
 
 // EventType is a type of StateEvent related to resource change.

@@ -9,7 +9,7 @@ import (
 	"reflect"
 	"sync"
 
-	"github.com/talos-systems/os-runtime/pkg/resource"
+	"github.com/cosi-project/runtime/pkg/resource"
 )
 
 // resourceRegistry implements mapping between Resources and their protobuf equivalents.

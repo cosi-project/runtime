@@ -1,12 +1,12 @@
 # THIS FILE WAS AUTOMATICALLY GENERATED, PLEASE DO NOT EDIT.
 #
-# Generated on 2020-09-25T18:15:38Z by kres ce6bee5-dirty.
+# Generated on 2021-04-08T12:27:41Z by kres 7917d0d-dirty.
 
 style: github
 template: CHANGELOG.tpl.md
 info:
   title: CHANGELOG
-  repository_url: https://github.com/talos-systems/os-runtime
+  repository_url: https://github.com/cosi-project/runtime
 options:
   commits:
     # filters:

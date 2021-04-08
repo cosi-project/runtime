@@ -20,11 +20,11 @@ import (
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 
-	"github.com/talos-systems/os-runtime/api/v1alpha1"
-	"github.com/talos-systems/os-runtime/pkg/controller"
-	"github.com/talos-systems/os-runtime/pkg/resource"
-	"github.com/talos-systems/os-runtime/pkg/resource/protobuf"
-	"github.com/talos-systems/os-runtime/pkg/state"
+	"github.com/cosi-project/runtime/api/v1alpha1"
+	"github.com/cosi-project/runtime/pkg/controller"
+	"github.com/cosi-project/runtime/pkg/resource"
+	"github.com/cosi-project/runtime/pkg/resource/protobuf"
+	"github.com/cosi-project/runtime/pkg/state"
 )
 
 // Adapter implement controller.Engine from the gRPC State client.

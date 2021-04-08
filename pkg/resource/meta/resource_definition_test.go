@@ -10,7 +10,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	"github.com/talos-systems/os-runtime/pkg/resource/meta"
+	"github.com/cosi-project/runtime/pkg/resource/meta"
 )
 
 func TestRDSpec(t *testing.T) {

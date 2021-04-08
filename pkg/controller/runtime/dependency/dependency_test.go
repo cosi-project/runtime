@@ -10,8 +10,8 @@ import (
 	"github.com/AlekSi/pointer"
 	"github.com/stretchr/testify/assert"
 
-	"github.com/talos-systems/os-runtime/pkg/controller"
-	"github.com/talos-systems/os-runtime/pkg/controller/runtime/dependency"
+	"github.com/cosi-project/runtime/pkg/controller"
+	"github.com/cosi-project/runtime/pkg/controller/runtime/dependency"
 )
 
 func TestLess(t *testing.T) {

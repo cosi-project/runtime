@@ -5,7 +5,7 @@
 // Package meta provides definition of core metadata resources.
 package meta
 
-import "github.com/talos-systems/os-runtime/pkg/resource"
+import "github.com/cosi-project/runtime/pkg/resource"
 
 // NamespaceName is the name of 'meta' namespace.
 const NamespaceName resource.Namespace = "meta"

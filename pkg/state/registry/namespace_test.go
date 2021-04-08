@@ -10,10 +10,10 @@ import (
 
 	"github.com/stretchr/testify/assert"
 
-	"github.com/talos-systems/os-runtime/pkg/state"
-	"github.com/talos-systems/os-runtime/pkg/state/impl/inmem"
-	"github.com/talos-systems/os-runtime/pkg/state/impl/namespaced"
-	"github.com/talos-systems/os-runtime/pkg/state/registry"
+	"github.com/cosi-project/runtime/pkg/state"
+	"github.com/cosi-project/runtime/pkg/state/impl/inmem"
+	"github.com/cosi-project/runtime/pkg/state/impl/namespaced"
+	"github.com/cosi-project/runtime/pkg/state/registry"
 )
 
 func TestNamespaceRegistry(t *testing.T) {

@@ -7,7 +7,7 @@ package meta
 import (
 	"fmt"
 
-	"github.com/talos-systems/os-runtime/pkg/resource"
+	"github.com/cosi-project/runtime/pkg/resource"
 )
 
 // NamespaceType is the type of Namespace.

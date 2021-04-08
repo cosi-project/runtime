@@ -11,7 +11,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"gopkg.in/yaml.v3"
 
-	"github.com/talos-systems/os-runtime/pkg/resource"
+	"github.com/cosi-project/runtime/pkg/resource"
 )
 
 func TestAnyInterfaces(t *testing.T) {

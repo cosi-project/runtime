@@ -12,12 +12,12 @@ import (
 	suiterunner "github.com/stretchr/testify/suite"
 	"go.uber.org/goleak"
 
-	"github.com/talos-systems/os-runtime/pkg/controller"
-	"github.com/talos-systems/os-runtime/pkg/controller/conformance"
-	"github.com/talos-systems/os-runtime/pkg/controller/runtime"
-	"github.com/talos-systems/os-runtime/pkg/state"
-	"github.com/talos-systems/os-runtime/pkg/state/impl/inmem"
-	"github.com/talos-systems/os-runtime/pkg/state/impl/namespaced"
+	"github.com/cosi-project/runtime/pkg/controller"
+	"github.com/cosi-project/runtime/pkg/controller/conformance"
+	"github.com/cosi-project/runtime/pkg/controller/runtime"
+	"github.com/cosi-project/runtime/pkg/state"
+	"github.com/cosi-project/runtime/pkg/state/impl/inmem"
+	"github.com/cosi-project/runtime/pkg/state/impl/namespaced"
 )
 
 func TestRuntimeConformance(t *testing.T) {

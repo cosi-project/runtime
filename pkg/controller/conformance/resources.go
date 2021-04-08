@@ -8,7 +8,7 @@ import (
 	"encoding/binary"
 	"fmt"
 
-	"github.com/talos-systems/os-runtime/pkg/resource"
+	"github.com/cosi-project/runtime/pkg/resource"
 )
 
 // IntegerResource is implemented by resources holding ints.

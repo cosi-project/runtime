@@ -10,9 +10,9 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	"github.com/talos-systems/os-runtime/api/v1alpha1"
-	"github.com/talos-systems/os-runtime/pkg/resource/protobuf"
-	"github.com/talos-systems/os-runtime/pkg/state/conformance"
+	"github.com/cosi-project/runtime/api/v1alpha1"
+	"github.com/cosi-project/runtime/pkg/resource/protobuf"
+	"github.com/cosi-project/runtime/pkg/state/conformance"
 )
 
 func TestRegistry(t *testing.T) {

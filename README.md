@@ -1,13 +1,13 @@
-# os-runtime
+# runtime
 
-OS Runtime contains core resource (state) and controller (operator) engine to build operating systems.
+COSI Runtime contains core resource (state) and controller (operator) engine to build operating systems.
 
 ## Design
 
 ### Resources
 
 A **resource** is a _metadata_ plus opaque _spec_.
-Metadata structure is strictly defined, while a spec is transparent to the `os-runtime`.
+Metadata structure is strictly defined, while a spec is transparent to the `runtime`.
 Metadata defines an address of the resource: (namespace, type, id, version) and additional fields (finalizers, owner, etc.)
 
 ### Controllers

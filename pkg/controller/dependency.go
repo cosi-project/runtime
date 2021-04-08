@@ -4,7 +4,7 @@
 
 package controller
 
-import "github.com/talos-systems/os-runtime/pkg/resource"
+import "github.com/cosi-project/runtime/pkg/resource"
 
 // DependencyGraph is the exported information about controller/resources dependencies.
 type DependencyGraph struct {
