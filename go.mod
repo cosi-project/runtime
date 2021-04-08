@@ -1,4 +1,4 @@
-module github.com/talos-systems/os-runtime
+module github.com/cosi-project/runtime
 
 go 1.16
 

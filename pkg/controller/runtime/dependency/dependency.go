@@ -8,7 +8,7 @@ package dependency
 import (
 	"fmt"
 
-	"github.com/talos-systems/os-runtime/pkg/controller"
+	"github.com/cosi-project/runtime/pkg/controller"
 )
 
 // Less compares two controller.Dependency objects.

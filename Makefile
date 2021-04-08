@@ -1,6 +1,6 @@
 # THIS FILE WAS AUTOMATICALLY GENERATED, PLEASE DO NOT EDIT.
 #
-# Generated on 2021-03-18T20:16:50Z by kres 424ae88-dirty.
+# Generated on 2021-04-08T12:45:13Z by kres 7917d0d-dirty.
 
 # common variables
 
@@ -9,7 +9,7 @@ TAG := $(shell git describe --tag --always --dirty)
 BRANCH := $(shell git rev-parse --abbrev-ref HEAD)
 ARTIFACTS := _out
 REGISTRY ?= ghcr.io
-USERNAME ?= talos-systems
+USERNAME ?= cosi-project
 REGISTRY_AND_USERNAME ?= $(REGISTRY)/$(USERNAME)
 GOFUMPT_VERSION ?= abc0db2c416aca0f60ea33c23c76665f6e7ba0b6
 GO_VERSION ?= 1.14
@@ -73,7 +73,7 @@ respectively.
 
 endef
 
-all: unit-tests directory-fun os-runtime image-os-runtime run-directory-fun lint
+all: unit-tests cosi-runtime image-cosi-runtime directory-fun run-directory-fun lint
 
 .PHONY: clean
 clean:  ## Cleans up all artifacts.
@@ -96,7 +96,7 @@ fmt:  ## Formats the source code
 	@docker run --rm -it -v $(PWD):/src -w /src golang:$(GO_VERSION) \
 		bash -c "export GO111MODULE=on; export GOPROXY=https://proxy.golang.org; \
 		cd /tmp && go mod init tmp && go get mvdan.cc/gofumpt/gofumports@$(GOFUMPT_VERSION) && \
-		cd - && gofumports -w -local github.com/talos-systems/os-runtime ."
+		cd - && gofumports -w -local github.com/cosi-project/runtime ."
 
 generate:  ## Generate .proto definitions.
 	@$(MAKE) local-$@ DEST=./
@@ -117,19 +117,12 @@ unit-tests-race:  ## Performs unit tests with race detection enabled.
 coverage:  ## Upload coverage data to codecov.io.
 	bash -c "bash <(curl -s https://codecov.io/bash) -f $(ARTIFACTS)/coverage.txt -X fix"
 
-.PHONY: $(ARTIFACTS)/directory-fun
-$(ARTIFACTS)/directory-fun:
-	@$(MAKE) local-directory-fun DEST=$(ARTIFACTS)
+.PHONY: $(ARTIFACTS)/cosi-runtime
+$(ARTIFACTS)/cosi-runtime:
+	@$(MAKE) local-cosi-runtime DEST=$(ARTIFACTS)
 
-.PHONY: directory-fun
-directory-fun: $(ARTIFACTS)/directory-fun  ## Builds executable for directory-fun.
-
-.PHONY: $(ARTIFACTS)/os-runtime
-$(ARTIFACTS)/os-runtime:
-	@$(MAKE) local-os-runtime DEST=$(ARTIFACTS)
-
-.PHONY: os-runtime
-os-runtime: $(ARTIFACTS)/os-runtime  ## Builds executable for os-runtime.
+.PHONY: cosi-runtime
+cosi-runtime: $(ARTIFACTS)/cosi-runtime  ## Builds executable for cosi-runtime.
 
 .PHONY: lint-markdown
 lint-markdown:  ## Runs markdownlint.
@@ -138,9 +131,16 @@ lint-markdown:  ## Runs markdownlint.
 .PHONY: lint
 lint: lint-golangci-lint lint-gofumpt lint-markdown  ## Run all linters for the project.
 
-.PHONY: image-os-runtime
-image-os-runtime:  ## Builds image for os-runtime.
-	@$(MAKE) target-$@ TARGET_ARGS="--tag=$(REGISTRY)/$(USERNAME)/os-runtime:$(TAG)"
+.PHONY: image-cosi-runtime
+image-cosi-runtime:  ## Builds image for cosi-runtime.
+	@$(MAKE) target-$@ TARGET_ARGS="--tag=$(REGISTRY)/$(USERNAME)/cosi-runtime:$(TAG)"
+
+.PHONY: $(ARTIFACTS)/directory-fun
+$(ARTIFACTS)/directory-fun:
+	@$(MAKE) local-directory-fun DEST=$(ARTIFACTS)
+
+.PHONY: directory-fun
+directory-fun: $(ARTIFACTS)/directory-fun  ## Builds executable for directory-fun.
 
 run-directory-fun: directory-fun
 	@$(ARTIFACTS)/directory-fun

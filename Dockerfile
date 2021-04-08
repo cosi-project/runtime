@@ -2,7 +2,7 @@
 
 # THIS FILE WAS AUTOMATICALLY GENERATED, PLEASE DO NOT EDIT.
 #
-# Generated on 2021-03-26T20:18:11Z by kres 9933cd1-dirty.
+# Generated on 2021-04-08T16:12:41Z by kres 1844a99-dirty.
 
 ARG TOOLCHAIN
 
@@ -69,7 +69,7 @@ RUN protoc -I/api --go_out=paths=source_relative:/api --go-grpc_out=paths=source
 # runs gofumpt
 FROM base AS lint-gofumpt
 RUN find . -name '*.pb.go' | xargs -r rm
-RUN FILES="$(gofumports -l -local github.com/talos-systems/os-runtime .)" && test -z "${FILES}" || (echo -e "Source code is not formatted with 'gofumports -w -local github.com/talos-systems/os-runtime .':\n${FILES}"; exit 1)
+RUN FILES="$(gofumports -l -local github.com/cosi-project/runtime .)" && test -z "${FILES}" || (echo -e "Source code is not formatted with 'gofumports -w -local github.com/cosi-project/runtime .':\n${FILES}"; exit 1)
 
 # runs golangci-lint
 FROM base AS lint-golangci-lint
@@ -94,27 +94,28 @@ COPY --from=proto-compile /api/ /api/
 FROM scratch AS unit-tests
 COPY --from=unit-tests-run /src/coverage.txt /coverage.txt
 
+# builds cosi-runtime
+FROM base AS cosi-runtime-build
+COPY --from=generate / /
+WORKDIR /src/cmd/cosi-runtime
+RUN --mount=type=cache,target=/root/.cache/go-build --mount=type=cache,target=/go/pkg go build -ldflags "-s -w" -o /cosi-runtime
+
 # builds directory-fun
 FROM base AS directory-fun-build
 COPY --from=generate / /
 WORKDIR /src/cmd/directory-fun
 RUN --mount=type=cache,target=/root/.cache/go-build --mount=type=cache,target=/go/pkg go build -ldflags "-s -w" -o /directory-fun
 
-# builds os-runtime
-FROM base AS os-runtime-build
-COPY --from=generate / /
-WORKDIR /src/cmd/os-runtime
-RUN --mount=type=cache,target=/root/.cache/go-build --mount=type=cache,target=/go/pkg go build -ldflags "-s -w" -o /os-runtime
+FROM scratch AS cosi-runtime
+COPY --from=cosi-runtime-build /cosi-runtime /cosi-runtime
 
 FROM scratch AS directory-fun
 COPY --from=directory-fun-build /directory-fun /directory-fun
 
-FROM scratch AS os-runtime
-COPY --from=os-runtime-build /os-runtime /os-runtime
-
-FROM scratch AS image-os-runtime
-COPY --from=os-runtime / /
+FROM scratch AS image-cosi-runtime
+COPY --from=cosi-runtime / /
 COPY --from=image-fhs / /
 COPY --from=image-ca-certificates / /
-ENTRYPOINT ["/os-runtime"]
+LABEL org.opencontainers.image.source https://github.com/cosi-project/runtime
+ENTRYPOINT ["/cosi-runtime"]
 

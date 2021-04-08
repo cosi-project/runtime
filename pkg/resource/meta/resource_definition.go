@@ -12,7 +12,7 @@ import (
 
 	pluralize "github.com/gertd/go-pluralize"
 
-	"github.com/talos-systems/os-runtime/pkg/resource"
+	"github.com/cosi-project/runtime/pkg/resource"
 )
 
 // ResourceDefinitionType is the type of ResourceDefinition.

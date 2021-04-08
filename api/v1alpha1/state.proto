@@ -2,7 +2,7 @@ syntax = "proto3";
 
 package resource;
 
-option go_package = "github.com/talos-systems/os-runtime/api/v1alpha1";
+option go_package = "github.com/cosi-project/runtime/api/v1alpha1";
 
 import "v1alpha1/resource.proto";
 

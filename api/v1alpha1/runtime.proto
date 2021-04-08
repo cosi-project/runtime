@@ -2,47 +2,141 @@ syntax = "proto3";
 
 package runtime;
 
-option go_package = "github.com/talos-systems/os-runtime/api/v1alpha1";
+option go_package = "github.com/cosi-project/runtime/api/v1alpha1";
 
 import "v1alpha1/resource.proto";
 
+// ControllerRuntime API provides support for controller registration, starting and stopping the runtime.
+//
+// ControllerRuntime API is used by the plugins or the engine itself.
 service ControllerRuntime {
-    // RegisterController registers controller and establishes token for ControllerAdapter calls.
+    // RegisterController registers the controller and establishes a token for ControllerAdapter calls.
+    //
+    // RegisterController builds initial set of inputs and outputs for the controller.
+    // If there's a conflict on inputs or outputs, RegisterController fails.
+    // RegisterController enforces unique controller names.
     rpc RegisterController(RegisterControllerRequest) returns (RegisterControllerResponse);
-    // Start should be called when controllers were registered.
+
+    // Start the controller runtime.
+    //
+    // Start should only be called once.
+    // Once the runtime is started, controllers start receiving reconcile events via
+    // the ControllerAdapter APIs.
     rpc Start(StartRequest) returns (StartResponse);
-    // Stop controller runtime.
+
+    // Stop the controller runtime.
+    //
+    // Stop should only be called once.
     rpc Stop(StopRequest) returns (StopResponse);
 }
 
+// ControllerAdapter provides API for the controllers.
+//
+// This API is the only way controllers should have a way to access the runtime state.
+// State API shouldn't be used directly in the controllers.
+//
+// All RPC methods in this service require 'controller_token' as one of the input parameters,
+// so all the API calls are scoped to a specific controller ('controller_token' is returned as
+// the result of the ControllerRuntime.RegisterController call).
 service ControllerAdapter {
-    // ReconcileEvents sends message on each reconcile event for the controller.
+    // ReconcileEvents sends a message on each reconcile event to the controller.
+    //
+    // Controller is supposed to called 'ReconcileEvents' on start and run reconcile loop
+    // each time there is an event received.
     rpc ReconcileEvents(ReconcileEventsRequest) returns (stream ReconcileEventsResponse);
+
     // QueueReconcile queues another reconcile event.
+    //
+    // Reconcile event will be delivered via ReconcileEvents stream.
+
     rpc QueueReconcile(QueueReconcileRequest) returns (QueueReconcileResponse);
-    // UpdateInputs updates list of controller inputs.
+
+    // UpdateInputs updates the list of controller inputs.
+    //
+    // This call replaces the list of inputs with the new list.
+    // For any new inputs a separate watch is established and reconcile
+    // events are sent for new inputs.
     rpc UpdateInputs(UpdateInputsRequest) returns (UpdateInputsResponse);
 
-    // Reader APIs.
+    // Get a resource.
+    //
+    // Resource should be either input or ouput of the controller.
 	rpc Get(RuntimeGetRequest) returns (RuntimeGetResponse);
+
+    // List resources.
+    //
+    // Resource should be either input or ouput of the controller.
 	rpc List(RuntimeListRequest) returns (stream RuntimeListResponse);
+
+    // WatchFor a specific resource state.
+    //
+    // Resource should be either input or ouput of the controller.
 	rpc WatchFor(RuntimeWatchForRequest) returns (RuntimeWatchForResponse);
 
-    // Writer APIs.
+    // Create a new resource.
+    //
+    // Resource should be an output of the controller.
 	rpc Create(RuntimeCreateRequest) returns (RuntimeCreateResponse);
+
+    // Update a resource.
+    //
+    // Up-to-date current version should be specified for the update to succeed.
+    //
+    // Resource should be an output of the controller, for shared outputs
+    // resource should be owned by the controller.
 	rpc Update(RuntimeUpdateRequest) returns (RuntimeUpdateResponse);
+
+    // Teardown marks a resource as going through the teardown phase.
+    //
+    // Teardown phase notifies other controllers using the resource as a strong input
+    // that the resource is going away, and once cleanup is done, finalizer should be removed
+    // which unblocks resource destruction.
+    //
+    // Resource should be an output of the controller, for shared outputs
+    // resource should be owned by the controller.
 	rpc Teardown(RuntimeTeardownRequest) returns (RuntimeTeardownResponse);
+
+    // Destroy a resource.
+    //
+    // Resource should have no finalizers to be destroyed.
+    //
+    // Resource should be an output of the controller, for shared outputs
+    // resource should be owned by the controller.
 	rpc Destroy(RuntimeDestroyRequest) returns (RuntimeDestroyResponse);
 
+    // AddFinalizer adds a finalizer on the resource.
+    //
+    // Resource should be a strong input of the controller.
 	rpc AddFinalizer(RuntimeAddFinalizerRequest) returns (RuntimeAddFinalizerResponse);
+
+    // RemoveFinalizer remove a finalizer from the resource.
+    //
+    // Resource should be a strong input of the controller.
 	rpc RemoveFinalizer(RuntimeRemoveFinalizerRequest) returns (RuntimeRemoveFinalizerResponse);
 }
 
 enum ControllerInputKind {
+    // Controllers are notified on changes to weak inputs.
+    //
+    // Weak inputs can't have finalizers set on.
+    // Controller watches weak inputs, but it doesn't depend in a strong way on a resource,
+    // so that resource can be deleted without any cleanup required on the controller side.
     WEAK = 0;
+    // Strong inputs build upon weak inputs, the difference is that controller signals
+    // that it should be notified (via teardown) that resource is going to be deleted.
+    //
+    // Controller can add finalizers on strong inputs.
     STRONG = 1;
 }
 
+// ControllerInput describes resources which controller depends on.
+//
+// Controller is notified about each input resource change.
+// Controller can either depend on a specific resource instance (by id) or
+// it might watch all the resources under a namespace.
+// Controller input might not exist yet when the input is registered.
+//
+// Controller has read-only access to its inputs.
 message ControllerInput {
     ControllerInputKind kind = 1;
     string namespace = 2;
@@ -51,10 +145,23 @@ message ControllerInput {
 }
 
 enum ControllerOutputKind {
+    // Exclusive output implies that the resource type is owned by a single controller.
+    //
+    // No other controller can register same resource type as either exclusive or shared output,
+    // so any resource of the type is only modified by a single controller.
     EXCLUSIVE = 0;
+    // Shared output means that controller only owns instances of the resource type which were created
+    // by the controller.
+    //
+    // Many controllers can register same resource type as a shared output. Each controller owns
+    // only the resources which were created by the controller.
     SHARED = 1;
 }
 
+// ControllerOutput describes resources which controller can modify (created, update and destroy).
+//
+// Output is defined by a resource type, so controller claims ownerships of the resource type across
+// all namespaces.
 message ControllerOutput {
     string type = 2;
     ControllerOutputKind kind = 3;

@@ -5,8 +5,8 @@
 package inmem
 
 import (
-	"github.com/talos-systems/os-runtime/pkg/resource"
-	"github.com/talos-systems/os-runtime/pkg/state"
+	"github.com/cosi-project/runtime/pkg/resource"
+	"github.com/cosi-project/runtime/pkg/state"
 )
 
 // Build a local state for namespace.

@@ -10,8 +10,8 @@ import (
 	"github.com/AlekSi/pointer"
 	"github.com/hashicorp/go-memdb"
 
-	"github.com/talos-systems/os-runtime/pkg/controller"
-	"github.com/talos-systems/os-runtime/pkg/resource"
+	"github.com/cosi-project/runtime/pkg/controller"
+	"github.com/cosi-project/runtime/pkg/resource"
 )
 
 // Database tracks dependencies between resources and controllers (and vice versa).

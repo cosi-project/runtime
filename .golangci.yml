@@ -1,6 +1,6 @@
 # THIS FILE WAS AUTOMATICALLY GENERATED, PLEASE DO NOT EDIT.
 #
-# Generated on 2021-03-16T18:14:27Z by kres 424ae88-dirty.
+# Generated on 2021-04-08T12:27:41Z by kres 7917d0d-dirty.
 
 
 # options for analysis running
@@ -38,7 +38,7 @@ linters-settings:
     lines: 60
     statements: 40
   gci:
-    local-prefixes: github.com/talos-systems/os-runtime
+    local-prefixes: github.com/cosi-project/runtime
   gocognit:
     min-complexity: 30
   nestif:
@@ -60,7 +60,7 @@ linters-settings:
   gofmt:
     simplify: true
   goimports:
-    local-prefixes: github.com/talos-systems/os-runtime
+    local-prefixes: github.com/cosi-project/runtime
   golint:
     min-confidence: 0.8
   gomnd:

@@ -8,7 +8,7 @@ package main
 import (
 	"fmt"
 
-	"github.com/talos-systems/os-runtime/pkg/resource"
+	"github.com/cosi-project/runtime/pkg/resource"
 )
 
 const PathResourceType = resource.Type("os/path")

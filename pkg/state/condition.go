@@ -5,7 +5,7 @@
 package state
 
 import (
-	"github.com/talos-systems/os-runtime/pkg/resource"
+	"github.com/cosi-project/runtime/pkg/resource"
 )
 
 // ResourceConditionFunc checks some condition on the resource.

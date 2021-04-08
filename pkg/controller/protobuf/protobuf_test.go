@@ -15,17 +15,17 @@ import (
 	suiterunner "github.com/stretchr/testify/suite"
 	"google.golang.org/grpc"
 
-	"github.com/talos-systems/os-runtime/api/v1alpha1"
-	"github.com/talos-systems/os-runtime/pkg/controller/conformance"
-	runtimeclient "github.com/talos-systems/os-runtime/pkg/controller/protobuf/client"
-	runtimeserver "github.com/talos-systems/os-runtime/pkg/controller/protobuf/server"
-	"github.com/talos-systems/os-runtime/pkg/controller/runtime"
-	"github.com/talos-systems/os-runtime/pkg/resource/protobuf"
-	"github.com/talos-systems/os-runtime/pkg/state"
-	"github.com/talos-systems/os-runtime/pkg/state/impl/inmem"
-	"github.com/talos-systems/os-runtime/pkg/state/impl/namespaced"
-	"github.com/talos-systems/os-runtime/pkg/state/protobuf/client"
-	"github.com/talos-systems/os-runtime/pkg/state/protobuf/server"
+	"github.com/cosi-project/runtime/api/v1alpha1"
+	"github.com/cosi-project/runtime/pkg/controller/conformance"
+	runtimeclient "github.com/cosi-project/runtime/pkg/controller/protobuf/client"
+	runtimeserver "github.com/cosi-project/runtime/pkg/controller/protobuf/server"
+	"github.com/cosi-project/runtime/pkg/controller/runtime"
+	"github.com/cosi-project/runtime/pkg/resource/protobuf"
+	"github.com/cosi-project/runtime/pkg/state"
+	"github.com/cosi-project/runtime/pkg/state/impl/inmem"
+	"github.com/cosi-project/runtime/pkg/state/impl/namespaced"
+	"github.com/cosi-project/runtime/pkg/state/protobuf/client"
+	"github.com/cosi-project/runtime/pkg/state/protobuf/server"
 )
 
 type ProtobufConformanceSuite struct {

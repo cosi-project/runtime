@@ -1,7 +1,7 @@
 ---
 # THIS FILE WAS AUTOMATICALLY GENERATED, PLEASE DO NOT EDIT.
 #
-# Generated on 2021-03-18T20:16:50Z by kres 424ae88-dirty.
+# Generated on 2021-04-08T12:45:13Z by kres 7917d0d-dirty.
 
 kind: pipeline
 type: kubernetes
@@ -105,28 +105,11 @@ steps:
   depends_on:
   - unit-tests
 
-- name: directory-fun
+- name: cosi-runtime
   pull: always
   image: autonomy/build-container:latest
   commands:
-  - make directory-fun
-  volumes:
-  - name: outer-docker-socket
-    path: /var/outer-run
-  - name: docker-socket
-    path: /var/run
-  - name: buildx
-    path: /root/.docker/buildx
-  - name: ssh
-    path: /root/.ssh
-  depends_on:
-  - base
-
-- name: os-runtime
-  pull: always
-  image: autonomy/build-container:latest
-  commands:
-  - make os-runtime
+  - make cosi-runtime
   volumes:
   - name: outer-docker-socket
     path: /var/outer-run
@@ -156,11 +139,11 @@ steps:
   depends_on:
   - base
 
-- name: image-os-runtime
+- name: image-cosi-runtime
   pull: always
   image: autonomy/build-container:latest
   commands:
-  - make image-os-runtime
+  - make image-cosi-runtime
   volumes:
   - name: outer-docker-socket
     path: /var/outer-run
@@ -171,16 +154,16 @@ steps:
   - name: ssh
     path: /root/.ssh
   depends_on:
-  - os-runtime
+  - cosi-runtime
   - lint
   - unit-tests
 
-- name: push-os-runtime
+- name: push-cosi-runtime
   pull: always
   image: autonomy/build-container:latest
   commands:
   - docker login ghcr.io --username "$${GHCR_USERNAME}" --password "$${GHCR_PASSWORD}"
-  - make image-os-runtime
+  - make image-cosi-runtime
   environment:
     GHCR_PASSWORD:
       from_secret: ghcr_token
@@ -201,14 +184,14 @@ steps:
       exclude:
       - pull_request
   depends_on:
-  - image-os-runtime
+  - image-cosi-runtime
 
-- name: push-os-runtime-latest
+- name: push-cosi-runtime-latest
   pull: always
   image: autonomy/build-container:latest
   commands:
   - docker login ghcr.io --username "$${GHCR_USERNAME}" --password "$${GHCR_PASSWORD}"
-  - make image-os-runtime TAG=latest
+  - make image-cosi-runtime TAG=latest
   environment:
     GHCR_PASSWORD:
       from_secret: ghcr_token
@@ -231,7 +214,24 @@ steps:
       exclude:
       - pull_request
   depends_on:
-  - push-os-runtime
+  - push-cosi-runtime
+
+- name: directory-fun
+  pull: always
+  image: autonomy/build-container:latest
+  commands:
+  - make directory-fun
+  volumes:
+  - name: outer-docker-socket
+    path: /var/outer-run
+  - name: docker-socket
+    path: /var/run
+  - name: buildx
+    path: /root/.docker/buildx
+  - name: ssh
+    path: /root/.ssh
+  depends_on:
+  - base
 
 - name: run-directory-fun
   pull: always

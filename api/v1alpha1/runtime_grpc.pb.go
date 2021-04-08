@@ -18,11 +18,21 @@ const _ = grpc.SupportPackageIsVersion7
 //
 // For semantics around ctx use and closing/ending streaming RPCs, please refer to https://pkg.go.dev/google.golang.org/grpc/?tab=doc#ClientConn.NewStream.
 type ControllerRuntimeClient interface {
-	// RegisterController registers controller and establishes token for ControllerAdapter calls.
+	// RegisterController registers the controller and establishes a token for ControllerAdapter calls.
+	//
+	// RegisterController builds initial set of inputs and outputs for the controller.
+	// If there's a conflict on inputs or outputs, RegisterController fails.
+	// RegisterController enforces unique controller names.
 	RegisterController(ctx context.Context, in *RegisterControllerRequest, opts ...grpc.CallOption) (*RegisterControllerResponse, error)
-	// Start should be called when controllers were registered.
+	// Start the controller runtime.
+	//
+	// Start should only be called once.
+	// Once the runtime is started, controllers start receiving reconcile events via
+	// the ControllerAdapter APIs.
 	Start(ctx context.Context, in *StartRequest, opts ...grpc.CallOption) (*StartResponse, error)
-	// Stop controller runtime.
+	// Stop the controller runtime.
+	//
+	// Stop should only be called once.
 	Stop(ctx context.Context, in *StopRequest, opts ...grpc.CallOption) (*StopResponse, error)
 }
 
@@ -65,11 +75,21 @@ func (c *controllerRuntimeClient) Stop(ctx context.Context, in *StopRequest, opt
 // All implementations must embed UnimplementedControllerRuntimeServer
 // for forward compatibility
 type ControllerRuntimeServer interface {
-	// RegisterController registers controller and establishes token for ControllerAdapter calls.
+	// RegisterController registers the controller and establishes a token for ControllerAdapter calls.
+	//
+	// RegisterController builds initial set of inputs and outputs for the controller.
+	// If there's a conflict on inputs or outputs, RegisterController fails.
+	// RegisterController enforces unique controller names.
 	RegisterController(context.Context, *RegisterControllerRequest) (*RegisterControllerResponse, error)
-	// Start should be called when controllers were registered.
+	// Start the controller runtime.
+	//
+	// Start should only be called once.
+	// Once the runtime is started, controllers start receiving reconcile events via
+	// the ControllerAdapter APIs.
 	Start(context.Context, *StartRequest) (*StartResponse, error)
-	// Stop controller runtime.
+	// Stop the controller runtime.
+	//
+	// Stop should only be called once.
 	Stop(context.Context, *StopRequest) (*StopResponse, error)
 	mustEmbedUnimplementedControllerRuntimeServer()
 }
@@ -182,22 +202,64 @@ var ControllerRuntime_ServiceDesc = grpc.ServiceDesc{
 //
 // For semantics around ctx use and closing/ending streaming RPCs, please refer to https://pkg.go.dev/google.golang.org/grpc/?tab=doc#ClientConn.NewStream.
 type ControllerAdapterClient interface {
-	// ReconcileEvents sends message on each reconcile event for the controller.
+	// ReconcileEvents sends a message on each reconcile event to the controller.
+	//
+	// Controller is supposed to called 'ReconcileEvents' on start and run reconcile loop
+	// each time there is an event received.
 	ReconcileEvents(ctx context.Context, in *ReconcileEventsRequest, opts ...grpc.CallOption) (ControllerAdapter_ReconcileEventsClient, error)
-	// QueueReconcile queues another reconcile event.
 	QueueReconcile(ctx context.Context, in *QueueReconcileRequest, opts ...grpc.CallOption) (*QueueReconcileResponse, error)
-	// UpdateInputs updates list of controller inputs.
+	// UpdateInputs updates the list of controller inputs.
+	//
+	// This call replaces the list of inputs with the new list.
+	// For any new inputs a separate watch is established and reconcile
+	// events are sent for new inputs.
 	UpdateInputs(ctx context.Context, in *UpdateInputsRequest, opts ...grpc.CallOption) (*UpdateInputsResponse, error)
-	// Reader APIs.
+	// Get a resource.
+	//
+	// Resource should be either input or ouput of the controller.
 	Get(ctx context.Context, in *RuntimeGetRequest, opts ...grpc.CallOption) (*RuntimeGetResponse, error)
+	// List resources.
+	//
+	// Resource should be either input or ouput of the controller.
 	List(ctx context.Context, in *RuntimeListRequest, opts ...grpc.CallOption) (ControllerAdapter_ListClient, error)
+	// WatchFor a specific resource state.
+	//
+	// Resource should be either input or ouput of the controller.
 	WatchFor(ctx context.Context, in *RuntimeWatchForRequest, opts ...grpc.CallOption) (*RuntimeWatchForResponse, error)
-	// Writer APIs.
+	// Create a new resource.
+	//
+	// Resource should be an output of the controller.
 	Create(ctx context.Context, in *RuntimeCreateRequest, opts ...grpc.CallOption) (*RuntimeCreateResponse, error)
+	// Update a resource.
+	//
+	// Up-to-date current version should be specified for the update to succeed.
+	//
+	// Resource should be an output of the controller, for shared outputs
+	// resource should be owned by the controller.
 	Update(ctx context.Context, in *RuntimeUpdateRequest, opts ...grpc.CallOption) (*RuntimeUpdateResponse, error)
+	// Teardown marks a resource as going through the teardown phase.
+	//
+	// Teardown phase notifies other controllers using the resource as a strong input
+	// that the resource is going away, and once cleanup is done, finalizer should be removed
+	// which unblocks resource destruction.
+	//
+	// Resource should be an output of the controller, for shared outputs
+	// resource should be owned by the controller.
 	Teardown(ctx context.Context, in *RuntimeTeardownRequest, opts ...grpc.CallOption) (*RuntimeTeardownResponse, error)
+	// Destroy a resource.
+	//
+	// Resource should have no finalizers to be destroyed.
+	//
+	// Resource should be an output of the controller, for shared outputs
+	// resource should be owned by the controller.
 	Destroy(ctx context.Context, in *RuntimeDestroyRequest, opts ...grpc.CallOption) (*RuntimeDestroyResponse, error)
+	// AddFinalizer adds a finalizer on the resource.
+	//
+	// Resource should be a strong input of the controller.
 	AddFinalizer(ctx context.Context, in *RuntimeAddFinalizerRequest, opts ...grpc.CallOption) (*RuntimeAddFinalizerResponse, error)
+	// RemoveFinalizer remove a finalizer from the resource.
+	//
+	// Resource should be a strong input of the controller.
 	RemoveFinalizer(ctx context.Context, in *RuntimeRemoveFinalizerRequest, opts ...grpc.CallOption) (*RuntimeRemoveFinalizerResponse, error)
 }
 
@@ -367,22 +429,64 @@ func (c *controllerAdapterClient) RemoveFinalizer(ctx context.Context, in *Runti
 // All implementations must embed UnimplementedControllerAdapterServer
 // for forward compatibility
 type ControllerAdapterServer interface {
-	// ReconcileEvents sends message on each reconcile event for the controller.
+	// ReconcileEvents sends a message on each reconcile event to the controller.
+	//
+	// Controller is supposed to called 'ReconcileEvents' on start and run reconcile loop
+	// each time there is an event received.
 	ReconcileEvents(*ReconcileEventsRequest, ControllerAdapter_ReconcileEventsServer) error
-	// QueueReconcile queues another reconcile event.
 	QueueReconcile(context.Context, *QueueReconcileRequest) (*QueueReconcileResponse, error)
-	// UpdateInputs updates list of controller inputs.
+	// UpdateInputs updates the list of controller inputs.
+	//
+	// This call replaces the list of inputs with the new list.
+	// For any new inputs a separate watch is established and reconcile
+	// events are sent for new inputs.
 	UpdateInputs(context.Context, *UpdateInputsRequest) (*UpdateInputsResponse, error)
-	// Reader APIs.
+	// Get a resource.
+	//
+	// Resource should be either input or ouput of the controller.
 	Get(context.Context, *RuntimeGetRequest) (*RuntimeGetResponse, error)
+	// List resources.
+	//
+	// Resource should be either input or ouput of the controller.
 	List(*RuntimeListRequest, ControllerAdapter_ListServer) error
+	// WatchFor a specific resource state.
+	//
+	// Resource should be either input or ouput of the controller.
 	WatchFor(context.Context, *RuntimeWatchForRequest) (*RuntimeWatchForResponse, error)
-	// Writer APIs.
+	// Create a new resource.
+	//
+	// Resource should be an output of the controller.
 	Create(context.Context, *RuntimeCreateRequest) (*RuntimeCreateResponse, error)
+	// Update a resource.
+	//
+	// Up-to-date current version should be specified for the update to succeed.
+	//
+	// Resource should be an output of the controller, for shared outputs
+	// resource should be owned by the controller.
 	Update(context.Context, *RuntimeUpdateRequest) (*RuntimeUpdateResponse, error)
+	// Teardown marks a resource as going through the teardown phase.
+	//
+	// Teardown phase notifies other controllers using the resource as a strong input
+	// that the resource is going away, and once cleanup is done, finalizer should be removed
+	// which unblocks resource destruction.
+	//
+	// Resource should be an output of the controller, for shared outputs
+	// resource should be owned by the controller.
 	Teardown(context.Context, *RuntimeTeardownRequest) (*RuntimeTeardownResponse, error)
+	// Destroy a resource.
+	//
+	// Resource should have no finalizers to be destroyed.
+	//
+	// Resource should be an output of the controller, for shared outputs
+	// resource should be owned by the controller.
 	Destroy(context.Context, *RuntimeDestroyRequest) (*RuntimeDestroyResponse, error)
+	// AddFinalizer adds a finalizer on the resource.
+	//
+	// Resource should be a strong input of the controller.
 	AddFinalizer(context.Context, *RuntimeAddFinalizerRequest) (*RuntimeAddFinalizerResponse, error)
+	// RemoveFinalizer remove a finalizer from the resource.
+	//
+	// Resource should be a strong input of the controller.
 	RemoveFinalizer(context.Context, *RuntimeRemoveFinalizerRequest) (*RuntimeRemoveFinalizerResponse, error)
 	mustEmbedUnimplementedControllerAdapterServer()
 }

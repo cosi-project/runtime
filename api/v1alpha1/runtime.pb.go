@@ -28,7 +28,16 @@ const _ = proto.ProtoPackageIsVersion4
 type ControllerInputKind int32
 
 const (
-	ControllerInputKind_WEAK   ControllerInputKind = 0
+	// Controllers are notified on changes to weak inputs.
+	//
+	// Weak inputs can't have finalizers set on.
+	// Controller watches weak inputs, but it doesn't depend in a strong way on a resource,
+	// so that resource can be deleted without any cleanup required on the controller side.
+	ControllerInputKind_WEAK ControllerInputKind = 0
+	// Strong inputs build upon weak inputs, the difference is that controller signals
+	// that it should be notified (via teardown) that resource is going to be deleted.
+	//
+	// Controller can add finalizers on strong inputs.
 	ControllerInputKind_STRONG ControllerInputKind = 1
 )
 
@@ -74,8 +83,17 @@ func (ControllerInputKind) EnumDescriptor() ([]byte, []int) {
 type ControllerOutputKind int32
 
 const (
+	// Exclusive output implies that the resource type is owned by a single controller.
+	//
+	// No other controller can register same resource type as either exclusive or shared output,
+	// so any resource of the type is only modified by a single controller.
 	ControllerOutputKind_EXCLUSIVE ControllerOutputKind = 0
-	ControllerOutputKind_SHARED    ControllerOutputKind = 1
+	// Shared output means that controller only owns instances of the resource type which were created
+	// by the controller.
+	//
+	// Many controllers can register same resource type as a shared output. Each controller owns
+	// only the resources which were created by the controller.
+	ControllerOutputKind_SHARED ControllerOutputKind = 1
 )
 
 // Enum value maps for ControllerOutputKind.
@@ -117,6 +135,14 @@ func (ControllerOutputKind) EnumDescriptor() ([]byte, []int) {
 	return file_v1alpha1_runtime_proto_rawDescGZIP(), []int{1}
 }
 
+// ControllerInput describes resources which controller depends on.
+//
+// Controller is notified about each input resource change.
+// Controller can either depend on a specific resource instance (by id) or
+// it might watch all the resources under a namespace.
+// Controller input might not exist yet when the input is registered.
+//
+// Controller has read-only access to its inputs.
 type ControllerInput struct {
 	state         protoimpl.MessageState
 	sizeCache     protoimpl.SizeCache
@@ -188,6 +214,10 @@ func (x *ControllerInput) GetId() string {
 	return ""
 }
 
+// ControllerOutput describes resources which controller can modify (created, update and destroy).
+//
+// Output is defined by a resource type, so controller claims ownerships of the resource type across
+// all namespaces.
 type ControllerOutput struct {
 	state         protoimpl.MessageState
 	sizeCache     protoimpl.SizeCache
@@ -2069,11 +2099,11 @@ var file_v1alpha1_runtime_proto_rawDesc = []byte{
 	0x46, 0x69, 0x6e, 0x61, 0x6c, 0x69, 0x7a, 0x65, 0x72, 0x52, 0x65, 0x71, 0x75, 0x65, 0x73, 0x74,
 	0x1a, 0x27, 0x2e, 0x72, 0x75, 0x6e, 0x74, 0x69, 0x6d, 0x65, 0x2e, 0x52, 0x75, 0x6e, 0x74, 0x69,
 	0x6d, 0x65, 0x52, 0x65, 0x6d, 0x6f, 0x76, 0x65, 0x46, 0x69, 0x6e, 0x61, 0x6c, 0x69, 0x7a, 0x65,
-	0x72, 0x52, 0x65, 0x73, 0x70, 0x6f, 0x6e, 0x73, 0x65, 0x42, 0x32, 0x5a, 0x30, 0x67, 0x69, 0x74,
-	0x68, 0x75, 0x62, 0x2e, 0x63, 0x6f, 0x6d, 0x2f, 0x74, 0x61, 0x6c, 0x6f, 0x73, 0x2d, 0x73, 0x79,
-	0x73, 0x74, 0x65, 0x6d, 0x73, 0x2f, 0x6f, 0x73, 0x2d, 0x72, 0x75, 0x6e, 0x74, 0x69, 0x6d, 0x65,
-	0x2f, 0x61, 0x70, 0x69, 0x2f, 0x76, 0x31, 0x61, 0x6c, 0x70, 0x68, 0x61, 0x31, 0x62, 0x06, 0x70,
-	0x72, 0x6f, 0x74, 0x6f, 0x33,
+	0x72, 0x52, 0x65, 0x73, 0x70, 0x6f, 0x6e, 0x73, 0x65, 0x42, 0x2e, 0x5a, 0x2c, 0x67, 0x69, 0x74,
+	0x68, 0x75, 0x62, 0x2e, 0x63, 0x6f, 0x6d, 0x2f, 0x63, 0x6f, 0x73, 0x69, 0x2d, 0x70, 0x72, 0x6f,
+	0x6a, 0x65, 0x63, 0x74, 0x2f, 0x72, 0x75, 0x6e, 0x74, 0x69, 0x6d, 0x65, 0x2f, 0x61, 0x70, 0x69,
+	0x2f, 0x76, 0x31, 0x61, 0x6c, 0x70, 0x68, 0x61, 0x31, 0x62, 0x06, 0x70, 0x72, 0x6f, 0x74, 0x6f,
+	0x33,
 }
 
 var (
