@@ -15,6 +15,8 @@ require (
 	github.com/stretchr/testify v1.7.0
 	github.com/talos-systems/go-retry v0.2.1-0.20210119124456-b9dc1a990133
 	go.uber.org/goleak v1.1.10
+	go.uber.org/multierr v1.6.0 // indirect
+	go.uber.org/zap v1.16.0
 	golang.org/x/sync v0.0.0-20210220032951-036812b2e83c
 	google.golang.org/grpc v1.36.1
 	google.golang.org/protobuf v1.26.0

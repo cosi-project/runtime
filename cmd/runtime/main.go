@@ -21,6 +21,7 @@ import (
 	"github.com/cosi-project/runtime/api/v1alpha1"
 	runtimeserver "github.com/cosi-project/runtime/pkg/controller/protobuf/server"
 	"github.com/cosi-project/runtime/pkg/controller/runtime"
+	"github.com/cosi-project/runtime/pkg/logging"
 	"github.com/cosi-project/runtime/pkg/state"
 	"github.com/cosi-project/runtime/pkg/state/impl/inmem"
 	"github.com/cosi-project/runtime/pkg/state/impl/namespaced"
@@ -79,7 +80,7 @@ func run() error {
 
 	inmemState := state.WrapCore(namespaced.NewState(inmem.Build))
 
-	logger := log.New(log.Writer(), "controller-runtime: ", log.Flags())
+	logger := logging.DefaultLogger()
 
 	controllerRuntime, err := runtime.NewRuntime(inmemState, logger)
 	if err != nil {

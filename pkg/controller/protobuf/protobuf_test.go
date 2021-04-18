@@ -6,7 +6,6 @@ package protobuf_test
 
 import (
 	"io/ioutil"
-	"log"
 	"net"
 	"os"
 	"testing"
@@ -20,6 +19,7 @@ import (
 	runtimeclient "github.com/cosi-project/runtime/pkg/controller/protobuf/client"
 	runtimeserver "github.com/cosi-project/runtime/pkg/controller/protobuf/server"
 	"github.com/cosi-project/runtime/pkg/controller/runtime"
+	"github.com/cosi-project/runtime/pkg/logging"
 	"github.com/cosi-project/runtime/pkg/resource/protobuf"
 	"github.com/cosi-project/runtime/pkg/state"
 	"github.com/cosi-project/runtime/pkg/state/impl/inmem"
@@ -57,7 +57,7 @@ func TestProtobufConformance(t *testing.T) {
 
 		inmemState := state.WrapCore(namespaced.NewState(inmem.Build))
 
-		logger := log.New(log.Writer(), "controller-runtime: ", log.Flags())
+		logger := logging.DefaultLogger()
 
 		controllerRuntime, err := runtime.NewRuntime(inmemState, logger)
 		require.NoError(t, err)

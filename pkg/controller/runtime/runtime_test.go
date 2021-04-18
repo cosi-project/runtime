@@ -5,7 +5,6 @@
 package runtime_test
 
 import (
-	"log"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -15,6 +14,7 @@ import (
 	"github.com/cosi-project/runtime/pkg/controller"
 	"github.com/cosi-project/runtime/pkg/controller/conformance"
 	"github.com/cosi-project/runtime/pkg/controller/runtime"
+	"github.com/cosi-project/runtime/pkg/logging"
 	"github.com/cosi-project/runtime/pkg/state"
 	"github.com/cosi-project/runtime/pkg/state/impl/inmem"
 	"github.com/cosi-project/runtime/pkg/state/impl/namespaced"
@@ -31,7 +31,7 @@ func TestRuntimeConformance(t *testing.T) {
 
 		var err error
 
-		logger := log.New(log.Writer(), "controller-runtime: ", log.Flags())
+		logger := logging.DefaultLogger()
 
 		suite.Runtime, err = runtime.NewRuntime(suite.State, logger)
 		suite.Require().NoError(err)

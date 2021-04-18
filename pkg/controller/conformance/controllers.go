@@ -7,8 +7,9 @@ package conformance
 import (
 	"context"
 	"fmt"
-	"log"
 	"strconv"
+
+	"go.uber.org/zap"
 
 	"github.com/cosi-project/runtime/pkg/controller"
 	"github.com/cosi-project/runtime/pkg/resource"
@@ -50,7 +51,7 @@ func (ctrl *IntToStrController) Outputs() []controller.Output {
 // Run implements controller.Controller interface.
 //
 //nolint: gocognit
-func (ctrl *IntToStrController) Run(ctx context.Context, r controller.Runtime, logger *log.Logger) error {
+func (ctrl *IntToStrController) Run(ctx context.Context, r controller.Runtime, logger *zap.Logger) error {
 	sourceMd := resource.NewMetadata(ctrl.SourceNamespace, IntResourceType, "", resource.VersionUndefined)
 
 	for {
@@ -148,7 +149,7 @@ func (ctrl *StrToSentenceController) Outputs() []controller.Output {
 // Run implements controller.Controller interface.
 //
 //nolint: gocognit
-func (ctrl *StrToSentenceController) Run(ctx context.Context, r controller.Runtime, logger *log.Logger) error {
+func (ctrl *StrToSentenceController) Run(ctx context.Context, r controller.Runtime, logger *zap.Logger) error {
 	if err := r.UpdateInputs([]controller.Input{
 		{
 			Namespace: ctrl.SourceNamespace,
@@ -253,7 +254,7 @@ func (ctrl *SumController) Outputs() []controller.Output {
 }
 
 // Run implements controller.Controller interface.
-func (ctrl *SumController) Run(ctx context.Context, r controller.Runtime, logger *log.Logger) error {
+func (ctrl *SumController) Run(ctx context.Context, r controller.Runtime, logger *zap.Logger) error {
 	if err := r.UpdateInputs([]controller.Input{
 		{
 			Namespace: ctrl.SourceNamespace,
@@ -322,7 +323,7 @@ func (ctrl *FailingController) Outputs() []controller.Output {
 }
 
 // Run implements controller.Controller interface.
-func (ctrl *FailingController) Run(ctx context.Context, r controller.Runtime, logger *log.Logger) error {
+func (ctrl *FailingController) Run(ctx context.Context, r controller.Runtime, logger *zap.Logger) error {
 	select {
 	case <-ctx.Done():
 		return nil

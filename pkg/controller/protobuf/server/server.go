@@ -7,9 +7,9 @@ package server
 
 import (
 	"context"
-	"log"
 	"sync"
 
+	"go.uber.org/zap"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 
@@ -63,7 +63,7 @@ func (bridge *controllerBridge) Inputs() []controller.Input {
 	return bridge.inputs
 }
 
-func (bridge *controllerBridge) Run(ctx context.Context, adapter controller.Runtime, logger *log.Logger) error {
+func (bridge *controllerBridge) Run(ctx context.Context, adapter controller.Runtime, logger *zap.Logger) error {
 	bridge.adapter = adapter
 	close(bridge.adapterWait)
 
