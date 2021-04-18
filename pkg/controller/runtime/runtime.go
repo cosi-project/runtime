@@ -8,11 +8,11 @@ package runtime
 import (
 	"context"
 	"fmt"
-	"log"
 	"sync"
 
 	"github.com/AlekSi/pointer"
 	"github.com/cenkalti/backoff/v4"
+	"go.uber.org/zap"
 
 	"github.com/cosi-project/runtime/pkg/controller"
 	"github.com/cosi-project/runtime/pkg/controller/runtime/dependency"
@@ -25,7 +25,7 @@ type Runtime struct { //nolint: govet
 	depDB *dependency.Database
 
 	state  state.State
-	logger *log.Logger
+	logger *zap.Logger
 
 	watchCh   chan state.Event
 	watchedMu sync.Mutex
@@ -45,7 +45,7 @@ type watchKey struct {
 }
 
 // NewRuntime initializes controller runtime object.
-func NewRuntime(st state.State, logger *log.Logger) (*Runtime, error) {
+func NewRuntime(st state.State, logger *zap.Logger) (*Runtime, error) {
 	runtime := &Runtime{
 		state:       st,
 		logger:      logger,

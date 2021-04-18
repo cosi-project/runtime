@@ -8,16 +8,17 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"log"
 	"runtime/debug"
 	"sort"
 	"time"
 
 	"github.com/AlekSi/pointer"
 	"github.com/cenkalti/backoff/v4"
+	"go.uber.org/zap"
 
 	"github.com/cosi-project/runtime/pkg/controller"
 	"github.com/cosi-project/runtime/pkg/controller/runtime/dependency"
+	"github.com/cosi-project/runtime/pkg/logging"
 	"github.com/cosi-project/runtime/pkg/resource"
 	"github.com/cosi-project/runtime/pkg/state"
 )
@@ -313,7 +314,7 @@ func (adapter *adapter) triggerReconcile() {
 }
 
 func (adapter *adapter) run(ctx context.Context) {
-	logger := log.New(adapter.runtime.logger.Writer(), fmt.Sprintf("%s %s: ", adapter.runtime.logger.Prefix(), adapter.name), adapter.runtime.logger.Flags())
+	logger := adapter.runtime.logger.With(logging.Controller(adapter.name))
 
 	for {
 		err := adapter.runOnce(ctx, logger)
@@ -323,7 +324,7 @@ func (adapter *adapter) run(ctx context.Context) {
 
 		interval := adapter.backoff.NextBackOff()
 
-		logger.Printf("restarting controller in %s", interval)
+		logger.Sugar().Debugf("restarting controller in %s", interval)
 
 		select {
 		case <-ctx.Done():
@@ -336,16 +337,16 @@ func (adapter *adapter) run(ctx context.Context) {
 	}
 }
 
-func (adapter *adapter) runOnce(ctx context.Context, logger *log.Logger) (err error) {
+func (adapter *adapter) runOnce(ctx context.Context, logger *zap.Logger) (err error) {
 	defer func() {
 		if err != nil && errors.Is(err, context.Canceled) {
 			err = nil
 		}
 
 		if err != nil {
-			logger.Printf("controller failed: %s", err)
+			logger.Error("controller failed", zap.Error(err))
 		} else {
-			logger.Printf("controller finished")
+			logger.Debug("controller finished")
 		}
 	}()
 
@@ -355,7 +356,7 @@ func (adapter *adapter) runOnce(ctx context.Context, logger *log.Logger) (err er
 		}
 	}()
 
-	logger.Printf("controller starting")
+	logger.Debug("controller starting")
 
 	err = adapter.ctrl.Run(ctx, adapter, logger)
 

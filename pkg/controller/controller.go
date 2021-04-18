@@ -7,7 +7,8 @@ package controller
 
 import (
 	"context"
-	"log"
+
+	"go.uber.org/zap"
 )
 
 // Controller interface should be implemented by Controllers.
@@ -16,7 +17,7 @@ type Controller interface {
 	Inputs() []Input
 	Outputs() []Output
 
-	Run(context.Context, Runtime, *log.Logger) error
+	Run(context.Context, Runtime, *zap.Logger) error
 }
 
 // Engine is the entrypoint into Controller Runtime.

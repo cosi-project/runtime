@@ -10,18 +10,19 @@ import (
 	"errors"
 	"fmt"
 	"io"
-	"log"
 	"runtime/debug"
 	"sync"
 	"time"
 
 	"github.com/cenkalti/backoff/v4"
 	"github.com/talos-systems/go-retry/retry"
+	"go.uber.org/zap"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 
 	"github.com/cosi-project/runtime/api/v1alpha1"
 	"github.com/cosi-project/runtime/pkg/controller"
+	"github.com/cosi-project/runtime/pkg/logging"
 	"github.com/cosi-project/runtime/pkg/resource"
 	"github.com/cosi-project/runtime/pkg/resource/protobuf"
 	"github.com/cosi-project/runtime/pkg/state"
@@ -31,7 +32,7 @@ import (
 type Adapter struct {
 	client RuntimeClient
 
-	logger *log.Logger
+	logger *zap.Logger
 
 	controllersCond    *sync.Cond
 	controllersCtx     context.Context
@@ -47,7 +48,7 @@ type RuntimeClient interface {
 }
 
 // NewAdapter returns new Adapter from the gRPC client.
-func NewAdapter(client RuntimeClient, logger *log.Logger) *Adapter {
+func NewAdapter(client RuntimeClient, logger *zap.Logger) *Adapter {
 	adapter := &Adapter{
 		client: client,
 		logger: logger,
@@ -220,7 +221,9 @@ type controllerAdapter struct {
 
 func (ctrlAdapter *controllerAdapter) run(ctx context.Context) {
 	ctrlAdapter.ctx = ctx
-	logger := log.New(ctrlAdapter.adapter.logger.Writer(), fmt.Sprintf("%s %s: ", ctrlAdapter.adapter.logger.Prefix(), ctrlAdapter.controller.Name()), ctrlAdapter.adapter.logger.Flags())
+	logger := ctrlAdapter.adapter.logger.With(
+		logging.Controller(ctrlAdapter.controller.Name()),
+	)
 
 	go ctrlAdapter.establishEventChannel()
 
@@ -232,7 +235,7 @@ func (ctrlAdapter *controllerAdapter) run(ctx context.Context) {
 
 		interval := ctrlAdapter.backoff.NextBackOff()
 
-		logger.Printf("restarting controller in %s", interval)
+		logger.Sugar().Infof("restarting controller in %s", interval)
 
 		select {
 		case <-ctx.Done():
@@ -245,16 +248,16 @@ func (ctrlAdapter *controllerAdapter) run(ctx context.Context) {
 	}
 }
 
-func (ctrlAdapter *controllerAdapter) runOnce(ctx context.Context, logger *log.Logger) (err error) {
+func (ctrlAdapter *controllerAdapter) runOnce(ctx context.Context, logger *zap.Logger) (err error) {
 	defer func() {
 		if err != nil && (errors.Is(err, context.Canceled) || status.Code(errors.Unwrap(err)) == codes.Canceled) {
 			err = nil
 		}
 
 		if err != nil {
-			logger.Printf("controller failed: %s", err)
+			logger.Error("controller failed", zap.Error(err))
 		} else {
-			logger.Printf("controller finished")
+			logger.Debug("controller finished")
 		}
 	}()
 
@@ -264,7 +267,7 @@ func (ctrlAdapter *controllerAdapter) runOnce(ctx context.Context, logger *log.L
 		}
 	}()
 
-	logger.Printf("controller starting")
+	logger.Debug("controller starting")
 
 	err = ctrlAdapter.controller.Run(ctx, ctrlAdapter, logger)
 
@@ -328,7 +331,7 @@ func (ctrlAdapter *controllerAdapter) QueueReconcile() {
 		return nil
 	})
 	if err != nil {
-		ctrlAdapter.adapter.logger.Printf("failed queueing reconcile: %s", err)
+		ctrlAdapter.adapter.logger.Error("failed queueing reconcile", zap.Error(err))
 	}
 }
 
