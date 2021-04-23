@@ -74,7 +74,7 @@ func run() error {
 	v1alpha1.RegisterControllerRuntimeServer(grpcServer, grpcRuntime)
 	v1alpha1.RegisterControllerAdapterServer(grpcServer, grpcRuntime)
 
-	log.Printf("starting cosi-runtime service on %q", socketPath)
+	log.Printf("starting runtime service on %q", socketPath)
 
 	var eg errgroup.Group
 

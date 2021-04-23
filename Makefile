@@ -73,7 +73,7 @@ respectively.
 
 endef
 
-all: unit-tests cosi-runtime image-cosi-runtime lint
+all: unit-tests runtime image-runtime lint
 
 .PHONY: clean
 clean:  ## Cleans up all artifacts.
@@ -117,12 +117,12 @@ unit-tests-race:  ## Performs unit tests with race detection enabled.
 coverage:  ## Upload coverage data to codecov.io.
 	bash -c "bash <(curl -s https://codecov.io/bash) -f $(ARTIFACTS)/coverage.txt -X fix"
 
-.PHONY: $(ARTIFACTS)/cosi-runtime
-$(ARTIFACTS)/cosi-runtime:
-	@$(MAKE) local-cosi-runtime DEST=$(ARTIFACTS)
+.PHONY: $(ARTIFACTS)/runtime
+$(ARTIFACTS)/runtime:
+	@$(MAKE) local-runtime DEST=$(ARTIFACTS)
 
-.PHONY: cosi-runtime
-cosi-runtime: $(ARTIFACTS)/cosi-runtime  ## Builds executable for cosi-runtime.
+.PHONY: runtime
+runtime: $(ARTIFACTS)/runtime  ## Builds executable for runtime.
 
 .PHONY: lint-markdown
 lint-markdown:  ## Runs markdownlint.
@@ -131,9 +131,9 @@ lint-markdown:  ## Runs markdownlint.
 .PHONY: lint
 lint: lint-golangci-lint lint-gofumpt lint-markdown  ## Run all linters for the project.
 
-.PHONY: image-cosi-runtime
-image-cosi-runtime:  ## Builds image for cosi-runtime.
-	@$(MAKE) target-$@ TARGET_ARGS="--tag=$(REGISTRY)/$(USERNAME)/cosi-runtime:$(TAG)"
+.PHONY: image-runtime
+image-runtime:  ## Builds image for runtime.
+	@$(MAKE) target-$@ TARGET_ARGS="--tag=$(REGISTRY)/$(USERNAME)/runtime:$(TAG)"
 
 .PHONY: rekres
 rekres:
