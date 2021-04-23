@@ -45,20 +45,20 @@ jobs:
         name: lint
         run: make lint
       -
-        name: cosi-runtime
-        run: make cosi-runtime
+        name: runtime
+        run: make runtime
       -
-        name: image-cosi-runtime
-        run: make image-cosi-runtime
+        name: image-runtime
+        run: make image-runtime
       -
-        name: push-image-cosi-runtime
+        name: push-image-runtime
         if: github.ref == 'refs/heads/master'
         env:
           PUSH: "true"
-        run: make image-cosi-runtime
+        run: make image-runtime
       -
-        name: push-image-cosi-runtime-latest
+        name: push-image-runtime-latest
         if: github.ref == 'refs/heads/master'
         env:
           PUSH: "true"
-        run: make image-cosi-runtime TAG=latest
+        run: make image-runtime TAG=latest

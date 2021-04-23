@@ -94,19 +94,19 @@ COPY --from=proto-compile /api/ /api/
 FROM scratch AS unit-tests
 COPY --from=unit-tests-run /src/coverage.txt /coverage.txt
 
-# builds cosi-runtime
-FROM base AS cosi-runtime-build
+# builds runtime
+FROM base AS runtime-build
 COPY --from=generate / /
-WORKDIR /src/cmd/cosi-runtime
-RUN --mount=type=cache,target=/root/.cache/go-build --mount=type=cache,target=/go/pkg go build -ldflags "-s -w" -o /cosi-runtime
+WORKDIR /src/cmd/runtime
+RUN --mount=type=cache,target=/root/.cache/go-build --mount=type=cache,target=/go/pkg go build -ldflags "-s -w" -o /runtime
 
-FROM scratch AS cosi-runtime
-COPY --from=cosi-runtime-build /cosi-runtime /cosi-runtime
+FROM scratch AS runtime
+COPY --from=runtime-build /runtime /runtime
 
-FROM scratch AS image-cosi-runtime
-COPY --from=cosi-runtime / /
+FROM scratch AS image-runtime
+COPY --from=runtime / /
 COPY --from=image-fhs / /
 COPY --from=image-ca-certificates / /
 LABEL org.opencontainers.image.source https://github.com/cosi-project/runtime
-ENTRYPOINT ["/cosi-runtime"]
+ENTRYPOINT ["/runtime"]
 

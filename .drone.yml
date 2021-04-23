@@ -105,11 +105,11 @@ steps:
   depends_on:
   - unit-tests
 
-- name: cosi-runtime
+- name: runtime
   pull: always
   image: autonomy/build-container:latest
   commands:
-  - make cosi-runtime
+  - make runtime
   volumes:
   - name: outer-docker-socket
     path: /var/outer-run
@@ -139,11 +139,11 @@ steps:
   depends_on:
   - base
 
-- name: image-cosi-runtime
+- name: image-runtime
   pull: always
   image: autonomy/build-container:latest
   commands:
-  - make image-cosi-runtime
+  - make image-runtime
   volumes:
   - name: outer-docker-socket
     path: /var/outer-run
@@ -154,16 +154,16 @@ steps:
   - name: ssh
     path: /root/.ssh
   depends_on:
-  - cosi-runtime
+  - runtime
   - lint
   - unit-tests
 
-- name: push-cosi-runtime
+- name: push-runtime
   pull: always
   image: autonomy/build-container:latest
   commands:
   - docker login ghcr.io --username "$${GHCR_USERNAME}" --password "$${GHCR_PASSWORD}"
-  - make image-cosi-runtime
+  - make image-runtime
   environment:
     GHCR_PASSWORD:
       from_secret: ghcr_token
@@ -184,14 +184,14 @@ steps:
       exclude:
       - pull_request
   depends_on:
-  - image-cosi-runtime
+  - image-runtime
 
-- name: push-cosi-runtime-latest
+- name: push-runtime-latest
   pull: always
   image: autonomy/build-container:latest
   commands:
   - docker login ghcr.io --username "$${GHCR_USERNAME}" --password "$${GHCR_PASSWORD}"
-  - make image-cosi-runtime TAG=latest
+  - make image-runtime TAG=latest
   environment:
     GHCR_PASSWORD:
       from_secret: ghcr_token
@@ -214,7 +214,7 @@ steps:
       exclude:
       - pull_request
   depends_on:
-  - push-cosi-runtime
+  - push-runtime
 
 services:
 - name: docker
