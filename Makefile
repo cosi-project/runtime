@@ -1,6 +1,6 @@
 # THIS FILE WAS AUTOMATICALLY GENERATED, PLEASE DO NOT EDIT.
 #
-# Generated on 2021-04-08T12:45:13Z by kres 7917d0d-dirty.
+# Generated on 2021-04-23T14:02:33Z by kres latest.
 
 # common variables
 
@@ -73,7 +73,7 @@ respectively.
 
 endef
 
-all: unit-tests cosi-runtime image-cosi-runtime directory-fun run-directory-fun lint
+all: unit-tests cosi-runtime image-cosi-runtime lint
 
 .PHONY: clean
 clean:  ## Cleans up all artifacts.
@@ -134,16 +134,6 @@ lint: lint-golangci-lint lint-gofumpt lint-markdown  ## Run all linters for the 
 .PHONY: image-cosi-runtime
 image-cosi-runtime:  ## Builds image for cosi-runtime.
 	@$(MAKE) target-$@ TARGET_ARGS="--tag=$(REGISTRY)/$(USERNAME)/cosi-runtime:$(TAG)"
-
-.PHONY: $(ARTIFACTS)/directory-fun
-$(ARTIFACTS)/directory-fun:
-	@$(MAKE) local-directory-fun DEST=$(ARTIFACTS)
-
-.PHONY: directory-fun
-directory-fun: $(ARTIFACTS)/directory-fun  ## Builds executable for directory-fun.
-
-run-directory-fun: directory-fun
-	@$(ARTIFACTS)/directory-fun
 
 .PHONY: rekres
 rekres:

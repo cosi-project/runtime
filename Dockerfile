@@ -2,7 +2,7 @@
 
 # THIS FILE WAS AUTOMATICALLY GENERATED, PLEASE DO NOT EDIT.
 #
-# Generated on 2021-04-08T16:12:41Z by kres 1844a99-dirty.
+# Generated on 2021-04-23T14:02:33Z by kres latest.
 
 ARG TOOLCHAIN
 
@@ -100,17 +100,8 @@ COPY --from=generate / /
 WORKDIR /src/cmd/cosi-runtime
 RUN --mount=type=cache,target=/root/.cache/go-build --mount=type=cache,target=/go/pkg go build -ldflags "-s -w" -o /cosi-runtime
 
-# builds directory-fun
-FROM base AS directory-fun-build
-COPY --from=generate / /
-WORKDIR /src/cmd/directory-fun
-RUN --mount=type=cache,target=/root/.cache/go-build --mount=type=cache,target=/go/pkg go build -ldflags "-s -w" -o /directory-fun
-
 FROM scratch AS cosi-runtime
 COPY --from=cosi-runtime-build /cosi-runtime /cosi-runtime
-
-FROM scratch AS directory-fun
-COPY --from=directory-fun-build /directory-fun /directory-fun
 
 FROM scratch AS image-cosi-runtime
 COPY --from=cosi-runtime / /
