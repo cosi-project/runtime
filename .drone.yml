@@ -1,7 +1,7 @@
 ---
 # THIS FILE WAS AUTOMATICALLY GENERATED, PLEASE DO NOT EDIT.
 #
-# Generated on 2021-04-08T12:45:13Z by kres 7917d0d-dirty.
+# Generated on 2021-04-23T14:02:33Z by kres latest.
 
 kind: pipeline
 type: kubernetes
@@ -215,40 +215,6 @@ steps:
       - pull_request
   depends_on:
   - push-cosi-runtime
-
-- name: directory-fun
-  pull: always
-  image: autonomy/build-container:latest
-  commands:
-  - make directory-fun
-  volumes:
-  - name: outer-docker-socket
-    path: /var/outer-run
-  - name: docker-socket
-    path: /var/run
-  - name: buildx
-    path: /root/.docker/buildx
-  - name: ssh
-    path: /root/.ssh
-  depends_on:
-  - base
-
-- name: run-directory-fun
-  pull: always
-  image: autonomy/build-container:latest
-  commands:
-  - make run-directory-fun
-  volumes:
-  - name: outer-docker-socket
-    path: /var/outer-run
-  - name: docker-socket
-    path: /var/run
-  - name: buildx
-    path: /root/.docker/buildx
-  - name: ssh
-    path: /root/.ssh
-  depends_on:
-  - directory-fun
 
 services:
 - name: docker
