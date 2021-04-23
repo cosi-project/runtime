@@ -7,11 +7,12 @@
 package v1alpha1
 
 import (
+	reflect "reflect"
+	sync "sync"
+
 	proto "github.com/golang/protobuf/proto"
 	protoreflect "google.golang.org/protobuf/reflect/protoreflect"
 	protoimpl "google.golang.org/protobuf/runtime/protoimpl"
-	reflect "reflect"
-	sync "sync"
 )
 
 const (
@@ -2118,46 +2119,49 @@ func file_v1alpha1_runtime_proto_rawDescGZIP() []byte {
 	return file_v1alpha1_runtime_proto_rawDescData
 }
 
-var file_v1alpha1_runtime_proto_enumTypes = make([]protoimpl.EnumInfo, 2)
-var file_v1alpha1_runtime_proto_msgTypes = make([]protoimpl.MessageInfo, 33)
-var file_v1alpha1_runtime_proto_goTypes = []interface{}{
-	(ControllerInputKind)(0),               // 0: runtime.ControllerInputKind
-	(ControllerOutputKind)(0),              // 1: runtime.ControllerOutputKind
-	(*ControllerInput)(nil),                // 2: runtime.ControllerInput
-	(*ControllerOutput)(nil),               // 3: runtime.ControllerOutput
-	(*RegisterControllerRequest)(nil),      // 4: runtime.RegisterControllerRequest
-	(*RegisterControllerResponse)(nil),     // 5: runtime.RegisterControllerResponse
-	(*StartRequest)(nil),                   // 6: runtime.StartRequest
-	(*StartResponse)(nil),                  // 7: runtime.StartResponse
-	(*StopRequest)(nil),                    // 8: runtime.StopRequest
-	(*StopResponse)(nil),                   // 9: runtime.StopResponse
-	(*ReconcileEventsRequest)(nil),         // 10: runtime.ReconcileEventsRequest
-	(*ReconcileEventsResponse)(nil),        // 11: runtime.ReconcileEventsResponse
-	(*QueueReconcileRequest)(nil),          // 12: runtime.QueueReconcileRequest
-	(*QueueReconcileResponse)(nil),         // 13: runtime.QueueReconcileResponse
-	(*UpdateInputsRequest)(nil),            // 14: runtime.UpdateInputsRequest
-	(*UpdateInputsResponse)(nil),           // 15: runtime.UpdateInputsResponse
-	(*RuntimeGetRequest)(nil),              // 16: runtime.RuntimeGetRequest
-	(*RuntimeGetResponse)(nil),             // 17: runtime.RuntimeGetResponse
-	(*RuntimeListRequest)(nil),             // 18: runtime.RuntimeListRequest
-	(*RuntimeListResponse)(nil),            // 19: runtime.RuntimeListResponse
-	(*RuntimeWatchForRequest)(nil),         // 20: runtime.RuntimeWatchForRequest
-	(*ConditionFinalizersEmpty)(nil),       // 21: runtime.ConditionFinalizersEmpty
-	(*RuntimeWatchForResponse)(nil),        // 22: runtime.RuntimeWatchForResponse
-	(*RuntimeCreateRequest)(nil),           // 23: runtime.RuntimeCreateRequest
-	(*RuntimeCreateResponse)(nil),          // 24: runtime.RuntimeCreateResponse
-	(*RuntimeUpdateRequest)(nil),           // 25: runtime.RuntimeUpdateRequest
-	(*RuntimeUpdateResponse)(nil),          // 26: runtime.RuntimeUpdateResponse
-	(*RuntimeTeardownRequest)(nil),         // 27: runtime.RuntimeTeardownRequest
-	(*RuntimeTeardownResponse)(nil),        // 28: runtime.RuntimeTeardownResponse
-	(*RuntimeDestroyRequest)(nil),          // 29: runtime.RuntimeDestroyRequest
-	(*RuntimeDestroyResponse)(nil),         // 30: runtime.RuntimeDestroyResponse
-	(*RuntimeAddFinalizerRequest)(nil),     // 31: runtime.RuntimeAddFinalizerRequest
-	(*RuntimeAddFinalizerResponse)(nil),    // 32: runtime.RuntimeAddFinalizerResponse
-	(*RuntimeRemoveFinalizerRequest)(nil),  // 33: runtime.RuntimeRemoveFinalizerRequest
-	(*RuntimeRemoveFinalizerResponse)(nil), // 34: runtime.RuntimeRemoveFinalizerResponse
-	(*Resource)(nil),                       // 35: resource.Resource
-}
+var (
+	file_v1alpha1_runtime_proto_enumTypes = make([]protoimpl.EnumInfo, 2)
+	file_v1alpha1_runtime_proto_msgTypes  = make([]protoimpl.MessageInfo, 33)
+	file_v1alpha1_runtime_proto_goTypes   = []interface{}{
+		(ControllerInputKind)(0),               // 0: runtime.ControllerInputKind
+		(ControllerOutputKind)(0),              // 1: runtime.ControllerOutputKind
+		(*ControllerInput)(nil),                // 2: runtime.ControllerInput
+		(*ControllerOutput)(nil),               // 3: runtime.ControllerOutput
+		(*RegisterControllerRequest)(nil),      // 4: runtime.RegisterControllerRequest
+		(*RegisterControllerResponse)(nil),     // 5: runtime.RegisterControllerResponse
+		(*StartRequest)(nil),                   // 6: runtime.StartRequest
+		(*StartResponse)(nil),                  // 7: runtime.StartResponse
+		(*StopRequest)(nil),                    // 8: runtime.StopRequest
+		(*StopResponse)(nil),                   // 9: runtime.StopResponse
+		(*ReconcileEventsRequest)(nil),         // 10: runtime.ReconcileEventsRequest
+		(*ReconcileEventsResponse)(nil),        // 11: runtime.ReconcileEventsResponse
+		(*QueueReconcileRequest)(nil),          // 12: runtime.QueueReconcileRequest
+		(*QueueReconcileResponse)(nil),         // 13: runtime.QueueReconcileResponse
+		(*UpdateInputsRequest)(nil),            // 14: runtime.UpdateInputsRequest
+		(*UpdateInputsResponse)(nil),           // 15: runtime.UpdateInputsResponse
+		(*RuntimeGetRequest)(nil),              // 16: runtime.RuntimeGetRequest
+		(*RuntimeGetResponse)(nil),             // 17: runtime.RuntimeGetResponse
+		(*RuntimeListRequest)(nil),             // 18: runtime.RuntimeListRequest
+		(*RuntimeListResponse)(nil),            // 19: runtime.RuntimeListResponse
+		(*RuntimeWatchForRequest)(nil),         // 20: runtime.RuntimeWatchForRequest
+		(*ConditionFinalizersEmpty)(nil),       // 21: runtime.ConditionFinalizersEmpty
+		(*RuntimeWatchForResponse)(nil),        // 22: runtime.RuntimeWatchForResponse
+		(*RuntimeCreateRequest)(nil),           // 23: runtime.RuntimeCreateRequest
+		(*RuntimeCreateResponse)(nil),          // 24: runtime.RuntimeCreateResponse
+		(*RuntimeUpdateRequest)(nil),           // 25: runtime.RuntimeUpdateRequest
+		(*RuntimeUpdateResponse)(nil),          // 26: runtime.RuntimeUpdateResponse
+		(*RuntimeTeardownRequest)(nil),         // 27: runtime.RuntimeTeardownRequest
+		(*RuntimeTeardownResponse)(nil),        // 28: runtime.RuntimeTeardownResponse
+		(*RuntimeDestroyRequest)(nil),          // 29: runtime.RuntimeDestroyRequest
+		(*RuntimeDestroyResponse)(nil),         // 30: runtime.RuntimeDestroyResponse
+		(*RuntimeAddFinalizerRequest)(nil),     // 31: runtime.RuntimeAddFinalizerRequest
+		(*RuntimeAddFinalizerResponse)(nil),    // 32: runtime.RuntimeAddFinalizerResponse
+		(*RuntimeRemoveFinalizerRequest)(nil),  // 33: runtime.RuntimeRemoveFinalizerRequest
+		(*RuntimeRemoveFinalizerResponse)(nil), // 34: runtime.RuntimeRemoveFinalizerResponse
+		(*Resource)(nil),                       // 35: resource.Resource
+	}
+)
+
 var file_v1alpha1_runtime_proto_depIdxs = []int32{
 	0,  // 0: runtime.ControllerInput.kind:type_name -> runtime.ControllerInputKind
 	1,  // 1: runtime.ControllerOutput.kind:type_name -> runtime.ControllerOutputKind

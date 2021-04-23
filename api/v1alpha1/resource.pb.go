@@ -9,11 +9,12 @@
 package v1alpha1
 
 import (
+	reflect "reflect"
+	sync "sync"
+
 	proto "github.com/golang/protobuf/proto"
 	protoreflect "google.golang.org/protobuf/reflect/protoreflect"
 	protoimpl "google.golang.org/protobuf/runtime/protoimpl"
-	reflect "reflect"
-	sync "sync"
 )
 
 const (
@@ -288,12 +289,15 @@ func file_v1alpha1_resource_proto_rawDescGZIP() []byte {
 	return file_v1alpha1_resource_proto_rawDescData
 }
 
-var file_v1alpha1_resource_proto_msgTypes = make([]protoimpl.MessageInfo, 3)
-var file_v1alpha1_resource_proto_goTypes = []interface{}{
-	(*Metadata)(nil), // 0: resource.Metadata
-	(*Spec)(nil),     // 1: resource.Spec
-	(*Resource)(nil), // 2: resource.Resource
-}
+var (
+	file_v1alpha1_resource_proto_msgTypes = make([]protoimpl.MessageInfo, 3)
+	file_v1alpha1_resource_proto_goTypes  = []interface{}{
+		(*Metadata)(nil), // 0: resource.Metadata
+		(*Spec)(nil),     // 1: resource.Spec
+		(*Resource)(nil), // 2: resource.Resource
+	}
+)
+
 var file_v1alpha1_resource_proto_depIdxs = []int32{
 	0, // 0: resource.Resource.metadata:type_name -> resource.Metadata
 	1, // 1: resource.Resource.spec:type_name -> resource.Spec

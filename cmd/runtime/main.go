@@ -6,6 +6,7 @@ package main
 
 import (
 	"context"
+	"errors"
 	"flag"
 	"fmt"
 	"log"
@@ -26,10 +27,14 @@ import (
 	"github.com/cosi-project/runtime/pkg/state/protobuf/server"
 )
 
-var socketPath string
+var (
+	addressAndPort string
+	socketPath     string
+)
 
 func main() {
-	flag.StringVar(&socketPath, "socket-path", "/var/run/cosi-runtime.sock", "path to the UNIX socket to listen on")
+	flag.StringVar(&socketPath, "socket-path", "/system/runtime.sock", "path to the UNIX socket to listen on")
+	flag.StringVar(&addressAndPort, "address", "", "the address and port to bind to")
 	flag.Parse()
 
 	if err := run(); err != nil {
@@ -53,9 +58,23 @@ func run() error {
 		}
 	}()
 
-	l, err := net.Listen("unix", socketPath)
+	var (
+		network = "unix"
+		address = socketPath
+	)
+
+	if addressAndPort != "" {
+		network = "tcp"
+		address = addressAndPort
+	} else if err := os.Remove(socketPath); err != nil {
+		if !errors.Is(err, os.ErrNotExist) {
+			return err
+		}
+	}
+
+	l, err := net.Listen(network, address)
 	if err != nil {
-		return fmt.Errorf("error setting up listening socket: %w", err)
+		return fmt.Errorf("failed to listen on network address: %w", err)
 	}
 
 	inmemState := state.WrapCore(namespaced.NewState(inmem.Build))
