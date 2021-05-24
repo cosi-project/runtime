@@ -35,6 +35,11 @@ func (ctrl *IntToStrController) Inputs() []controller.Input {
 			Type:      IntResourceType,
 			Kind:      controller.InputStrong,
 		},
+		{
+			Namespace: ctrl.TargetNamespace,
+			Type:      StrResourceType,
+			Kind:      controller.InputDestroyReady,
+		},
 	}
 }
 
@@ -87,26 +92,16 @@ func (ctrl *IntToStrController) Run(ctx context.Context, r controller.Runtime, l
 				}
 			case resource.PhaseTearingDown:
 				ready, err := r.Teardown(ctx, strRes.Metadata())
-				if err != nil {
-					if state.IsNotFoundError(err) {
-						if err = r.RemoveFinalizer(ctx, intRes.Metadata(), strRes.String()); err != nil {
-							return fmt.Errorf("error removing finalizer (str controller): %w", err)
-						}
-
-						continue
-					}
-
+				if err != nil && !state.IsNotFoundError(err) {
 					return fmt.Errorf("error tearing down: %w", err)
 				}
 
-				if !ready {
-					_, err = r.WatchFor(ctx, strRes.Metadata(), state.WithFinalizerEmpty())
-					if err != nil {
-						return fmt.Errorf("error waiting for teardown ready: %w", err)
-					}
+				if err == nil && !ready {
+					// reconcile other resources, reconcile loop will be triggered once resource is ready for teardown
+					continue
 				}
 
-				if err = r.Destroy(ctx, strRes.Metadata()); err != nil {
+				if err = r.Destroy(ctx, strRes.Metadata()); err != nil && !state.IsNotFoundError(err) {
 					return fmt.Errorf("error destroying: %w", err)
 				}
 
@@ -156,6 +151,11 @@ func (ctrl *StrToSentenceController) Run(ctx context.Context, r controller.Runti
 			Type:      StrResourceType,
 			Kind:      controller.InputStrong,
 		},
+		{
+			Namespace: ctrl.TargetNamespace,
+			Type:      SentenceResourceType,
+			Kind:      controller.InputDestroyReady,
+		},
 	}); err != nil {
 		return fmt.Errorf("error setting up dependencies: %w", err)
 	}
@@ -194,26 +194,16 @@ func (ctrl *StrToSentenceController) Run(ctx context.Context, r controller.Runti
 				}
 			case resource.PhaseTearingDown:
 				ready, err := r.Teardown(ctx, sentenceRes.Metadata())
-				if err != nil {
-					if state.IsNotFoundError(err) {
-						if err = r.RemoveFinalizer(ctx, strRes.Metadata(), sentenceRes.String()); err != nil {
-							return fmt.Errorf("error removing finalizer (sentence controller): %w", err)
-						}
-
-						continue
-					}
-
+				if err != nil && !state.IsNotFoundError(err) {
 					return fmt.Errorf("error tearing down: %w", err)
 				}
 
-				if !ready {
-					_, err = r.WatchFor(ctx, sentenceRes.Metadata(), state.WithFinalizerEmpty())
-					if err != nil {
-						return fmt.Errorf("error waiting for teardown ready: %w", err)
-					}
+				if err == nil && !ready {
+					// reconcile other resources, reconcile loop will be triggered once resource is ready for teardown
+					continue
 				}
 
-				if err = r.Destroy(ctx, sentenceRes.Metadata()); err != nil {
+				if err = r.Destroy(ctx, sentenceRes.Metadata()); err != nil && !state.IsNotFoundError(err) {
 					return fmt.Errorf("error destroying: %w", err)
 				}
 

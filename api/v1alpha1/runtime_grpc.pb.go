@@ -4,7 +4,6 @@ package v1alpha1
 
 import (
 	context "context"
-
 	grpc "google.golang.org/grpc"
 	codes "google.golang.org/grpc/codes"
 	status "google.golang.org/grpc/status"
@@ -102,11 +101,9 @@ type UnimplementedControllerRuntimeServer struct {
 func (UnimplementedControllerRuntimeServer) RegisterController(context.Context, *RegisterControllerRequest) (*RegisterControllerResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method RegisterController not implemented")
 }
-
 func (UnimplementedControllerRuntimeServer) Start(context.Context, *StartRequest) (*StartResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method Start not implemented")
 }
-
 func (UnimplementedControllerRuntimeServer) Stop(context.Context, *StopRequest) (*StopResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method Stop not implemented")
 }
@@ -501,47 +498,36 @@ type UnimplementedControllerAdapterServer struct {
 func (UnimplementedControllerAdapterServer) ReconcileEvents(*ReconcileEventsRequest, ControllerAdapter_ReconcileEventsServer) error {
 	return status.Errorf(codes.Unimplemented, "method ReconcileEvents not implemented")
 }
-
 func (UnimplementedControllerAdapterServer) QueueReconcile(context.Context, *QueueReconcileRequest) (*QueueReconcileResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method QueueReconcile not implemented")
 }
-
 func (UnimplementedControllerAdapterServer) UpdateInputs(context.Context, *UpdateInputsRequest) (*UpdateInputsResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method UpdateInputs not implemented")
 }
-
 func (UnimplementedControllerAdapterServer) Get(context.Context, *RuntimeGetRequest) (*RuntimeGetResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method Get not implemented")
 }
-
 func (UnimplementedControllerAdapterServer) List(*RuntimeListRequest, ControllerAdapter_ListServer) error {
 	return status.Errorf(codes.Unimplemented, "method List not implemented")
 }
-
 func (UnimplementedControllerAdapterServer) WatchFor(context.Context, *RuntimeWatchForRequest) (*RuntimeWatchForResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method WatchFor not implemented")
 }
-
 func (UnimplementedControllerAdapterServer) Create(context.Context, *RuntimeCreateRequest) (*RuntimeCreateResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method Create not implemented")
 }
-
 func (UnimplementedControllerAdapterServer) Update(context.Context, *RuntimeUpdateRequest) (*RuntimeUpdateResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method Update not implemented")
 }
-
 func (UnimplementedControllerAdapterServer) Teardown(context.Context, *RuntimeTeardownRequest) (*RuntimeTeardownResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method Teardown not implemented")
 }
-
 func (UnimplementedControllerAdapterServer) Destroy(context.Context, *RuntimeDestroyRequest) (*RuntimeDestroyResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method Destroy not implemented")
 }
-
 func (UnimplementedControllerAdapterServer) AddFinalizer(context.Context, *RuntimeAddFinalizerRequest) (*RuntimeAddFinalizerResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method AddFinalizer not implemented")
 }
-
 func (UnimplementedControllerAdapterServer) RemoveFinalizer(context.Context, *RuntimeRemoveFinalizerRequest) (*RuntimeRemoveFinalizerResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method RemoveFinalizer not implemented")
 }

@@ -244,7 +244,7 @@ func (runtime *Runtime) processWatched() {
 		runtime.controllersMu.RLock()
 
 		for _, ctrl := range controllers {
-			runtime.controllers[ctrl].triggerReconcile()
+			runtime.controllers[ctrl].watchTrigger(md)
 		}
 
 		runtime.controllersMu.RUnlock()
