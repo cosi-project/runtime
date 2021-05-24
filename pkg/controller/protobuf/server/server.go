@@ -85,6 +85,8 @@ func convertInputs(protoInputs []*v1alpha1.ControllerInput) []controller.Input {
 			inputs[i].Kind = controller.InputStrong
 		case v1alpha1.ControllerInputKind_WEAK:
 			inputs[i].Kind = controller.InputWeak
+		case v1alpha1.ControllerInputKind_DESTROY_READY:
+			inputs[i].Kind = controller.InputDestroyReady
 		}
 	}
 

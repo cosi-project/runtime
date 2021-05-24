@@ -32,6 +32,7 @@ type InputKind = int
 const (
 	InputWeak InputKind = iota
 	InputStrong
+	InputDestroyReady
 )
 
 // Input of the controller (dependency on some resource(s)).
@@ -42,6 +43,11 @@ const (
 // Input might be either Weak or Strong. Any kind of input triggers
 // cascading reconcile on changes, Strong dependencies in addition block deletion of
 // parent object until all the dependencies are torn down.
+//
+// Input can also be "DestroyReady" which means that the controller is watching
+// some of its outputs to be ready to be destroyed. Controller will be notified
+// when the resource enters "teardown" phase and has no finalizers attached.
+// Resources are filtered to be owned by the controller.
 type Input struct {
 	ID        *resource.ID
 	Namespace resource.Namespace

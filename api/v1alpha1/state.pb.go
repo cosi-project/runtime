@@ -7,12 +7,11 @@
 package v1alpha1
 
 import (
-	reflect "reflect"
-	sync "sync"
-
 	proto "github.com/golang/protobuf/proto"
 	protoreflect "google.golang.org/protobuf/reflect/protoreflect"
 	protoimpl "google.golang.org/protobuf/runtime/protoimpl"
+	reflect "reflect"
+	sync "sync"
 )
 
 const (
@@ -1180,34 +1179,31 @@ func file_v1alpha1_state_proto_rawDescGZIP() []byte {
 	return file_v1alpha1_state_proto_rawDescData
 }
 
-var (
-	file_v1alpha1_state_proto_enumTypes = make([]protoimpl.EnumInfo, 1)
-	file_v1alpha1_state_proto_msgTypes  = make([]protoimpl.MessageInfo, 19)
-	file_v1alpha1_state_proto_goTypes   = []interface{}{
-		(EventType)(0),          // 0: resource.EventType
-		(*Event)(nil),           // 1: resource.Event
-		(*GetRequest)(nil),      // 2: resource.GetRequest
-		(*GetOptions)(nil),      // 3: resource.GetOptions
-		(*GetResponse)(nil),     // 4: resource.GetResponse
-		(*ListRequest)(nil),     // 5: resource.ListRequest
-		(*ListOptions)(nil),     // 6: resource.ListOptions
-		(*ListResponse)(nil),    // 7: resource.ListResponse
-		(*CreateRequest)(nil),   // 8: resource.CreateRequest
-		(*CreateOptions)(nil),   // 9: resource.CreateOptions
-		(*CreateResponse)(nil),  // 10: resource.CreateResponse
-		(*UpdateRequest)(nil),   // 11: resource.UpdateRequest
-		(*UpdateOptions)(nil),   // 12: resource.UpdateOptions
-		(*UpdateResponse)(nil),  // 13: resource.UpdateResponse
-		(*DestroyRequest)(nil),  // 14: resource.DestroyRequest
-		(*DestroyOptions)(nil),  // 15: resource.DestroyOptions
-		(*DestroyResponse)(nil), // 16: resource.DestroyResponse
-		(*WatchRequest)(nil),    // 17: resource.WatchRequest
-		(*WatchOptions)(nil),    // 18: resource.WatchOptions
-		(*WatchResponse)(nil),   // 19: resource.WatchResponse
-		(*Resource)(nil),        // 20: resource.Resource
-	}
-)
-
+var file_v1alpha1_state_proto_enumTypes = make([]protoimpl.EnumInfo, 1)
+var file_v1alpha1_state_proto_msgTypes = make([]protoimpl.MessageInfo, 19)
+var file_v1alpha1_state_proto_goTypes = []interface{}{
+	(EventType)(0),          // 0: resource.EventType
+	(*Event)(nil),           // 1: resource.Event
+	(*GetRequest)(nil),      // 2: resource.GetRequest
+	(*GetOptions)(nil),      // 3: resource.GetOptions
+	(*GetResponse)(nil),     // 4: resource.GetResponse
+	(*ListRequest)(nil),     // 5: resource.ListRequest
+	(*ListOptions)(nil),     // 6: resource.ListOptions
+	(*ListResponse)(nil),    // 7: resource.ListResponse
+	(*CreateRequest)(nil),   // 8: resource.CreateRequest
+	(*CreateOptions)(nil),   // 9: resource.CreateOptions
+	(*CreateResponse)(nil),  // 10: resource.CreateResponse
+	(*UpdateRequest)(nil),   // 11: resource.UpdateRequest
+	(*UpdateOptions)(nil),   // 12: resource.UpdateOptions
+	(*UpdateResponse)(nil),  // 13: resource.UpdateResponse
+	(*DestroyRequest)(nil),  // 14: resource.DestroyRequest
+	(*DestroyOptions)(nil),  // 15: resource.DestroyOptions
+	(*DestroyResponse)(nil), // 16: resource.DestroyResponse
+	(*WatchRequest)(nil),    // 17: resource.WatchRequest
+	(*WatchOptions)(nil),    // 18: resource.WatchOptions
+	(*WatchResponse)(nil),   // 19: resource.WatchResponse
+	(*Resource)(nil),        // 20: resource.Resource
+}
 var file_v1alpha1_state_proto_depIdxs = []int32{
 	20, // 0: resource.Event.resource:type_name -> resource.Resource
 	0,  // 1: resource.Event.event_type:type_name -> resource.EventType

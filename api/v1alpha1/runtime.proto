@@ -127,6 +127,16 @@ enum ControllerInputKind {
     //
     // Controller can add finalizers on strong inputs.
     STRONG = 1;
+    // DestroyReady inputs provide notifications to the controllers when some resource
+    // is ready to be destroyed (all finalizers are removed).
+    //
+    // Usually outputs are declared as DestroyReady inputs to trigger reconcile loop
+    // when the resource is ready to be destroyed.
+    //
+    // Controller will be notified when the resource enters "teardown" phase and has no
+    // finalizers attached.
+    // Resources are filtered to be owned by the controller.
+    DESTROY_READY = 2;
 }
 
 // ControllerInput describes resources which controller depends on.

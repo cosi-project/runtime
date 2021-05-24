@@ -2,7 +2,7 @@
 
 # THIS FILE WAS AUTOMATICALLY GENERATED, PLEASE DO NOT EDIT.
 #
-# Generated on 2021-04-23T14:02:33Z by kres latest.
+# Generated on 2021-05-24T20:18:47Z by kres d88b53b-dirty.
 
 ARG TOOLCHAIN
 
@@ -46,6 +46,9 @@ RUN mv /go/bin/protoc-gen-go /bin
 ARG GRPC_GO_VERSION
 RUN go install google.golang.org/grpc/cmd/protoc-gen-go-grpc@v${GRPC_GO_VERSION}
 RUN mv /go/bin/protoc-gen-go-grpc /bin
+ARG GRPC_GATEWAY_VERSION
+RUN go install github.com/grpc-ecosystem/grpc-gateway/v2/protoc-gen-grpc-gateway@v${GRPC_GATEWAY_VERSION}
+RUN mv /go/bin/protoc-gen-grpc-gateway /bin
 
 # tools and sources
 FROM tools AS base
@@ -69,6 +72,7 @@ RUN protoc -I/api --go_out=paths=source_relative:/api --go-grpc_out=paths=source
 # runs gofumpt
 FROM base AS lint-gofumpt
 RUN find . -name '*.pb.go' | xargs -r rm
+RUN find . -name '*.pb.gw.go' | xargs -r rm
 RUN FILES="$(gofumports -l -local github.com/cosi-project/runtime .)" && test -z "${FILES}" || (echo -e "Source code is not formatted with 'gofumports -w -local github.com/cosi-project/runtime .':\n${FILES}"; exit 1)
 
 # runs golangci-lint

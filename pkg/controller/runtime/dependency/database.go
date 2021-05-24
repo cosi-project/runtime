@@ -411,6 +411,8 @@ func (db *Database) Export() (*controller.DependencyGraph, error) {
 			edgeType = controller.EdgeInputStrong
 		case controller.InputWeak:
 			edgeType = controller.EdgeInputWeak
+		case controller.InputDestroyReady:
+			edgeType = controller.EdgeInputDestroyReady
 		}
 
 		var resourceID resource.ID

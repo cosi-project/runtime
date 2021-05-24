@@ -132,9 +132,11 @@ func (suite *RuntimeSuite) TearDownTest() {
 	suite.Assert().NoError(suite.State.Create(context.Background(), NewIntResource("default", "xxx", 0)))
 	suite.Assert().NoError(suite.State.Create(context.Background(), NewIntResource("ints", "xxx", 0)))
 	suite.Assert().NoError(suite.State.Create(context.Background(), NewStrResource("strings", "xxx", "")))
+	suite.Assert().NoError(suite.State.Create(context.Background(), NewStrResource("default", "xxx", "")))
 	suite.Assert().NoError(suite.State.Create(context.Background(), NewIntResource("source", "xxx", 0)))
 	suite.Assert().NoError(suite.State.Create(context.Background(), NewIntResource("source1", "xxx", 0)))
 	suite.Assert().NoError(suite.State.Create(context.Background(), NewIntResource("source2", "xxx", 0)))
+	suite.Assert().NoError(suite.State.Create(context.Background(), NewSentenceResource("sentences", "xxx", "")))
 
 	if suite.TearDownRuntime != nil {
 		suite.TearDownRuntime()

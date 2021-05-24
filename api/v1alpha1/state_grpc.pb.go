@@ -4,7 +4,6 @@ package v1alpha1
 
 import (
 	context "context"
-
 	grpc "google.golang.org/grpc"
 	codes "google.golang.org/grpc/codes"
 	status "google.golang.org/grpc/status"
@@ -199,23 +198,18 @@ type UnimplementedStateServer struct {
 func (UnimplementedStateServer) Get(context.Context, *GetRequest) (*GetResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method Get not implemented")
 }
-
 func (UnimplementedStateServer) List(*ListRequest, State_ListServer) error {
 	return status.Errorf(codes.Unimplemented, "method List not implemented")
 }
-
 func (UnimplementedStateServer) Create(context.Context, *CreateRequest) (*CreateResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method Create not implemented")
 }
-
 func (UnimplementedStateServer) Update(context.Context, *UpdateRequest) (*UpdateResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method Update not implemented")
 }
-
 func (UnimplementedStateServer) Destroy(context.Context, *DestroyRequest) (*DestroyResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method Destroy not implemented")
 }
-
 func (UnimplementedStateServer) Watch(*WatchRequest, State_WatchServer) error {
 	return status.Errorf(codes.Unimplemented, "method Watch not implemented")
 }

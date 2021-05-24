@@ -10,6 +10,7 @@ import (
 	"fmt"
 	"runtime/debug"
 	"sort"
+	"sync"
 	"time"
 
 	"github.com/AlekSi/pointer"
@@ -32,11 +33,18 @@ type adapter struct {
 
 	backoff *backoff.ExponentialBackOff
 
+	watchFilters map[watchKey]watchFilter
+
 	name string
 
 	inputs  []controller.Input
 	outputs []controller.Output
+
+	// watchFilterMu protects watchFilters
+	watchFilterMu sync.Mutex
 }
+
+type watchFilter func(*resource.Metadata) bool
 
 // EventCh implements controller.Runtime interface.
 func (adapter *adapter) EventCh() <-chan controller.ReconcileEvent {
@@ -91,9 +99,23 @@ func (adapter *adapter) UpdateInputs(deps []controller.Input) error {
 			}
 		}
 
+		if shouldDelete {
+			if err := adapter.runtime.depDB.DeleteControllerInput(adapter.name, dbDeps[j]); err != nil {
+				return fmt.Errorf("error deleting controller dependency: %w", err)
+			}
+
+			adapter.deleteWatchFilter(dbDeps[j].Namespace, dbDeps[j].Type)
+
+			j++
+		}
+
 		if shouldAdd {
 			if err := adapter.runtime.depDB.AddControllerInput(adapter.name, deps[i]); err != nil {
 				return fmt.Errorf("error adding controller dependency: %w", err)
+			}
+
+			if deps[i].Kind == controller.InputDestroyReady {
+				adapter.addWatchFilter(deps[i].Namespace, deps[i].Type, filterDestroyReady)
 			}
 
 			if err := adapter.runtime.watch(deps[i].Namespace, deps[i].Type); err != nil {
@@ -101,14 +123,6 @@ func (adapter *adapter) UpdateInputs(deps []controller.Input) error {
 			}
 
 			i++
-		}
-
-		if shouldDelete {
-			if err := adapter.runtime.depDB.DeleteControllerInput(adapter.name, dbDeps[j]); err != nil {
-				return fmt.Errorf("error deleting controller dependency: %w", err)
-			}
-
-			j++
 		}
 	}
 
@@ -302,6 +316,38 @@ func (adapter *adapter) initialize() error {
 	}
 
 	return nil
+}
+
+func (adapter *adapter) addWatchFilter(resourceNamespace resource.Namespace, resourceType resource.Type, filter watchFilter) {
+	adapter.watchFilterMu.Lock()
+	defer adapter.watchFilterMu.Unlock()
+
+	if adapter.watchFilters == nil {
+		adapter.watchFilters = make(map[watchKey]watchFilter)
+	}
+
+	adapter.watchFilters[watchKey{resourceNamespace, resourceType}] = filter
+}
+
+func (adapter *adapter) deleteWatchFilter(resourceNamespace resource.Namespace, resourceType resource.Type) {
+	adapter.watchFilterMu.Lock()
+	defer adapter.watchFilterMu.Unlock()
+
+	delete(adapter.watchFilters, watchKey{resourceNamespace, resourceType})
+}
+
+func (adapter *adapter) watchTrigger(md *resource.Metadata) {
+	adapter.watchFilterMu.Lock()
+	defer adapter.watchFilterMu.Unlock()
+
+	if adapter.watchFilters != nil {
+		if filter := adapter.watchFilters[watchKey{md.Namespace(), md.Type()}]; filter != nil && !filter(md) {
+			// skip reconcile if the event doesn't match the filter
+			return
+		}
+	}
+
+	adapter.triggerReconcile()
 }
 
 func (adapter *adapter) triggerReconcile() {

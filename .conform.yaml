@@ -1,6 +1,6 @@
 # THIS FILE WAS AUTOMATICALLY GENERATED, PLEASE DO NOT EDIT.
 #
-# Generated on 2020-09-25T18:15:38Z by kres ce6bee5-dirty.
+# Generated on 2021-05-24T20:18:47Z by kres d88b53b-dirty.
 
 policies:
 - type: commit
@@ -28,6 +28,7 @@ policies:
       - .go
     excludeSuffixes:
       - .pb.go
+      - .pb.gw.go
     header: |
       // This Source Code Form is subject to the terms of the Mozilla Public
       // License, v. 2.0. If a copy of the MPL was not distributed with this

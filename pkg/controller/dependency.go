@@ -20,6 +20,7 @@ const (
 	EdgeOutputShared
 	EdgeInputStrong
 	EdgeInputWeak
+	EdgeInputDestroyReady
 )
 
 // DependencyEdge represents relationship between controller and resource(s).
