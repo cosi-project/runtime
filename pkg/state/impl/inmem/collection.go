@@ -187,29 +187,54 @@ func (collection *ResourceCollection) Destroy(ptr resource.Pointer, owner string
 }
 
 // Watch for specific resource changes.
-func (collection *ResourceCollection) Watch(ctx context.Context, id resource.ID, ch chan<- state.Event) error {
+//
+//nolint:gocognit,cyclop
+func (collection *ResourceCollection) Watch(ctx context.Context, id resource.ID, ch chan<- state.Event, opts ...state.WatchOption) error {
+	var options state.WatchOptions
+
+	for _, opt := range opts {
+		opt(&options)
+	}
+
 	collection.mu.Lock()
 	defer collection.mu.Unlock()
 
 	pos := collection.writePos
-	curResource := collection.storage[id]
 
-	go func() {
-		var event state.Event
+	var initialEvent state.Event
 
-		if curResource != nil {
-			event.Resource = curResource.DeepCopy()
+	if options.TailEvents > 0 {
+		foundEvents := 0
+		minPos := collection.writePos - int64(collection.capacity) + int64(collection.gap)
 
-			event.Type = state.Created
-		} else {
-			event.Resource = resource.NewTombstone(resource.NewMetadata(collection.ns, collection.typ, id, resource.VersionUndefined))
-			event.Type = state.Destroyed
+		if minPos < 0 {
+			minPos = 0
 		}
 
-		select {
-		case <-ctx.Done():
-			return
-		case ch <- event:
+		for ; pos > minPos && foundEvents < options.TailEvents; pos-- {
+			if collection.stream[(pos-1)%int64(collection.capacity)].Resource.Metadata().ID() == id {
+				foundEvents++
+			}
+		}
+	} else {
+		curResource := collection.storage[id]
+
+		if curResource != nil {
+			initialEvent.Resource = curResource.DeepCopy()
+			initialEvent.Type = state.Created
+		} else {
+			initialEvent.Resource = resource.NewTombstone(resource.NewMetadata(collection.ns, collection.typ, id, resource.VersionUndefined))
+			initialEvent.Type = state.Destroyed
+		}
+	}
+
+	go func() {
+		if options.TailEvents <= 0 {
+			select {
+			case <-ctx.Done():
+				return
+			case ch <- initialEvent:
+			}
 		}
 
 		for {
@@ -290,6 +315,17 @@ func (collection *ResourceCollection) WatchAll(ctx context.Context, ch chan<- st
 		sort.Slice(bootstrapList, func(i, j int) bool {
 			return bootstrapList[i].Metadata().ID() < bootstrapList[j].Metadata().ID()
 		})
+	}
+
+	if options.TailEvents > 0 {
+		if options.TailEvents > collection.capacity-collection.gap {
+			options.TailEvents = collection.capacity - collection.gap
+		}
+
+		pos -= int64(options.TailEvents)
+		if pos < 0 {
+			pos = 0
+		}
 	}
 
 	go func() {

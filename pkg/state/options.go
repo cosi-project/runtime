@@ -81,14 +81,24 @@ func WithDestroyOwner(owner string) DestroyOption {
 }
 
 // WatchOptions for the CoreState.Watch function.
-type WatchOptions struct{}
+type WatchOptions struct {
+	TailEvents int
+}
 
 // WatchOption builds WatchOptions.
 type WatchOption func(*WatchOptions)
 
+// WithTailEvents returns N most recent events as part of the response.
+func WithTailEvents(n int) WatchOption {
+	return func(opts *WatchOptions) {
+		opts.TailEvents = n
+	}
+}
+
 // WatchKindOptions for the CoreState.WatchKind function.
 type WatchKindOptions struct {
 	BootstrapContents bool
+	TailEvents        int
 }
 
 // WatchKindOption builds WatchOptions.
@@ -98,5 +108,12 @@ type WatchKindOption func(*WatchKindOptions)
 func WithBootstrapContents(enable bool) WatchKindOption {
 	return func(opts *WatchKindOptions) {
 		opts.BootstrapContents = enable
+	}
+}
+
+// WithKindTailEvents returns N most recent events as part of the response.
+func WithKindTailEvents(n int) WatchKindOption {
+	return func(opts *WatchKindOptions) {
+		opts.TailEvents = n
 	}
 }
