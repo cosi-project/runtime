@@ -201,9 +201,19 @@ func (server *State) Watch(req *v1alpha1.WatchRequest, srv v1alpha1.State_WatchS
 			opts = append(opts, state.WithBootstrapContents(true))
 		}
 
+		if req.Options.TailEvents > 0 {
+			opts = append(opts, state.WithKindTailEvents(int(req.Options.TailEvents)))
+		}
+
 		err = server.state.WatchKind(srv.Context(), resource.NewMetadata(req.Namespace, req.Type, "", resource.VersionUndefined), ch, opts...)
 	} else {
-		err = server.state.Watch(srv.Context(), resource.NewMetadata(req.Namespace, req.Type, req.GetId(), resource.VersionUndefined), ch)
+		var opts []state.WatchOption
+
+		if req.Options.TailEvents > 0 {
+			opts = append(opts, state.WithTailEvents(int(req.Options.TailEvents)))
+		}
+
+		err = server.state.Watch(srv.Context(), resource.NewMetadata(req.Namespace, req.Type, req.GetId(), resource.VersionUndefined), ch, opts...)
 	}
 
 	if err != nil {

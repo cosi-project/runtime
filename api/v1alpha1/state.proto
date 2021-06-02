@@ -147,6 +147,7 @@ message WatchRequest {
 
 message WatchOptions {
     bool bootstrap_contents = 1;
+    int32 tail_events = 2;
 }
 
 message WatchResponse {

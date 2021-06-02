@@ -83,7 +83,7 @@ func (st *State) Destroy(ctx context.Context, resourcePointer resource.Pointer, 
 
 // Watch a resource.
 func (st *State) Watch(ctx context.Context, resourcePointer resource.Pointer, ch chan<- state.Event, opts ...state.WatchOption) error {
-	return st.getCollection(resourcePointer.Type()).Watch(ctx, resourcePointer.ID(), ch)
+	return st.getCollection(resourcePointer.Type()).Watch(ctx, resourcePointer.ID(), ch, opts...)
 }
 
 // WatchKind all resources by type.

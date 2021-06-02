@@ -256,7 +256,9 @@ func (adapter *Adapter) Watch(ctx context.Context, resourcePointer resource.Poin
 		Namespace: resourcePointer.Namespace(),
 		Type:      resourcePointer.Type(),
 		Id:        pointer.ToString(resourcePointer.ID()),
-		Options:   &v1alpha1.WatchOptions{},
+		Options: &v1alpha1.WatchOptions{
+			TailEvents: int32(opts.TailEvents),
+		},
 	})
 	if err != nil {
 		return err
@@ -286,6 +288,7 @@ func (adapter *Adapter) WatchKind(ctx context.Context, resourceKind resource.Kin
 		Type:      resourceKind.Type(),
 		Options: &v1alpha1.WatchOptions{
 			BootstrapContents: opts.BootstrapContents,
+			TailEvents:        int32(opts.TailEvents),
 		},
 	})
 	if err != nil {

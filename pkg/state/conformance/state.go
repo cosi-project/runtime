@@ -180,7 +180,11 @@ func (suite *StateSuite) TestCRDWithOwners() {
 }
 
 // TestWatchKind verifies WatchKind API.
+//
+//nolint:gocyclo,cyclop
 func (suite *StateSuite) TestWatchKind() {
+	expectedEvents := map[state.Event]struct{}{}
+
 	ns := suite.getNamespace()
 	path1 := NewPathResource(ns, "var/db")
 	path2 := NewPathResource(ns, "var/tmp")
@@ -200,6 +204,8 @@ func (suite *StateSuite) TestWatchKind() {
 	case event := <-ch:
 		suite.Assert().Equal(state.Created, event.Type)
 		suite.Assert().Equal(path2.String(), event.Resource.String())
+
+		expectedEvents[event] = struct{}{}
 	case <-time.After(time.Second):
 		suite.FailNow("timed out waiting for event")
 	}
@@ -212,6 +218,8 @@ func (suite *StateSuite) TestWatchKind() {
 	case event := <-ch:
 		suite.Assert().Equal(state.Updated, event.Type)
 		suite.Assert().Equal(path1.String(), event.Resource.String())
+
+		expectedEvents[event] = struct{}{}
 	case <-time.After(time.Second):
 		suite.FailNow("timed out waiting for event")
 	}
@@ -220,6 +228,8 @@ func (suite *StateSuite) TestWatchKind() {
 	case event := <-ch:
 		suite.Assert().Equal(state.Destroyed, event.Type)
 		suite.Assert().Equal(path1.String(), event.Resource.String())
+
+		expectedEvents[event] = struct{}{}
 	case <-time.After(time.Second):
 		suite.FailNow("timed out waiting for event")
 	}
@@ -234,6 +244,8 @@ func (suite *StateSuite) TestWatchKind() {
 		suite.Assert().Equal(state.Updated, event.Type)
 		suite.Assert().Equal(path2.String(), event.Resource.String())
 		suite.Assert().Equal(path2.Metadata().Version(), event.Resource.Metadata().Version())
+
+		expectedEvents[event] = struct{}{}
 	case <-time.After(time.Second):
 		suite.FailNow("timed out waiting for event")
 	}
@@ -266,6 +278,8 @@ func (suite *StateSuite) TestWatchKind() {
 		suite.Assert().Equal(state.Updated, event.Type)
 		suite.Assert().Equal(path2.String(), event.Resource.String())
 		suite.Assert().Equal(path2.Metadata().Version(), event.Resource.Metadata().Version())
+
+		expectedEvents[event] = struct{}{}
 	case <-time.After(time.Second):
 		suite.FailNow("timed out waiting for event")
 	}
@@ -277,6 +291,28 @@ func (suite *StateSuite) TestWatchKind() {
 		suite.Assert().Equal(path2.Metadata().Version(), event.Resource.Metadata().Version())
 	case <-time.After(time.Second):
 		suite.FailNow("timed out waiting for event")
+	}
+
+	// get event history
+	chWithTail := make(chan state.Event)
+
+	suite.Require().NoError(suite.State.WatchKind(ctx, path1.Metadata(), chWithTail, state.WithKindTailEvents(1000)))
+
+	for {
+		if len(expectedEvents) == 0 {
+			break
+		}
+
+		select {
+		case event := <-chWithTail:
+			for expected := range expectedEvents {
+				if expected.Type == event.Type && resource.Equal(expected.Resource, event.Resource) {
+					delete(expectedEvents, expected)
+				}
+			}
+		case <-time.After(time.Second):
+			suite.FailNow("timed out waiting for event", "missed events %v", expectedEvents)
+		}
 	}
 }
 
@@ -399,6 +435,115 @@ func (suite *StateSuite) TestWatchFor() {
 	wg.Wait()
 	suite.Assert().NoError(err)
 	suite.Assert().Equal(r.Metadata().ID(), path1.Metadata().ID())
+}
+
+// TestWatch verifies Watch.
+func (suite *StateSuite) TestWatch() {
+	expectedEvents := map[state.Event]struct{}{}
+
+	ns := suite.getNamespace()
+	path1 := NewPathResource(ns, "tmp/two")
+
+	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	defer cancel()
+
+	ch := make(chan state.Event)
+
+	suite.Require().NoError(suite.State.Watch(ctx, path1.Metadata(), ch))
+
+	select {
+	case event := <-ch:
+		suite.Assert().Equal(state.Destroyed, event.Type)
+		suite.Assert().Equal(path1.Metadata().ID(), event.Resource.Metadata().ID())
+	case <-time.After(time.Second):
+		suite.FailNow("timed out waiting for event")
+	}
+
+	suite.Require().NoError(suite.State.Create(ctx, path1))
+
+	select {
+	case event := <-ch:
+		suite.Assert().Equal(state.Created, event.Type)
+		suite.Assert().Equal(path1.String(), event.Resource.String())
+		suite.Assert().Equal(path1.Metadata().Version(), event.Resource.Metadata().Version())
+
+		expectedEvents[event] = struct{}{}
+	case <-time.After(time.Second):
+		suite.FailNow("timed out waiting for event")
+	}
+
+	ready, e := suite.State.Teardown(ctx, path1.Metadata())
+	suite.Require().NoError(e)
+	suite.Assert().True(ready)
+
+	select {
+	case event := <-ch:
+		suite.Assert().Equal(state.Updated, event.Type)
+		suite.Assert().Equal(path1.String(), event.Resource.String())
+		suite.Assert().Equal(resource.PhaseTearingDown, event.Resource.Metadata().Phase())
+
+		expectedEvents[event] = struct{}{}
+	case <-time.After(time.Second):
+		suite.FailNow("timed out waiting for event")
+	}
+
+	suite.Assert().NoError(suite.State.AddFinalizer(ctx, path1.Metadata(), "A"))
+
+	select {
+	case event := <-ch:
+		suite.Assert().Equal(state.Updated, event.Type)
+		suite.Assert().Equal(path1.String(), event.Resource.String())
+
+		expectedEvents[event] = struct{}{}
+	case <-time.After(time.Second):
+		suite.FailNow("timed out waiting for event")
+	}
+
+	suite.Assert().NoError(suite.State.RemoveFinalizer(ctx, path1.Metadata(), "A"))
+
+	select {
+	case event := <-ch:
+		suite.Assert().Equal(state.Updated, event.Type)
+		suite.Assert().Equal(path1.String(), event.Resource.String())
+
+		expectedEvents[event] = struct{}{}
+	case <-time.After(time.Second):
+		suite.FailNow("timed out waiting for event")
+	}
+
+	suite.Assert().NoError(suite.State.Destroy(ctx, path1.Metadata()))
+
+	select {
+	case event := <-ch:
+		suite.Assert().Equal(state.Destroyed, event.Type)
+		suite.Assert().Equal(path1.String(), event.Resource.String())
+
+		expectedEvents[event] = struct{}{}
+	case <-time.After(time.Second):
+		suite.FailNow("timed out waiting for event")
+	}
+
+	// get event history
+	chWithTail := make(chan state.Event)
+
+	suite.Require().NoError(suite.State.Watch(ctx, path1.Metadata(), chWithTail, state.WithTailEvents(1000)))
+
+	for {
+		if len(expectedEvents) == 0 {
+			break
+		}
+
+		select {
+		case event := <-chWithTail:
+			for expected := range expectedEvents {
+				if expected.Type == event.Type && resource.Equal(expected.Resource, event.Resource) {
+					delete(expectedEvents, expected)
+				}
+			}
+		case <-time.After(time.Second):
+			suite.FailNow("timed out waiting for event", "missed events %v", expectedEvents)
+		}
+	}
 }
 
 // TestTeardownDestroy verifies finalizers, teardown and destroy.
