@@ -31,12 +31,16 @@ type PrintColumn struct {
 }
 
 // ResourceDefinitionSpec provides ResourceDefinition definition.
-type ResourceDefinitionSpec struct {
+type ResourceDefinitionSpec struct { //nolint:govet
 	Type             resource.Type      `yaml:"type"`
 	DisplayType      string             `yaml:"displayType"`
 	DefaultNamespace resource.Namespace `yaml:"defaultNamespace"`
 	Aliases          []resource.Type    `yaml:"aliases"`
 	PrintColumns     []PrintColumn      `yaml:"printColumns"`
+
+	// Sensitivity indicates how secret resource of this type is.
+	// The empty value represents a non-sensitive resource.
+	Sensitivity Sensitivity `yaml:"sensitivity,omitempty"`
 }
 
 // ID computes id of the resource definition.
@@ -106,6 +110,10 @@ func (spec *ResourceDefinitionSpec) Fill() error {
 		if !strings.HasSuffix(upperLetters, "S") {
 			spec.Aliases = append(spec.Aliases, strings.ToLower(upperLetters+"s"))
 		}
+	}
+
+	if _, ok := allSensitivities[spec.Sensitivity]; !ok {
+		return fmt.Errorf("unknown sensitivity %q", spec.Sensitivity)
 	}
 
 	return nil
