@@ -1,6 +1,6 @@
 # THIS FILE WAS AUTOMATICALLY GENERATED, PLEASE DO NOT EDIT.
 #
-# Generated on 2021-05-24T20:18:47Z by kres d88b53b-dirty.
+# Generated on 2021-06-21T09:20:43Z by kres latest.
 
 policies:
 - type: commit
@@ -19,7 +19,7 @@ policies:
       required: true
     conventional:
       types: ["chore","docs","perf","refactor","style","test","release"]
-      scopes: ["*"]
+      scopes: [".*"]
 - type: license
   spec:
     skipPaths:
