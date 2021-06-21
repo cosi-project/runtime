@@ -31,7 +31,7 @@ func TestProtobufConformance(t *testing.T) {
 
 	require.NoError(t, os.Remove(sock.Name()))
 
-	defer os.Remove(sock.Name()) //nolint: errcheck
+	defer os.Remove(sock.Name()) //nolint:errcheck
 
 	l, err := net.Listen("unix", sock.Name())
 	require.NoError(t, err)
@@ -40,7 +40,7 @@ func TestProtobufConformance(t *testing.T) {
 	v1alpha1.RegisterStateServer(grpcServer, server.NewState(state.WrapCore(namespaced.NewState(inmem.Build))))
 
 	go func() {
-		grpcServer.Serve(l) //nolint: errcheck
+		grpcServer.Serve(l) //nolint:errcheck
 	}()
 
 	defer grpcServer.Stop()
@@ -48,7 +48,7 @@ func TestProtobufConformance(t *testing.T) {
 	grpcConn, err := grpc.Dial("unix://"+sock.Name(), grpc.WithInsecure())
 	require.NoError(t, err)
 
-	defer grpcConn.Close() //nolint: errcheck
+	defer grpcConn.Close() //nolint:errcheck
 
 	stateClient := v1alpha1.NewStateClient(grpcConn)
 

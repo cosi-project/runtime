@@ -70,7 +70,7 @@ func TestProtobufConformance(t *testing.T) {
 		v1alpha1.RegisterControllerAdapterServer(suite.grpcServer, grpcRuntime)
 
 		go func() {
-			suite.grpcServer.Serve(l) //nolint: errcheck
+			suite.grpcServer.Serve(l) //nolint:errcheck
 		}()
 
 		suite.grpcConn, err = grpc.Dial("unix://"+suite.sock.Name(), grpc.WithInsecure())

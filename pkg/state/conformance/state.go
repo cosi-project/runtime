@@ -361,7 +361,7 @@ func (suite *StateSuite) TestConcurrentFinalizers() {
 	pathRes, err := suite.State.Get(ctx, path.Metadata())
 	suite.Require().NoError(err)
 
-	path = pathRes.(*PathResource) //nolint: errcheck,forcetypeassert
+	path = pathRes.(*PathResource) //nolint:errcheck,forcetypeassert
 
 	finalizers := path.Metadata().Finalizers()
 	sort.Strings(*finalizers)

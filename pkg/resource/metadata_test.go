@@ -117,7 +117,7 @@ func (p *protoMd) GetType() string {
 	return "type"
 }
 
-//nolint: golint, stylecheck, revive
+//nolint:golint,stylecheck,revive
 func (p *protoMd) GetId() string {
 	return "aaa"
 }

@@ -21,7 +21,7 @@ import (
 )
 
 // Runtime implements controller.Runtime over gRPC.
-type Runtime struct { //nolint: govet
+type Runtime struct { //nolint:govet
 	v1alpha1.UnimplementedControllerRuntimeServer
 	v1alpha1.UnimplementedControllerAdapterServer
 
@@ -148,7 +148,7 @@ func (runtime *Runtime) Start(ctx context.Context, req *v1alpha1.StartRequest) (
 	go func() {
 		defer runtime.runtimeWg.Done()
 
-		runtime.engine.Run(runtime.runtimeCtx) //nolint: errcheck
+		runtime.engine.Run(runtime.runtimeCtx) //nolint:errcheck
 	}()
 
 	return &v1alpha1.StartResponse{}, nil
@@ -179,7 +179,7 @@ func (runtime *Runtime) getBridge(ctx context.Context, controllerToken string) (
 		return nil, status.Error(codes.InvalidArgument, "controller token is not registered")
 	}
 
-	bridge := b.(*controllerBridge) //nolint: errcheck, forcetypeassert
+	bridge := b.(*controllerBridge) //nolint:errcheck,forcetypeassert
 
 	// wait for the adapter to be connected
 	select {

@@ -49,7 +49,7 @@ func (adapter *Adapter) Get(ctx context.Context, resourcePointer resource.Pointe
 		Options:   &v1alpha1.GetOptions{},
 	})
 	if err != nil {
-		switch status.Code(err) { //nolint: exhaustive
+		switch status.Code(err) { //nolint:exhaustive
 		case codes.NotFound:
 			return nil, eNotFound{err}
 		default:
@@ -79,7 +79,7 @@ func (adapter *Adapter) List(ctx context.Context, resourceKind resource.Kind, op
 		Options:   &v1alpha1.ListOptions{},
 	})
 	if err != nil {
-		switch status.Code(err) { //nolint: exhaustive
+		switch status.Code(err) { //nolint:exhaustive
 		case codes.NotFound:
 			return resource.List{}, eNotFound{err}
 		default:
@@ -142,7 +142,7 @@ func (adapter *Adapter) Create(ctx context.Context, r resource.Resource, opt ...
 	})
 
 	if err != nil {
-		switch status.Code(err) { //nolint: exhaustive
+		switch status.Code(err) { //nolint:exhaustive
 		case codes.NotFound:
 			return eNotFound{err}
 		case codes.PermissionDenied:
@@ -188,7 +188,7 @@ func (adapter *Adapter) Update(ctx context.Context, curVersion resource.Version,
 	})
 
 	if err != nil {
-		switch status.Code(err) { //nolint: exhaustive
+		switch status.Code(err) { //nolint:exhaustive
 		case codes.NotFound:
 			return eNotFound{err}
 		case codes.PermissionDenied:
@@ -224,7 +224,7 @@ func (adapter *Adapter) Destroy(ctx context.Context, resourcePointer resource.Po
 		},
 	})
 	if err != nil {
-		switch status.Code(err) { //nolint: exhaustive
+		switch status.Code(err) { //nolint:exhaustive
 		case codes.NotFound:
 			return eNotFound{err}
 		case codes.PermissionDenied:

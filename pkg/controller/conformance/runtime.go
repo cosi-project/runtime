@@ -19,7 +19,7 @@ import (
 )
 
 // RuntimeSuite ...
-type RuntimeSuite struct { //nolint: govet
+type RuntimeSuite struct { //nolint:govet
 	suite.Suite
 
 	State state.State
@@ -54,7 +54,7 @@ func (suite *RuntimeSuite) startRuntime() {
 	}()
 }
 
-//nolint: dupl
+//nolint:dupl
 func (suite *RuntimeSuite) assertStrObjects(ns resource.Namespace, typ resource.Type, ids, values []string) retry.RetryableFunc {
 	return func() error {
 		items, err := suite.State.List(suite.ctx, resource.NewMetadata(ns, typ, "", resource.VersionUndefined))
@@ -87,7 +87,7 @@ func (suite *RuntimeSuite) assertStrObjects(ns resource.Namespace, typ resource.
 	}
 }
 
-//nolint: dupl, unparam
+//nolint:dupl,unparam
 func (suite *RuntimeSuite) assertIntObjects(ns resource.Namespace, typ resource.Type, ids []string, values []int) retry.RetryableFunc {
 	return func() error {
 		items, err := suite.State.List(suite.ctx, resource.NewMetadata(ns, typ, "", resource.VersionUndefined))

@@ -163,7 +163,7 @@ func (adapter *Adapter) Run(ctx context.Context) error {
 	}
 
 	defer func() {
-		adapter.client.Stop(context.TODO(), &v1alpha1.StopRequest{}) //nolint: errcheck
+		adapter.client.Stop(context.TODO(), &v1alpha1.StopRequest{}) //nolint:errcheck
 	}()
 
 	return adapter.runControllers(ctx)
@@ -356,7 +356,7 @@ func (ctrlAdapter *controllerAdapter) Get(ctx context.Context, resourcePointer r
 		Id:        resourcePointer.ID(),
 	})
 	if err != nil {
-		switch status.Code(err) { //nolint: exhaustive
+		switch status.Code(err) { //nolint:exhaustive
 		case codes.NotFound:
 			return nil, eNotFound{err}
 		default:
@@ -380,7 +380,7 @@ func (ctrlAdapter *controllerAdapter) List(ctx context.Context, resourceKind res
 		Type:      resourceKind.Type(),
 	})
 	if err != nil {
-		switch status.Code(err) { //nolint: exhaustive
+		switch status.Code(err) { //nolint:exhaustive
 		case codes.NotFound:
 			return resource.List{}, eNotFound{err}
 		default:
@@ -443,7 +443,7 @@ func (ctrlAdapter *controllerAdapter) WatchFor(ctx context.Context, resourcePoin
 		FinalizersEmpty: finalizersEmpty,
 	})
 	if err != nil {
-		switch status.Code(err) { //nolint: exhaustive
+		switch status.Code(err) { //nolint:exhaustive
 		case codes.NotFound:
 			return nil, eNotFound{err}
 		default:
@@ -477,7 +477,7 @@ func (ctrlAdapter *controllerAdapter) Create(ctx context.Context, r resource.Res
 	})
 
 	if err != nil {
-		switch status.Code(err) { //nolint: exhaustive
+		switch status.Code(err) { //nolint:exhaustive
 		case codes.NotFound:
 			return eNotFound{err}
 		case codes.AlreadyExists:
@@ -509,7 +509,7 @@ func (ctrlAdapter *controllerAdapter) Update(ctx context.Context, curVersion res
 	})
 
 	if err != nil {
-		switch status.Code(err) { //nolint: exhaustive
+		switch status.Code(err) { //nolint:exhaustive
 		case codes.NotFound:
 			return eNotFound{err}
 		case codes.FailedPrecondition:
@@ -581,7 +581,7 @@ func (ctrlAdapter *controllerAdapter) Teardown(ctx context.Context, resourcePoin
 		Id:        resourcePointer.ID(),
 	})
 	if err != nil {
-		switch status.Code(err) { //nolint: exhaustive
+		switch status.Code(err) { //nolint:exhaustive
 		case codes.NotFound:
 			return false, eNotFound{err}
 		case codes.FailedPrecondition:
@@ -603,7 +603,7 @@ func (ctrlAdapter *controllerAdapter) Destroy(ctx context.Context, resourcePoint
 		Id:        resourcePointer.ID(),
 	})
 	if err != nil {
-		switch status.Code(err) { //nolint: exhaustive
+		switch status.Code(err) { //nolint:exhaustive
 		case codes.NotFound:
 			return eNotFound{err}
 		case codes.FailedPrecondition:
@@ -627,7 +627,7 @@ func (ctrlAdapter *controllerAdapter) AddFinalizer(ctx context.Context, resource
 		Finalizers: fins,
 	})
 	if err != nil {
-		switch status.Code(err) { //nolint: exhaustive
+		switch status.Code(err) { //nolint:exhaustive
 		case codes.NotFound:
 			return eNotFound{err}
 		case codes.FailedPrecondition:
@@ -651,7 +651,7 @@ func (ctrlAdapter *controllerAdapter) RemoveFinalizer(ctx context.Context, resou
 		Finalizers: fins,
 	})
 	if err != nil {
-		switch status.Code(err) { //nolint: exhaustive
+		switch status.Code(err) { //nolint:exhaustive
 		case codes.NotFound:
 			return eNotFound{err}
 		case codes.FailedPrecondition:
