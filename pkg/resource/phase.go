@@ -34,6 +34,6 @@ func ParsePhase(ph string) (Phase, error) {
 	case strPhaseTearingDown:
 		return PhaseTearingDown, nil
 	default:
-		return 0, fmt.Errorf("uknown phase: %v", ph)
+		return 0, fmt.Errorf("unknown phase: %v", ph)
 	}
 }

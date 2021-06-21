@@ -55,7 +55,7 @@ func (ctrl *IntToStrController) Outputs() []controller.Output {
 
 // Run implements controller.Controller interface.
 //
-//nolint: gocognit
+//nolint:gocognit
 func (ctrl *IntToStrController) Run(ctx context.Context, r controller.Runtime, logger *zap.Logger) error {
 	sourceMd := resource.NewMetadata(ctrl.SourceNamespace, IntResourceType, "", resource.VersionUndefined)
 
@@ -143,7 +143,7 @@ func (ctrl *StrToSentenceController) Outputs() []controller.Output {
 
 // Run implements controller.Controller interface.
 //
-//nolint: gocognit
+//nolint:gocognit
 func (ctrl *StrToSentenceController) Run(ctx context.Context, r controller.Runtime, logger *zap.Logger) error {
 	if err := r.UpdateInputs([]controller.Input{
 		{

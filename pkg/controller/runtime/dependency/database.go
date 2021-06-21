@@ -149,7 +149,7 @@ func (db *Database) AddControllerOutput(controllerName string, out controller.Ou
 	}
 
 	if obj != nil {
-		dep := obj.(*ControllerOutput) //nolint: errcheck, forcetypeassert
+		dep := obj.(*ControllerOutput) //nolint:errcheck,forcetypeassert
 
 		return fmt.Errorf("resource %q is already managed in exclusive mode by %q", dep.Type, dep.ControllerName)
 	}
@@ -162,7 +162,7 @@ func (db *Database) AddControllerOutput(controllerName string, out controller.Ou
 		}
 
 		if obj != nil {
-			dep := obj.(*ControllerOutput) //nolint: errcheck, forcetypeassert
+			dep := obj.(*ControllerOutput) //nolint:errcheck,forcetypeassert
 
 			return fmt.Errorf("resource %q is already managed in shared mode by %q", dep.Type, dep.ControllerName)
 		}
@@ -181,7 +181,7 @@ func (db *Database) AddControllerOutput(controllerName string, out controller.Ou
 		}
 
 		if obj != nil {
-			dep := obj.(*ControllerOutput) //nolint: errcheck, forcetypeassert
+			dep := obj.(*ControllerOutput) //nolint:errcheck,forcetypeassert
 
 			return fmt.Errorf("duplicate shared controller output: %q -> %q", dep.Type, dep.ControllerName)
 		}
@@ -213,7 +213,7 @@ func (db *Database) GetControllerOutputs(controllerName string) ([]controller.Ou
 	}
 
 	if obj != nil {
-		dep := obj.(*ControllerOutput) //nolint: errcheck, forcetypeassert
+		dep := obj.(*ControllerOutput) //nolint:errcheck,forcetypeassert
 
 		result = append(result, controller.Output{
 			Type: dep.Type,
@@ -227,7 +227,7 @@ func (db *Database) GetControllerOutputs(controllerName string) ([]controller.Ou
 	}
 
 	for obj := iter.Next(); obj != nil; obj = iter.Next() {
-		dep := obj.(*ControllerOutput) //nolint: errcheck, forcetypeassert
+		dep := obj.(*ControllerOutput) //nolint:errcheck,forcetypeassert
 
 		result = append(result, controller.Output{
 			Type: dep.Type,
@@ -254,7 +254,7 @@ func (db *Database) GetResourceExclusiveController(resourceType resource.Type) (
 		return "", nil
 	}
 
-	dep := obj.(*ControllerOutput) //nolint: errcheck, forcetypeassert
+	dep := obj.(*ControllerOutput) //nolint:errcheck,forcetypeassert
 
 	return dep.ControllerName, nil
 }
@@ -318,7 +318,7 @@ func (db *Database) GetControllerInputs(controllerName string) ([]controller.Inp
 	var result []controller.Input
 
 	for obj := iter.Next(); obj != nil; obj = iter.Next() {
-		model := obj.(*ControllerInput) //nolint: errcheck, forcetypeassert
+		model := obj.(*ControllerInput) //nolint:errcheck,forcetypeassert
 
 		dep := controller.Input{
 			Namespace: model.Namespace,
@@ -349,7 +349,7 @@ func (db *Database) GetDependentControllers(dep controller.Input) ([]string, err
 	var result []string
 
 	for obj := iter.Next(); obj != nil; obj = iter.Next() {
-		model := obj.(*ControllerInput) //nolint: errcheck, forcetypeassert
+		model := obj.(*ControllerInput) //nolint:errcheck,forcetypeassert
 
 		if dep.ID == nil || model.ID == StarID || model.ID == *dep.ID {
 			result = append(result, model.ControllerName)
@@ -372,7 +372,7 @@ func (db *Database) Export() (*controller.DependencyGraph, error) {
 	}
 
 	for obj := iter.Next(); obj != nil; obj = iter.Next() {
-		model := obj.(*ControllerOutput) //nolint: errcheck, forcetypeassert
+		model := obj.(*ControllerOutput) //nolint:errcheck,forcetypeassert
 
 		graph.Edges = append(graph.Edges, controller.DependencyEdge{
 			ControllerName: model.ControllerName,
@@ -387,7 +387,7 @@ func (db *Database) Export() (*controller.DependencyGraph, error) {
 	}
 
 	for obj := iter.Next(); obj != nil; obj = iter.Next() {
-		model := obj.(*ControllerOutput) //nolint: errcheck, forcetypeassert
+		model := obj.(*ControllerOutput) //nolint:errcheck,forcetypeassert
 
 		graph.Edges = append(graph.Edges, controller.DependencyEdge{
 			ControllerName: model.ControllerName,
@@ -402,7 +402,7 @@ func (db *Database) Export() (*controller.DependencyGraph, error) {
 	}
 
 	for obj := iter.Next(); obj != nil; obj = iter.Next() {
-		model := obj.(*ControllerInput) //nolint: errcheck, forcetypeassert
+		model := obj.(*ControllerInput) //nolint:errcheck,forcetypeassert
 
 		var edgeType controller.DependencyEdgeType
 

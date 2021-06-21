@@ -101,7 +101,7 @@ func (r *IntResource) UnmarshalProto(md *resource.Metadata, protoSpec []byte) er
 const StrResourceType = resource.Type("test/str")
 
 // StrResource represents some string value.
-type StrResource struct { //nolint: govet
+type StrResource struct { //nolint:govet
 	md    resource.Metadata
 	value strSpec
 }
@@ -169,7 +169,7 @@ func (r *StrResource) UnmarshalProto(md *resource.Metadata, protoSpec []byte) er
 const SentenceResourceType = resource.Type("test/sentence")
 
 // SentenceResource represents some string value.
-type SentenceResource struct { //nolint: govet
+type SentenceResource struct { //nolint:govet
 	md    resource.Metadata
 	value strSpec
 }
