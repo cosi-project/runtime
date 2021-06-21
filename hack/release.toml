@@ -1,0 +1,16 @@
+# THIS FILE WAS AUTOMATICALLY GENERATED, PLEASE DO NOT EDIT.
+#
+# Generated on 2021-06-21T09:20:43Z by kres latest.
+
+
+# commit to be tagged for the new release
+commit = "HEAD"
+
+project_name = "runtime"
+github_repo = "cosi-project/runtime"
+match_deps = "^github.com/(cosi-project/[a-zA-Z0-9-]+)$"
+
+# previous = -
+# pre_release = true
+
+# [notes]

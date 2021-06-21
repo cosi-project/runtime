@@ -2,7 +2,7 @@
 
 # THIS FILE WAS AUTOMATICALLY GENERATED, PLEASE DO NOT EDIT.
 #
-# Generated on 2021-05-24T20:18:47Z by kres d88b53b-dirty.
+# Generated on 2021-06-21T09:20:43Z by kres latest.
 
 ARG TOOLCHAIN
 
@@ -17,7 +17,7 @@ RUN npm i sentences-per-line@0.2.1
 WORKDIR /src
 COPY .markdownlint.json .
 COPY ./README.md ./README.md
-RUN markdownlint --ignore "**/node_modules/**" --ignore '**/hack/chglog/**' --rules /node_modules/sentences-per-line/index.js .
+RUN markdownlint --ignore "CHANGELOG.md" --ignore "**/node_modules/**" --ignore '**/hack/chglog/**' --rules /node_modules/sentences-per-line/index.js .
 
 # collects proto specs
 FROM scratch AS proto-specs
@@ -98,17 +98,20 @@ COPY --from=proto-compile /api/ /api/
 FROM scratch AS unit-tests
 COPY --from=unit-tests-run /src/coverage.txt /coverage.txt
 
-# builds runtime
-FROM base AS runtime-build
+# builds runtime-linux-amd64
+FROM base AS runtime-linux-amd64-build
 COPY --from=generate / /
 WORKDIR /src/cmd/runtime
-RUN --mount=type=cache,target=/root/.cache/go-build --mount=type=cache,target=/go/pkg go build -ldflags "-s -w" -o /runtime
+RUN --mount=type=cache,target=/root/.cache/go-build --mount=type=cache,target=/go/pkg go build -ldflags "-s -w" -o /runtime-linux-amd64
 
-FROM scratch AS runtime
-COPY --from=runtime-build /runtime /runtime
+FROM scratch AS runtime-linux-amd64
+COPY --from=runtime-linux-amd64-build /runtime-linux-amd64 /runtime-linux-amd64
+
+FROM runtime-linux-${TARGETARCH} AS runtime
 
 FROM scratch AS image-runtime
-COPY --from=runtime / /
+ARG TARGETARCH
+COPY --from=runtime runtime-linux-${TARGETARCH} /runtime
 COPY --from=image-fhs / /
 COPY --from=image-ca-certificates / /
 LABEL org.opencontainers.image.source https://github.com/cosi-project/runtime

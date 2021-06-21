@@ -1,6 +1,6 @@
 # THIS FILE WAS AUTOMATICALLY GENERATED, PLEASE DO NOT EDIT.
 #
-# Generated on 2021-05-24T20:18:47Z by kres d88b53b-dirty.
+# Generated on 2021-06-21T09:20:43Z by kres latest.
 
 # common variables
 
@@ -12,7 +12,7 @@ REGISTRY ?= ghcr.io
 USERNAME ?= cosi-project
 REGISTRY_AND_USERNAME ?= $(REGISTRY)/$(USERNAME)
 GOFUMPT_VERSION ?= abc0db2c416aca0f60ea33c23c76665f6e7ba0b6
-GO_VERSION ?= 1.14
+GO_VERSION ?= 1.16
 PROTOBUF_GO_VERSION ?= 1.25.0
 GRPC_GO_VERSION ?= 1.1.0
 GRPC_GATEWAY_VERSION ?= 2.4.0
@@ -119,12 +119,15 @@ unit-tests-race:  ## Performs unit tests with race detection enabled.
 coverage:  ## Upload coverage data to codecov.io.
 	bash -c "bash <(curl -s https://codecov.io/bash) -f $(ARTIFACTS)/coverage.txt -X fix"
 
-.PHONY: $(ARTIFACTS)/runtime
-$(ARTIFACTS)/runtime:
-	@$(MAKE) local-runtime DEST=$(ARTIFACTS)
+.PHONY: $(ARTIFACTS)/runtime-linux-amd64
+$(ARTIFACTS)/runtime-linux-amd64:
+	@$(MAKE) local-runtime-linux-amd64 DEST=$(ARTIFACTS)
+
+.PHONY: runtime-linux-amd64
+runtime-linux-amd64: $(ARTIFACTS)/runtime-linux-amd64  ## Builds executable for runtime-linux-amd64.
 
 .PHONY: runtime
-runtime: $(ARTIFACTS)/runtime  ## Builds executable for runtime.
+runtime: runtime-linux-amd64
 
 .PHONY: lint-markdown
 lint-markdown:  ## Runs markdownlint.
@@ -146,4 +149,9 @@ rekres:
 help:  ## This help menu.
 	@echo "$$HELP_MENU_HEADER"
 	@grep -E '^[a-zA-Z%_-]+:.*?## .*$$' $(MAKEFILE_LIST) | awk 'BEGIN {FS = ":.*?## "}; {printf "\033[36m%-30s\033[0m %s\n", $$1, $$2}'
+
+.PHONY: release-notes
+release-notes:
+	mkdir -p $(ARTIFACTS)
+	@ARTIFACTS=$(ARTIFACTS) ./hack/release.sh $@ $(ARTIFACTS)/RELEASE_NOTES.md $(TAG)
 
