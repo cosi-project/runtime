@@ -58,7 +58,7 @@ func NewStateClient(cc grpc.ClientConnInterface) StateClient {
 
 func (c *stateClient) Get(ctx context.Context, in *GetRequest, opts ...grpc.CallOption) (*GetResponse, error) {
 	out := new(GetResponse)
-	err := c.cc.Invoke(ctx, "/resource.State/Get", in, out, opts...)
+	err := c.cc.Invoke(ctx, "/cosi.resource.State/Get", in, out, opts...)
 	if err != nil {
 		return nil, err
 	}
@@ -66,7 +66,7 @@ func (c *stateClient) Get(ctx context.Context, in *GetRequest, opts ...grpc.Call
 }
 
 func (c *stateClient) List(ctx context.Context, in *ListRequest, opts ...grpc.CallOption) (State_ListClient, error) {
-	stream, err := c.cc.NewStream(ctx, &State_ServiceDesc.Streams[0], "/resource.State/List", opts...)
+	stream, err := c.cc.NewStream(ctx, &State_ServiceDesc.Streams[0], "/cosi.resource.State/List", opts...)
 	if err != nil {
 		return nil, err
 	}
@@ -99,7 +99,7 @@ func (x *stateListClient) Recv() (*ListResponse, error) {
 
 func (c *stateClient) Create(ctx context.Context, in *CreateRequest, opts ...grpc.CallOption) (*CreateResponse, error) {
 	out := new(CreateResponse)
-	err := c.cc.Invoke(ctx, "/resource.State/Create", in, out, opts...)
+	err := c.cc.Invoke(ctx, "/cosi.resource.State/Create", in, out, opts...)
 	if err != nil {
 		return nil, err
 	}
@@ -108,7 +108,7 @@ func (c *stateClient) Create(ctx context.Context, in *CreateRequest, opts ...grp
 
 func (c *stateClient) Update(ctx context.Context, in *UpdateRequest, opts ...grpc.CallOption) (*UpdateResponse, error) {
 	out := new(UpdateResponse)
-	err := c.cc.Invoke(ctx, "/resource.State/Update", in, out, opts...)
+	err := c.cc.Invoke(ctx, "/cosi.resource.State/Update", in, out, opts...)
 	if err != nil {
 		return nil, err
 	}
@@ -117,7 +117,7 @@ func (c *stateClient) Update(ctx context.Context, in *UpdateRequest, opts ...grp
 
 func (c *stateClient) Destroy(ctx context.Context, in *DestroyRequest, opts ...grpc.CallOption) (*DestroyResponse, error) {
 	out := new(DestroyResponse)
-	err := c.cc.Invoke(ctx, "/resource.State/Destroy", in, out, opts...)
+	err := c.cc.Invoke(ctx, "/cosi.resource.State/Destroy", in, out, opts...)
 	if err != nil {
 		return nil, err
 	}
@@ -125,7 +125,7 @@ func (c *stateClient) Destroy(ctx context.Context, in *DestroyRequest, opts ...g
 }
 
 func (c *stateClient) Watch(ctx context.Context, in *WatchRequest, opts ...grpc.CallOption) (State_WatchClient, error) {
-	stream, err := c.cc.NewStream(ctx, &State_ServiceDesc.Streams[1], "/resource.State/Watch", opts...)
+	stream, err := c.cc.NewStream(ctx, &State_ServiceDesc.Streams[1], "/cosi.resource.State/Watch", opts...)
 	if err != nil {
 		return nil, err
 	}
@@ -236,7 +236,7 @@ func _State_Get_Handler(srv interface{}, ctx context.Context, dec func(interface
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
-		FullMethod: "/resource.State/Get",
+		FullMethod: "/cosi.resource.State/Get",
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
 		return srv.(StateServer).Get(ctx, req.(*GetRequest))
@@ -275,7 +275,7 @@ func _State_Create_Handler(srv interface{}, ctx context.Context, dec func(interf
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
-		FullMethod: "/resource.State/Create",
+		FullMethod: "/cosi.resource.State/Create",
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
 		return srv.(StateServer).Create(ctx, req.(*CreateRequest))
@@ -293,7 +293,7 @@ func _State_Update_Handler(srv interface{}, ctx context.Context, dec func(interf
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
-		FullMethod: "/resource.State/Update",
+		FullMethod: "/cosi.resource.State/Update",
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
 		return srv.(StateServer).Update(ctx, req.(*UpdateRequest))
@@ -311,7 +311,7 @@ func _State_Destroy_Handler(srv interface{}, ctx context.Context, dec func(inter
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
-		FullMethod: "/resource.State/Destroy",
+		FullMethod: "/cosi.resource.State/Destroy",
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
 		return srv.(StateServer).Destroy(ctx, req.(*DestroyRequest))
@@ -344,7 +344,7 @@ func (x *stateWatchServer) Send(m *WatchResponse) error {
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
 var State_ServiceDesc = grpc.ServiceDesc{
-	ServiceName: "resource.State",
+	ServiceName: "cosi.resource.State",
 	HandlerType: (*StateServer)(nil),
 	Methods: []grpc.MethodDesc{
 		{

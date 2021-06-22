@@ -1,7 +1,7 @@
 syntax = "proto3";
 
 // Resource package defines protobuf serialization of COSI resources.
-package resource;
+package cosi.resource;
 
 option go_package = "github.com/cosi-project/runtime/api/v1alpha1";
 

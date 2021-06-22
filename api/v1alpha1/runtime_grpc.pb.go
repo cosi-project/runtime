@@ -46,7 +46,7 @@ func NewControllerRuntimeClient(cc grpc.ClientConnInterface) ControllerRuntimeCl
 
 func (c *controllerRuntimeClient) RegisterController(ctx context.Context, in *RegisterControllerRequest, opts ...grpc.CallOption) (*RegisterControllerResponse, error) {
 	out := new(RegisterControllerResponse)
-	err := c.cc.Invoke(ctx, "/runtime.ControllerRuntime/RegisterController", in, out, opts...)
+	err := c.cc.Invoke(ctx, "/cosi.runtime.ControllerRuntime/RegisterController", in, out, opts...)
 	if err != nil {
 		return nil, err
 	}
@@ -55,7 +55,7 @@ func (c *controllerRuntimeClient) RegisterController(ctx context.Context, in *Re
 
 func (c *controllerRuntimeClient) Start(ctx context.Context, in *StartRequest, opts ...grpc.CallOption) (*StartResponse, error) {
 	out := new(StartResponse)
-	err := c.cc.Invoke(ctx, "/runtime.ControllerRuntime/Start", in, out, opts...)
+	err := c.cc.Invoke(ctx, "/cosi.runtime.ControllerRuntime/Start", in, out, opts...)
 	if err != nil {
 		return nil, err
 	}
@@ -64,7 +64,7 @@ func (c *controllerRuntimeClient) Start(ctx context.Context, in *StartRequest, o
 
 func (c *controllerRuntimeClient) Stop(ctx context.Context, in *StopRequest, opts ...grpc.CallOption) (*StopResponse, error) {
 	out := new(StopResponse)
-	err := c.cc.Invoke(ctx, "/runtime.ControllerRuntime/Stop", in, out, opts...)
+	err := c.cc.Invoke(ctx, "/cosi.runtime.ControllerRuntime/Stop", in, out, opts...)
 	if err != nil {
 		return nil, err
 	}
@@ -130,7 +130,7 @@ func _ControllerRuntime_RegisterController_Handler(srv interface{}, ctx context.
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
-		FullMethod: "/runtime.ControllerRuntime/RegisterController",
+		FullMethod: "/cosi.runtime.ControllerRuntime/RegisterController",
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
 		return srv.(ControllerRuntimeServer).RegisterController(ctx, req.(*RegisterControllerRequest))
@@ -148,7 +148,7 @@ func _ControllerRuntime_Start_Handler(srv interface{}, ctx context.Context, dec 
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
-		FullMethod: "/runtime.ControllerRuntime/Start",
+		FullMethod: "/cosi.runtime.ControllerRuntime/Start",
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
 		return srv.(ControllerRuntimeServer).Start(ctx, req.(*StartRequest))
@@ -166,7 +166,7 @@ func _ControllerRuntime_Stop_Handler(srv interface{}, ctx context.Context, dec f
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
-		FullMethod: "/runtime.ControllerRuntime/Stop",
+		FullMethod: "/cosi.runtime.ControllerRuntime/Stop",
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
 		return srv.(ControllerRuntimeServer).Stop(ctx, req.(*StopRequest))
@@ -178,7 +178,7 @@ func _ControllerRuntime_Stop_Handler(srv interface{}, ctx context.Context, dec f
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
 var ControllerRuntime_ServiceDesc = grpc.ServiceDesc{
-	ServiceName: "runtime.ControllerRuntime",
+	ServiceName: "cosi.runtime.ControllerRuntime",
 	HandlerType: (*ControllerRuntimeServer)(nil),
 	Methods: []grpc.MethodDesc{
 		{
@@ -272,7 +272,7 @@ func NewControllerAdapterClient(cc grpc.ClientConnInterface) ControllerAdapterCl
 }
 
 func (c *controllerAdapterClient) ReconcileEvents(ctx context.Context, in *ReconcileEventsRequest, opts ...grpc.CallOption) (ControllerAdapter_ReconcileEventsClient, error) {
-	stream, err := c.cc.NewStream(ctx, &ControllerAdapter_ServiceDesc.Streams[0], "/runtime.ControllerAdapter/ReconcileEvents", opts...)
+	stream, err := c.cc.NewStream(ctx, &ControllerAdapter_ServiceDesc.Streams[0], "/cosi.runtime.ControllerAdapter/ReconcileEvents", opts...)
 	if err != nil {
 		return nil, err
 	}
@@ -305,7 +305,7 @@ func (x *controllerAdapterReconcileEventsClient) Recv() (*ReconcileEventsRespons
 
 func (c *controllerAdapterClient) QueueReconcile(ctx context.Context, in *QueueReconcileRequest, opts ...grpc.CallOption) (*QueueReconcileResponse, error) {
 	out := new(QueueReconcileResponse)
-	err := c.cc.Invoke(ctx, "/runtime.ControllerAdapter/QueueReconcile", in, out, opts...)
+	err := c.cc.Invoke(ctx, "/cosi.runtime.ControllerAdapter/QueueReconcile", in, out, opts...)
 	if err != nil {
 		return nil, err
 	}
@@ -314,7 +314,7 @@ func (c *controllerAdapterClient) QueueReconcile(ctx context.Context, in *QueueR
 
 func (c *controllerAdapterClient) UpdateInputs(ctx context.Context, in *UpdateInputsRequest, opts ...grpc.CallOption) (*UpdateInputsResponse, error) {
 	out := new(UpdateInputsResponse)
-	err := c.cc.Invoke(ctx, "/runtime.ControllerAdapter/UpdateInputs", in, out, opts...)
+	err := c.cc.Invoke(ctx, "/cosi.runtime.ControllerAdapter/UpdateInputs", in, out, opts...)
 	if err != nil {
 		return nil, err
 	}
@@ -323,7 +323,7 @@ func (c *controllerAdapterClient) UpdateInputs(ctx context.Context, in *UpdateIn
 
 func (c *controllerAdapterClient) Get(ctx context.Context, in *RuntimeGetRequest, opts ...grpc.CallOption) (*RuntimeGetResponse, error) {
 	out := new(RuntimeGetResponse)
-	err := c.cc.Invoke(ctx, "/runtime.ControllerAdapter/Get", in, out, opts...)
+	err := c.cc.Invoke(ctx, "/cosi.runtime.ControllerAdapter/Get", in, out, opts...)
 	if err != nil {
 		return nil, err
 	}
@@ -331,7 +331,7 @@ func (c *controllerAdapterClient) Get(ctx context.Context, in *RuntimeGetRequest
 }
 
 func (c *controllerAdapterClient) List(ctx context.Context, in *RuntimeListRequest, opts ...grpc.CallOption) (ControllerAdapter_ListClient, error) {
-	stream, err := c.cc.NewStream(ctx, &ControllerAdapter_ServiceDesc.Streams[1], "/runtime.ControllerAdapter/List", opts...)
+	stream, err := c.cc.NewStream(ctx, &ControllerAdapter_ServiceDesc.Streams[1], "/cosi.runtime.ControllerAdapter/List", opts...)
 	if err != nil {
 		return nil, err
 	}
@@ -364,7 +364,7 @@ func (x *controllerAdapterListClient) Recv() (*RuntimeListResponse, error) {
 
 func (c *controllerAdapterClient) WatchFor(ctx context.Context, in *RuntimeWatchForRequest, opts ...grpc.CallOption) (*RuntimeWatchForResponse, error) {
 	out := new(RuntimeWatchForResponse)
-	err := c.cc.Invoke(ctx, "/runtime.ControllerAdapter/WatchFor", in, out, opts...)
+	err := c.cc.Invoke(ctx, "/cosi.runtime.ControllerAdapter/WatchFor", in, out, opts...)
 	if err != nil {
 		return nil, err
 	}
@@ -373,7 +373,7 @@ func (c *controllerAdapterClient) WatchFor(ctx context.Context, in *RuntimeWatch
 
 func (c *controllerAdapterClient) Create(ctx context.Context, in *RuntimeCreateRequest, opts ...grpc.CallOption) (*RuntimeCreateResponse, error) {
 	out := new(RuntimeCreateResponse)
-	err := c.cc.Invoke(ctx, "/runtime.ControllerAdapter/Create", in, out, opts...)
+	err := c.cc.Invoke(ctx, "/cosi.runtime.ControllerAdapter/Create", in, out, opts...)
 	if err != nil {
 		return nil, err
 	}
@@ -382,7 +382,7 @@ func (c *controllerAdapterClient) Create(ctx context.Context, in *RuntimeCreateR
 
 func (c *controllerAdapterClient) Update(ctx context.Context, in *RuntimeUpdateRequest, opts ...grpc.CallOption) (*RuntimeUpdateResponse, error) {
 	out := new(RuntimeUpdateResponse)
-	err := c.cc.Invoke(ctx, "/runtime.ControllerAdapter/Update", in, out, opts...)
+	err := c.cc.Invoke(ctx, "/cosi.runtime.ControllerAdapter/Update", in, out, opts...)
 	if err != nil {
 		return nil, err
 	}
@@ -391,7 +391,7 @@ func (c *controllerAdapterClient) Update(ctx context.Context, in *RuntimeUpdateR
 
 func (c *controllerAdapterClient) Teardown(ctx context.Context, in *RuntimeTeardownRequest, opts ...grpc.CallOption) (*RuntimeTeardownResponse, error) {
 	out := new(RuntimeTeardownResponse)
-	err := c.cc.Invoke(ctx, "/runtime.ControllerAdapter/Teardown", in, out, opts...)
+	err := c.cc.Invoke(ctx, "/cosi.runtime.ControllerAdapter/Teardown", in, out, opts...)
 	if err != nil {
 		return nil, err
 	}
@@ -400,7 +400,7 @@ func (c *controllerAdapterClient) Teardown(ctx context.Context, in *RuntimeTeard
 
 func (c *controllerAdapterClient) Destroy(ctx context.Context, in *RuntimeDestroyRequest, opts ...grpc.CallOption) (*RuntimeDestroyResponse, error) {
 	out := new(RuntimeDestroyResponse)
-	err := c.cc.Invoke(ctx, "/runtime.ControllerAdapter/Destroy", in, out, opts...)
+	err := c.cc.Invoke(ctx, "/cosi.runtime.ControllerAdapter/Destroy", in, out, opts...)
 	if err != nil {
 		return nil, err
 	}
@@ -409,7 +409,7 @@ func (c *controllerAdapterClient) Destroy(ctx context.Context, in *RuntimeDestro
 
 func (c *controllerAdapterClient) AddFinalizer(ctx context.Context, in *RuntimeAddFinalizerRequest, opts ...grpc.CallOption) (*RuntimeAddFinalizerResponse, error) {
 	out := new(RuntimeAddFinalizerResponse)
-	err := c.cc.Invoke(ctx, "/runtime.ControllerAdapter/AddFinalizer", in, out, opts...)
+	err := c.cc.Invoke(ctx, "/cosi.runtime.ControllerAdapter/AddFinalizer", in, out, opts...)
 	if err != nil {
 		return nil, err
 	}
@@ -418,7 +418,7 @@ func (c *controllerAdapterClient) AddFinalizer(ctx context.Context, in *RuntimeA
 
 func (c *controllerAdapterClient) RemoveFinalizer(ctx context.Context, in *RuntimeRemoveFinalizerRequest, opts ...grpc.CallOption) (*RuntimeRemoveFinalizerResponse, error) {
 	out := new(RuntimeRemoveFinalizerResponse)
-	err := c.cc.Invoke(ctx, "/runtime.ControllerAdapter/RemoveFinalizer", in, out, opts...)
+	err := c.cc.Invoke(ctx, "/cosi.runtime.ControllerAdapter/RemoveFinalizer", in, out, opts...)
 	if err != nil {
 		return nil, err
 	}
@@ -575,7 +575,7 @@ func _ControllerAdapter_QueueReconcile_Handler(srv interface{}, ctx context.Cont
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
-		FullMethod: "/runtime.ControllerAdapter/QueueReconcile",
+		FullMethod: "/cosi.runtime.ControllerAdapter/QueueReconcile",
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
 		return srv.(ControllerAdapterServer).QueueReconcile(ctx, req.(*QueueReconcileRequest))
@@ -593,7 +593,7 @@ func _ControllerAdapter_UpdateInputs_Handler(srv interface{}, ctx context.Contex
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
-		FullMethod: "/runtime.ControllerAdapter/UpdateInputs",
+		FullMethod: "/cosi.runtime.ControllerAdapter/UpdateInputs",
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
 		return srv.(ControllerAdapterServer).UpdateInputs(ctx, req.(*UpdateInputsRequest))
@@ -611,7 +611,7 @@ func _ControllerAdapter_Get_Handler(srv interface{}, ctx context.Context, dec fu
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
-		FullMethod: "/runtime.ControllerAdapter/Get",
+		FullMethod: "/cosi.runtime.ControllerAdapter/Get",
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
 		return srv.(ControllerAdapterServer).Get(ctx, req.(*RuntimeGetRequest))
@@ -650,7 +650,7 @@ func _ControllerAdapter_WatchFor_Handler(srv interface{}, ctx context.Context, d
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
-		FullMethod: "/runtime.ControllerAdapter/WatchFor",
+		FullMethod: "/cosi.runtime.ControllerAdapter/WatchFor",
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
 		return srv.(ControllerAdapterServer).WatchFor(ctx, req.(*RuntimeWatchForRequest))
@@ -668,7 +668,7 @@ func _ControllerAdapter_Create_Handler(srv interface{}, ctx context.Context, dec
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
-		FullMethod: "/runtime.ControllerAdapter/Create",
+		FullMethod: "/cosi.runtime.ControllerAdapter/Create",
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
 		return srv.(ControllerAdapterServer).Create(ctx, req.(*RuntimeCreateRequest))
@@ -686,7 +686,7 @@ func _ControllerAdapter_Update_Handler(srv interface{}, ctx context.Context, dec
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
-		FullMethod: "/runtime.ControllerAdapter/Update",
+		FullMethod: "/cosi.runtime.ControllerAdapter/Update",
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
 		return srv.(ControllerAdapterServer).Update(ctx, req.(*RuntimeUpdateRequest))
@@ -704,7 +704,7 @@ func _ControllerAdapter_Teardown_Handler(srv interface{}, ctx context.Context, d
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
-		FullMethod: "/runtime.ControllerAdapter/Teardown",
+		FullMethod: "/cosi.runtime.ControllerAdapter/Teardown",
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
 		return srv.(ControllerAdapterServer).Teardown(ctx, req.(*RuntimeTeardownRequest))
@@ -722,7 +722,7 @@ func _ControllerAdapter_Destroy_Handler(srv interface{}, ctx context.Context, de
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
-		FullMethod: "/runtime.ControllerAdapter/Destroy",
+		FullMethod: "/cosi.runtime.ControllerAdapter/Destroy",
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
 		return srv.(ControllerAdapterServer).Destroy(ctx, req.(*RuntimeDestroyRequest))
@@ -740,7 +740,7 @@ func _ControllerAdapter_AddFinalizer_Handler(srv interface{}, ctx context.Contex
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
-		FullMethod: "/runtime.ControllerAdapter/AddFinalizer",
+		FullMethod: "/cosi.runtime.ControllerAdapter/AddFinalizer",
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
 		return srv.(ControllerAdapterServer).AddFinalizer(ctx, req.(*RuntimeAddFinalizerRequest))
@@ -758,7 +758,7 @@ func _ControllerAdapter_RemoveFinalizer_Handler(srv interface{}, ctx context.Con
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
-		FullMethod: "/runtime.ControllerAdapter/RemoveFinalizer",
+		FullMethod: "/cosi.runtime.ControllerAdapter/RemoveFinalizer",
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
 		return srv.(ControllerAdapterServer).RemoveFinalizer(ctx, req.(*RuntimeRemoveFinalizerRequest))
@@ -770,7 +770,7 @@ func _ControllerAdapter_RemoveFinalizer_Handler(srv interface{}, ctx context.Con
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
 var ControllerAdapter_ServiceDesc = grpc.ServiceDesc{
-	ServiceName: "runtime.ControllerAdapter",
+	ServiceName: "cosi.runtime.ControllerAdapter",
 	HandlerType: (*ControllerAdapterServer)(nil),
 	Methods: []grpc.MethodDesc{
 		{

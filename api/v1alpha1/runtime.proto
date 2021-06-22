@@ -1,6 +1,6 @@
 syntax = "proto3";
 
-package runtime;
+package cosi.runtime;
 
 option go_package = "github.com/cosi-project/runtime/api/v1alpha1";
 
