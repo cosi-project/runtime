@@ -6,10 +6,12 @@ package protobuf_test
 
 import (
 	"testing"
+	"time"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"google.golang.org/protobuf/proto"
+	timestamppb "google.golang.org/protobuf/types/known/timestamppb"
 	"gopkg.in/yaml.v3"
 
 	"github.com/cosi-project/runtime/api/v1alpha1"
@@ -26,6 +28,9 @@ func TestInterfaces(t *testing.T) {
 func TestMarshalUnmarshal(t *testing.T) {
 	t.Parallel()
 
+	created, _ := time.Parse(time.RFC3339, "2021-06-23T19:22:29Z") //nolint:errcheck
+	updated, _ := time.Parse(time.RFC3339, "2021-06-23T20:22:29Z") //nolint:errcheck
+
 	protoR := &v1alpha1.Resource{
 		Metadata: &v1alpha1.Metadata{
 			Namespace:  "ns",
@@ -34,6 +39,8 @@ func TestMarshalUnmarshal(t *testing.T) {
 			Version:    "3",
 			Owner:      "FooController",
 			Phase:      "running",
+			Created:    timestamppb.New(created),
+			Updated:    timestamppb.New(updated),
 			Finalizers: []string{"a1", "a2"},
 		},
 		Spec: &v1alpha1.Spec{
@@ -63,7 +70,20 @@ func TestMarshalUnmarshal(t *testing.T) {
 	yy, err := yaml.Marshal(y)
 	require.NoError(t, err)
 
-	assert.Equal(t,
-		"metadata:\n    namespace: ns\n    type: typ\n    id: id\n    version: 3\n    owner: FooController\n    phase: running\n    finalizers:\n        - a1\n        - a2\nspec:\n    true\n",
+	assert.Equal(t, `metadata:
+    namespace: ns
+    type: typ
+    id: id
+    version: 3
+    owner: FooController
+    phase: running
+    created: 2021-06-23T19:22:29Z
+    updated: 2021-06-23T20:22:29Z
+    finalizers:
+        - a1
+        - a2
+spec:
+    true
+`,
 		string(yy))
 }

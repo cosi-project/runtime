@@ -5,9 +5,13 @@
 package resource_test
 
 import (
+	"fmt"
 	"testing"
+	"time"
 
+	timestamp "github.com/golang/protobuf/ptypes/timestamp"
 	"github.com/stretchr/testify/assert"
+	timestamppb "google.golang.org/protobuf/types/known/timestamppb"
 	"gopkg.in/yaml.v3"
 
 	"github.com/cosi-project/runtime/pkg/resource"
@@ -79,6 +83,8 @@ func TestMetadataMarshalYAML(t *testing.T) {
 	md := resource.NewMetadata("default", "type", "aaa", resource.VersionUndefined)
 	md.BumpVersion()
 
+	timestamps := fmt.Sprintf("created: %s\nupdated: %s\n", md.Created().Format(time.RFC3339), md.Updated().Format(time.RFC3339))
+
 	out, err := yaml.Marshal(&md)
 	assert.NoError(t, err)
 	assert.Equal(t, `namespace: default
@@ -87,7 +93,7 @@ id: aaa
 version: 1
 owner:
 phase: running
-`, string(out))
+`+timestamps, string(out))
 
 	md.Finalizers().Add("\"resource1")
 	md.Finalizers().Add("resource2")
@@ -101,11 +107,13 @@ id: aaa
 version: 1
 owner: FooController
 phase: running
-finalizers:
+`+timestamps+`finalizers:
     - '"resource1'
     - resource2
 `, string(out))
 }
+
+var ts, _ = time.Parse(time.RFC3339, "2021-06-23T19:22:29Z")
 
 type protoMd struct{}
 
@@ -136,6 +144,14 @@ func (p *protoMd) GetOwner() string {
 
 func (p *protoMd) GetFinalizers() []string {
 	return []string{"resource1", "resource2"}
+}
+
+func (p *protoMd) GetCreated() *timestamp.Timestamp {
+	return timestamppb.New(ts)
+}
+
+func (p *protoMd) GetUpdated() *timestamp.Timestamp {
+	return timestamppb.New(ts)
 }
 
 func TestNewMedataFromProto(t *testing.T) {

@@ -5,6 +5,8 @@ package cosi.resource;
 
 option go_package = "github.com/cosi-project/runtime/api/v1alpha1";
 
+import "google/protobuf/timestamp.proto";
+
 // Metadata represents resource metadata.
 //
 // (namespace, type, id) is a recource pointer.
@@ -19,7 +21,9 @@ message Metadata {
     string version = 4;
     string owner = 5;
     string phase = 6;
-    repeated string finalizers = 7;
+    google.protobuf.Timestamp created = 7;
+    google.protobuf.Timestamp updated = 8;
+    repeated string finalizers = 9;
 }
 
 // Spec defines content of the resource.

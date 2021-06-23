@@ -49,6 +49,8 @@ metadata:
     version: 1
     owner: FooController
     phase: running
+    created: 2021-06-23T19:22:29Z
+    updated: 2021-06-23T19:22:29Z
     finalizers:
         - resource1
         - resource2
