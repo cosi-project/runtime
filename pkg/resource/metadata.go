@@ -7,29 +7,37 @@ package resource
 import (
 	"fmt"
 	"sort"
+	"time"
 
+	timestamp "github.com/golang/protobuf/ptypes/timestamp"
 	"gopkg.in/yaml.v3"
 )
 
 // Metadata implements resource meta.
 type Metadata struct {
-	ns    Namespace
-	typ   Type
-	id    ID
-	ver   Version
-	owner Owner
-	fins  Finalizers
-	phase Phase
+	created time.Time
+	updated time.Time
+	ns      Namespace
+	typ     Type
+	id      ID
+	ver     Version
+	owner   Owner
+	fins    Finalizers
+	phase   Phase
 }
 
 // NewMetadata builds new metadata.
 func NewMetadata(ns Namespace, typ Type, id ID, ver Version) Metadata {
+	now := time.Now()
+
 	return Metadata{
-		ns:    ns,
-		typ:   typ,
-		id:    id,
-		ver:   ver,
-		phase: PhaseRunning,
+		created: now,
+		updated: now,
+		ns:      ns,
+		typ:     typ,
+		id:      id,
+		ver:     ver,
+		phase:   PhaseRunning,
 	}
 }
 
@@ -58,6 +66,16 @@ func (md Metadata) Version() Version {
 	return md.ver
 }
 
+// Created returns resource creation timestamp.
+func (md Metadata) Created() time.Time {
+	return md.created
+}
+
+// Updated returns resource update timestamp.
+func (md Metadata) Updated() time.Time {
+	return md.updated
+}
+
 // SetVersion updates resource version.
 func (md *Metadata) SetVersion(newVersion Version) {
 	md.ver = newVersion
@@ -74,6 +92,7 @@ func (md *Metadata) BumpVersion() {
 	}
 
 	md.ver.uint64 = &v
+	md.updated = time.Now()
 }
 
 // Finalizers returns a reference to the finalizers.
@@ -220,6 +239,22 @@ func (md *Metadata) MarshalYAML() (interface{}, error) {
 					Kind:  yaml.ScalarNode,
 					Value: md.phase.String(),
 				},
+				{
+					Kind:  yaml.ScalarNode,
+					Value: "created",
+				},
+				{
+					Kind:  yaml.ScalarNode,
+					Value: md.created.Format(time.RFC3339),
+				},
+				{
+					Kind:  yaml.ScalarNode,
+					Value: "updated",
+				},
+				{
+					Kind:  yaml.ScalarNode,
+					Value: md.updated.Format(time.RFC3339),
+				},
 			},
 			finalizers...),
 	}, nil
@@ -234,6 +269,8 @@ type MetadataProto interface {
 	GetPhase() string
 	GetOwner() string
 	GetFinalizers() []string
+	GetCreated() *timestamp.Timestamp
+	GetUpdated() *timestamp.Timestamp
 }
 
 // NewMetadataFromProto builds Metadata object from ProtoMetadata interface data.
@@ -250,6 +287,8 @@ func NewMetadataFromProto(proto MetadataProto) (Metadata, error) {
 
 	md := NewMetadata(proto.GetNamespace(), proto.GetType(), proto.GetId(), ver)
 	md.SetPhase(phase)
+	md.created = proto.GetCreated().AsTime()
+	md.updated = proto.GetUpdated().AsTime()
 
 	if err := md.SetOwner(proto.GetOwner()); err != nil {
 		return md, err

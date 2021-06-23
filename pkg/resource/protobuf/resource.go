@@ -7,6 +7,7 @@ package protobuf
 import (
 	"fmt"
 
+	timestamppb "google.golang.org/protobuf/types/known/timestamppb"
 	"gopkg.in/yaml.v3"
 
 	"github.com/cosi-project/runtime/api/v1alpha1"
@@ -73,6 +74,8 @@ func (r *Resource) Marshal() (*v1alpha1.Resource, error) {
 			Version:    r.md.Version().String(),
 			Owner:      r.md.Owner(),
 			Phase:      r.md.Phase().String(),
+			Created:    timestamppb.New(r.md.Created()),
+			Updated:    timestamppb.New(r.md.Updated()),
 			Finalizers: *r.md.Finalizers(),
 		},
 		Spec: &v1alpha1.Spec{
