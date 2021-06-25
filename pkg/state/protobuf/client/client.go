@@ -163,7 +163,7 @@ func (adapter *Adapter) Create(ctx context.Context, r resource.Resource, opt ...
 // On update current version of resource `new` in the state should match
 // curVersion, otherwise conflict error is returned.
 func (adapter *Adapter) Update(ctx context.Context, curVersion resource.Version, newResource resource.Resource, opt ...state.UpdateOption) error {
-	opts := state.UpdateOptions{}
+	opts := state.DefaultUpdateOptions()
 
 	for _, o := range opt {
 		o(&opts)
@@ -179,11 +179,18 @@ func (adapter *Adapter) Update(ctx context.Context, curVersion resource.Version,
 		return err
 	}
 
+	var expectedPhase *string
+
+	if opts.ExpectedPhase != nil {
+		expectedPhase = pointer.ToString(opts.ExpectedPhase.String())
+	}
+
 	_, err = adapter.client.Update(ctx, &v1alpha1.UpdateRequest{
 		CurrentVersion: curVersion.String(),
 		NewResource:    marshaled,
 		Options: &v1alpha1.UpdateOptions{
-			Owner: opts.Owner,
+			Owner:         opts.Owner,
+			ExpectedPhase: expectedPhase,
 		},
 	})
 
@@ -193,6 +200,8 @@ func (adapter *Adapter) Update(ctx context.Context, curVersion resource.Version,
 			return eNotFound{err}
 		case codes.PermissionDenied:
 			return eOwnerConflict{eConflict{err}}
+		case codes.InvalidArgument:
+			return ePhaseConflict{eConflict{err}}
 		case codes.FailedPrecondition:
 			return eConflict{err}
 		default:

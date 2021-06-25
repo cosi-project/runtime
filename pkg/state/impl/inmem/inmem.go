@@ -61,13 +61,13 @@ func (st *State) Create(ctx context.Context, resource resource.Resource, opts ..
 
 // Update a resource.
 func (st *State) Update(ctx context.Context, curVersion resource.Version, newResource resource.Resource, opts ...state.UpdateOption) error {
-	var options state.UpdateOptions
+	options := state.DefaultUpdateOptions()
 
 	for _, opt := range opts {
 		opt(&options)
 	}
 
-	return st.getCollection(newResource.Metadata().Type()).Update(curVersion, newResource, options.Owner)
+	return st.getCollection(newResource.Metadata().Type()).Update(curVersion, newResource, &options)
 }
 
 // Destroy a resource.

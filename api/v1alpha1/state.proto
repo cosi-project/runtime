@@ -113,6 +113,7 @@ message UpdateRequest {
 
 message UpdateOptions {
     string owner = 1;
+    optional string expected_phase = 2;
 }
 
 message UpdateResponse {

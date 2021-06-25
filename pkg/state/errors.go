@@ -4,7 +4,12 @@
 
 package state
 
-import "errors"
+import (
+	"errors"
+	"fmt"
+
+	"github.com/cosi-project/runtime/pkg/resource"
+)
 
 // ErrNotFound should be implemented by "not found" errors.
 type ErrNotFound interface {
@@ -40,4 +45,37 @@ func IsOwnerConflictError(err error) bool {
 	var i ErrOwnerConflict
 
 	return errors.As(err, &i)
+}
+
+// ErrPhaseConflict should be implemented by resource phase conflict errors.
+type ErrPhaseConflict interface {
+	PhaseConflictError()
+}
+
+// IsPhaseConflictError checks if err is phase conflict error.
+func IsPhaseConflictError(err error) bool {
+	var i ErrPhaseConflict
+
+	return errors.As(err, &i)
+}
+
+type eConflict struct {
+	error
+}
+
+func (eConflict) ConflictError() {}
+
+type ePhaseConflict struct {
+	eConflict
+}
+
+func (ePhaseConflict) PhaseConflictError() {}
+
+// errPhaseConflict generates error compatible with ErrConflict.
+func errPhaseConflict(r resource.Reference, expectedPhase resource.Phase) error {
+	return ePhaseConflict{
+		eConflict{
+			fmt.Errorf("resource %s is not in phase %s", r, expectedPhase),
+		},
+	}
 }

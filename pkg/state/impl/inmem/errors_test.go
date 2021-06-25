@@ -22,4 +22,5 @@ func TestErrors(t *testing.T) {
 	assert.True(t, state.IsConflictError(inmem.ErrPendingFinalizers(resource.NewMetadata("ns", "a", "b", resource.VersionUndefined))))
 	assert.True(t, state.IsConflictError(inmem.ErrOwnerConflict(resource.NewMetadata("ns", "a", "b", resource.VersionUndefined), "owner")))
 	assert.True(t, state.IsOwnerConflictError(inmem.ErrOwnerConflict(resource.NewMetadata("ns", "a", "b", resource.VersionUndefined), "owner")))
+	assert.True(t, state.IsPhaseConflictError(inmem.ErrPhaseConflict(resource.NewMetadata("ns", "a", "b", resource.VersionUndefined), resource.PhaseTearingDown)))
 }

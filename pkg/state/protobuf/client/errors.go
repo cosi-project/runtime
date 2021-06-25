@@ -21,3 +21,9 @@ type eOwnerConflict struct {
 }
 
 func (eOwnerConflict) OwnerConflictError() {}
+
+type ePhaseConflict struct {
+	eConflict
+}
+
+func (ePhaseConflict) PhaseConflictError() {}

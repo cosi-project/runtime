@@ -23,10 +23,21 @@ type coreWrapper struct {
 
 // UpdateWithConflicts automatically handles conflicts on update.
 func (state coreWrapper) UpdateWithConflicts(ctx context.Context, resourcePointer resource.Pointer, f UpdaterFunc, opts ...UpdateOption) (resource.Resource, error) {
+	options := DefaultUpdateOptions()
+
+	for _, opt := range opts {
+		opt(&options)
+	}
+
 	for {
 		current, err := state.Get(ctx, resourcePointer)
 		if err != nil {
 			return nil, err
+		}
+
+		// check for phase conflict even if the change is no-op
+		if options.ExpectedPhase != nil && *options.ExpectedPhase != current.Metadata().Phase() {
+			return nil, errPhaseConflict(current.Metadata(), *options.ExpectedPhase)
 		}
 
 		curVersion := current.Metadata().Version()
@@ -48,7 +59,7 @@ func (state coreWrapper) UpdateWithConflicts(ctx context.Context, resourcePointe
 			return current, nil
 		}
 
-		if IsConflictError(err) && !IsOwnerConflictError(err) {
+		if IsConflictError(err) && !IsOwnerConflictError(err) && !IsPhaseConflictError(err) {
 			continue
 		}
 
@@ -136,7 +147,7 @@ func (state coreWrapper) AddFinalizer(ctx context.Context, resourcePointer resou
 		}
 
 		return nil
-	}, WithUpdateOwner(current.Metadata().Owner()))
+	}, WithUpdateOwner(current.Metadata().Owner()), WithExpectedPhaseAny())
 
 	return err
 }
@@ -154,7 +165,7 @@ func (state coreWrapper) RemoveFinalizer(ctx context.Context, resourcePointer re
 		}
 
 		return nil
-	}, WithUpdateOwner(current.Metadata().Owner()))
+	}, WithUpdateOwner(current.Metadata().Owner()), WithExpectedPhaseAny())
 
 	return err
 }
