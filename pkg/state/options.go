@@ -4,6 +4,8 @@
 
 package state
 
+import "github.com/cosi-project/runtime/pkg/resource"
+
 // GetOptions for the CoreState.Get function.
 type GetOptions struct {
 	Owner string
@@ -37,7 +39,17 @@ func WithCreateOwner(owner string) CreateOption {
 
 // UpdateOptions for the CoreState.Update function.
 type UpdateOptions struct {
-	Owner string
+	ExpectedPhase *resource.Phase
+	Owner         string
+}
+
+// DefaultUpdateOptions returns default value for UpdateOptions.
+func DefaultUpdateOptions() UpdateOptions {
+	phase := resource.PhaseRunning
+
+	return UpdateOptions{
+		ExpectedPhase: &phase,
+	}
 }
 
 // UpdateOption builds UpdateOptions.
@@ -47,6 +59,24 @@ type UpdateOption func(*UpdateOptions)
 func WithUpdateOwner(owner string) UpdateOption {
 	return func(opts *UpdateOptions) {
 		opts.Owner = owner
+	}
+}
+
+// WithExpectedPhase modifies expected resource phase for the update request.
+//
+// Default value is resource.PhaseRunning.
+func WithExpectedPhase(phase resource.Phase) UpdateOption {
+	return func(opts *UpdateOptions) {
+		opts.ExpectedPhase = &phase
+	}
+}
+
+// WithExpectedPhaseAny accepts any resource phase for the update request.
+//
+// Default value is resource.PhaseRunning.
+func WithExpectedPhaseAny() UpdateOption {
+	return func(opts *UpdateOptions) {
+		opts.ExpectedPhase = nil
 	}
 }
 

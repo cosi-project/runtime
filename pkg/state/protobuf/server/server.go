@@ -142,13 +142,30 @@ func (server *State) Update(ctx context.Context, req *v1alpha1.UpdateRequest) (*
 		return nil, status.Error(codes.InvalidArgument, err.Error())
 	}
 
-	err = server.state.Update(ctx, currentVersion, r, state.WithUpdateOwner(req.GetOptions().GetOwner()))
+	opts := []state.UpdateOption{state.WithUpdateOwner(req.GetOptions().GetOwner())}
+
+	if req.GetOptions().ExpectedPhase == nil {
+		opts = append(opts, state.WithExpectedPhaseAny())
+	} else {
+		var expectedPhase resource.Phase
+
+		expectedPhase, err = resource.ParsePhase(req.GetOptions().GetExpectedPhase())
+		if err != nil {
+			return nil, err
+		}
+
+		opts = append(opts, state.WithExpectedPhase(expectedPhase))
+	}
+
+	err = server.state.Update(ctx, currentVersion, r, opts...)
 
 	switch {
 	case state.IsNotFoundError(err):
 		return nil, status.Error(codes.NotFound, err.Error())
 	case state.IsOwnerConflictError(err):
 		return nil, status.Error(codes.PermissionDenied, err.Error())
+	case state.IsPhaseConflictError(err):
+		return nil, status.Error(codes.InvalidArgument, err.Error())
 	case state.IsConflictError(err):
 		return nil, status.Error(codes.FailedPrecondition, err.Error())
 	case err != nil:

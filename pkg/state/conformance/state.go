@@ -614,4 +614,25 @@ func (suite *StateSuite) TestUpdate() {
 	path1.Metadata().BumpVersion()
 
 	suite.Assert().NoError(suite.State.Update(ctx, curVersion, path1))
+
+	// torn down objects are not updateable
+	_, err = suite.State.Teardown(ctx, path1.Metadata())
+	suite.Require().NoError(err)
+
+	r, err := suite.State.Get(ctx, path1.Metadata())
+	suite.Require().NoError(err)
+
+	path1 = r.(*PathResource) //nolint:errcheck,forcetypeassert
+
+	curVersion = path1.Metadata().Version()
+	path1.Metadata().BumpVersion()
+
+	err = suite.State.Update(ctx, curVersion, path1)
+	suite.Require().Error(err)
+
+	suite.Assert().True(state.IsPhaseConflictError(err))
+
+	// update with explicit phase
+	err = suite.State.Update(ctx, curVersion, path1, state.WithExpectedPhase(resource.PhaseTearingDown))
+	suite.Require().NoError(err)
 }

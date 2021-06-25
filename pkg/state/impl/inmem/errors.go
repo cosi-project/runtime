@@ -35,6 +35,12 @@ type eOwnerConflict struct {
 
 func (eOwnerConflict) OwnerConflictError() {}
 
+type ePhaseConflict struct {
+	eConflict
+}
+
+func (ePhaseConflict) PhaseConflictError() {}
+
 // ErrAlreadyExists generates error compatible with state.ErrConflict.
 func ErrAlreadyExists(r resource.Reference) error {
 	return eConflict{
@@ -68,6 +74,15 @@ func ErrOwnerConflict(r resource.Reference, owner string) error {
 	return eOwnerConflict{
 		eConflict{
 			fmt.Errorf("resource %s is owned by %q", r, owner),
+		},
+	}
+}
+
+// ErrPhaseConflict generates error compatible with ErrConflict.
+func ErrPhaseConflict(r resource.Reference, expectedPhase resource.Phase) error {
+	return ePhaseConflict{
+		eConflict{
+			fmt.Errorf("resource %s is not in phase %s", r, expectedPhase),
 		},
 	}
 }

@@ -122,7 +122,7 @@ func (collection *ResourceCollection) Create(resource resource.Resource, owner s
 }
 
 // Update a resource.
-func (collection *ResourceCollection) Update(curVersion resource.Version, newResource resource.Resource, owner string) error {
+func (collection *ResourceCollection) Update(curVersion resource.Version, newResource resource.Resource, options *state.UpdateOptions) error {
 	newResource = newResource.DeepCopy()
 	id := newResource.Metadata().ID()
 
@@ -134,7 +134,7 @@ func (collection *ResourceCollection) Update(curVersion resource.Version, newRes
 		return ErrNotFound(newResource.Metadata())
 	}
 
-	if curResource.Metadata().Owner() != owner {
+	if curResource.Metadata().Owner() != options.Owner {
 		return ErrOwnerConflict(curResource.Metadata(), curResource.Metadata().Owner())
 	}
 
@@ -144,6 +144,10 @@ func (collection *ResourceCollection) Update(curVersion resource.Version, newRes
 
 	if !curResource.Metadata().Version().Equal(curVersion) {
 		return ErrVersionConflict(curResource.Metadata(), curVersion, curResource.Metadata().Version())
+	}
+
+	if options.ExpectedPhase != nil && curResource.Metadata().Phase() != *options.ExpectedPhase {
+		return ErrPhaseConflict(curResource.Metadata(), *options.ExpectedPhase)
 	}
 
 	collection.storage[id] = newResource
