@@ -54,12 +54,11 @@ func (suite *RuntimeSuite) startRuntime() {
 	}()
 }
 
-//nolint:dupl
 func (suite *RuntimeSuite) assertStrObjects(ns resource.Namespace, typ resource.Type, ids, values []string) retry.RetryableFunc {
 	return func() error {
 		items, err := suite.State.List(suite.ctx, resource.NewMetadata(ns, typ, "", resource.VersionUndefined))
 		if err != nil {
-			return retry.UnexpectedError(err)
+			return err
 		}
 
 		if len(items.Items) != len(ids) {
@@ -73,7 +72,7 @@ func (suite *RuntimeSuite) assertStrObjects(ns resource.Namespace, typ resource.
 					return retry.ExpectedError(err)
 				}
 
-				return retry.UnexpectedError(err)
+				return err
 			}
 
 			strValue := r.(StringResource).Value()
@@ -87,12 +86,12 @@ func (suite *RuntimeSuite) assertStrObjects(ns resource.Namespace, typ resource.
 	}
 }
 
-//nolint:dupl,unparam
+//nolint:unparam
 func (suite *RuntimeSuite) assertIntObjects(ns resource.Namespace, typ resource.Type, ids []string, values []int) retry.RetryableFunc {
 	return func() error {
 		items, err := suite.State.List(suite.ctx, resource.NewMetadata(ns, typ, "", resource.VersionUndefined))
 		if err != nil {
-			return retry.UnexpectedError(err)
+			return err
 		}
 
 		if len(items.Items) != len(ids) {
@@ -106,7 +105,7 @@ func (suite *RuntimeSuite) assertIntObjects(ns resource.Namespace, typ resource.
 					return retry.ExpectedError(err)
 				}
 
-				return retry.UnexpectedError(err)
+				return err
 			}
 
 			intValue := r.(IntegerResource).Value()
