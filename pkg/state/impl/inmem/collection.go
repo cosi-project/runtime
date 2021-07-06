@@ -33,12 +33,7 @@ type ResourceCollection struct {
 }
 
 // NewResourceCollection returns new ResourceCollection.
-func NewResourceCollection(ns resource.Namespace, typ resource.Type) *ResourceCollection {
-	const (
-		capacity = 1000
-		gap      = 10
-	)
-
+func NewResourceCollection(ns resource.Namespace, typ resource.Type, capacity, gap int) *ResourceCollection {
 	collection := &ResourceCollection{
 		ns:       ns,
 		typ:      typ,

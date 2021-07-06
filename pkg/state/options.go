@@ -7,9 +7,7 @@ package state
 import "github.com/cosi-project/runtime/pkg/resource"
 
 // GetOptions for the CoreState.Get function.
-type GetOptions struct {
-	Owner string
-}
+type GetOptions struct{}
 
 // GetOption builds GetOptions.
 type GetOption func(*GetOptions)

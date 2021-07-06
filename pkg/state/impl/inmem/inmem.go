@@ -17,12 +17,27 @@ import (
 type State struct {
 	collections sync.Map
 	ns          resource.Namespace
+
+	capacity, gap int
 }
 
-// NewState creates new State.
-func NewState(ns resource.Namespace) *State {
-	return &State{
-		ns: ns,
+// NewState creates new State with default options.
+var NewState = NewStateWithOptions()
+
+// NewStateWithOptions returns state builder function with options.
+func NewStateWithOptions(opts ...StateOption) func(ns resource.Namespace) *State {
+	options := DefaultStateOptions()
+
+	for _, opt := range opts {
+		opt(&options)
+	}
+
+	return func(ns resource.Namespace) *State {
+		return &State{
+			ns:       ns,
+			capacity: options.HistoryCapacity,
+			gap:      options.HistoryGap,
+		}
 	}
 }
 
@@ -31,7 +46,7 @@ func (st *State) getCollection(typ resource.Type) *ResourceCollection {
 		return r.(*ResourceCollection)
 	}
 
-	collection := NewResourceCollection(st.ns, typ)
+	collection := NewResourceCollection(st.ns, typ, st.capacity, st.gap)
 
 	r, _ := st.collections.LoadOrStore(typ, collection)
 
