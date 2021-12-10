@@ -21,7 +21,8 @@ func TestRDSpec(t *testing.T) {
 
 	assert.Equal(t, "resourcedefinitions.meta.cosi.dev", spec.ID())
 	assert.Equal(t, "ResourceDefinition", spec.DisplayType)
-	assert.Equal(t, []string{"resourcedefinitions", "resourcedefinition", "resourcedefinitions.meta", "resourcedefinitions.meta.cosi", "rd", "rds"}, spec.Aliases)
+	assert.Equal(t, []string{"resourcedefinition", "rd", "rds"}, spec.Aliases)
+	assert.Equal(t, []string{"resourcedefinitions", "resourcedefinitions.meta", "resourcedefinitions.meta.cosi", "resourcedefinition", "rd", "rds"}, spec.AllAliases)
 }
 
 func TestNSSpec(t *testing.T) {
@@ -32,7 +33,8 @@ func TestNSSpec(t *testing.T) {
 
 	assert.Equal(t, "namespaces.meta.cosi.dev", spec.ID())
 	assert.Equal(t, "Namespace", spec.DisplayType)
-	assert.Equal(t, []string{"ns", "namespaces", "namespace", "namespaces.meta", "namespaces.meta.cosi"}, spec.Aliases)
+	assert.Equal(t, []string{"ns", "namespace"}, spec.Aliases)
+	assert.Equal(t, []string{"namespaces", "namespaces.meta", "namespaces.meta.cosi", "ns", "namespace"}, spec.AllAliases)
 }
 
 func TestRDSpecValidation(t *testing.T) {

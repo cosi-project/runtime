@@ -32,11 +32,21 @@ type PrintColumn struct {
 
 // ResourceDefinitionSpec provides ResourceDefinition definition.
 type ResourceDefinitionSpec struct { //nolint:govet
-	Type             resource.Type      `yaml:"type"`
-	DisplayType      string             `yaml:"displayType"`
+	// Canonical type name.
+	Type resource.Type `yaml:"type"`
+	// Displayed human-readable type name.
+	DisplayType string `yaml:"displayType"`
+
+	// Default namespace to look for the resource if no namespace is given.
 	DefaultNamespace resource.Namespace `yaml:"defaultNamespace"`
-	Aliases          []resource.Type    `yaml:"aliases"`
-	PrintColumns     []PrintColumn      `yaml:"printColumns"`
+
+	// Human-readable aliases.
+	Aliases []resource.Type `yaml:"aliases"`
+	// All aliases for automatic matching.
+	AllAliases []resource.Type `yaml:"allAliases"`
+
+	// Additional columns to print in table output.
+	PrintColumns []PrintColumn `yaml:"printColumns"`
 
 	// Sensitivity indicates how secret resource of this type is.
 	// The empty value represents a non-sensitive resource.
@@ -88,12 +98,14 @@ func (spec *ResourceDefinitionSpec) Fill() error {
 	}
 
 	spec.DisplayType = pluralizeClient.Singular(name)
-	spec.Aliases = append(spec.Aliases, strings.ToLower(name), strings.ToLower(spec.DisplayType))
+	spec.Aliases = append(spec.Aliases, strings.ToLower(spec.DisplayType))
+
+	spec.AllAliases = append(spec.AllAliases, strings.ToLower(name))
 
 	suffixElements := strings.Split(suffix, ".")
 
 	for i := 1; i < len(suffixElements); i++ {
-		spec.Aliases = append(spec.Aliases, strings.Join(append([]string{strings.ToLower(name)}, suffixElements[:i]...), "."))
+		spec.AllAliases = append(spec.AllAliases, strings.Join(append([]string{strings.ToLower(name)}, suffixElements[:i]...), "."))
 	}
 
 	upperLetters := strings.Map(func(ch rune) rune {
@@ -111,6 +123,8 @@ func (spec *ResourceDefinitionSpec) Fill() error {
 			spec.Aliases = append(spec.Aliases, strings.ToLower(upperLetters+"s"))
 		}
 	}
+
+	spec.AllAliases = append(spec.AllAliases, spec.Aliases...)
 
 	if _, ok := allSensitivities[spec.Sensitivity]; !ok {
 		return fmt.Errorf("unknown sensitivity %q", spec.Sensitivity)
@@ -162,6 +176,12 @@ func (r *ResourceDefinition) ResourceDefinition() ResourceDefinitionSpec {
 	return ResourceDefinitionSpec{
 		Type:             ResourceDefinitionType,
 		DefaultNamespace: NamespaceName,
+		PrintColumns: []PrintColumn{
+			{
+				Name:     "Aliases",
+				JSONPath: "{.aliases[:]}",
+			},
+		},
 	}
 }
 
