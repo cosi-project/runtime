@@ -33,7 +33,7 @@ func TestMetadata(t *testing.T) {
 	md.BumpVersion()
 	assert.Equal(t, "2", md.Version().String())
 
-	assert.True(t, md.Equal(md))
+	assert.True(t, md.Equal(md)) //nolint:gocritic
 
 	other := resource.NewMetadata("default", "type", "bbb", resource.VersionUndefined)
 	other.BumpVersion()
@@ -125,7 +125,7 @@ func (p *protoMd) GetType() string {
 	return "type"
 }
 
-//nolint:golint,stylecheck,revive
+//nolint:golint,revive,stylecheck
 func (p *protoMd) GetId() string {
 	return "aaa"
 }

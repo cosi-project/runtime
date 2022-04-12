@@ -75,7 +75,7 @@ func (r *IntResource) SetValue(v int) {
 }
 
 // DeepCopy implements resource.Resource.
-func (r *IntResource) DeepCopy() resource.Resource {
+func (r *IntResource) DeepCopy() resource.Resource { //nolint:ireturn
 	return &IntResource{
 		md:    r.md,
 		value: r.value,
@@ -141,7 +141,7 @@ func (r *StrResource) SetValue(v string) {
 }
 
 // DeepCopy implements resource.Resource.
-func (r *StrResource) DeepCopy() resource.Resource {
+func (r *StrResource) DeepCopy() resource.Resource { //nolint:ireturn
 	return &StrResource{
 		md:    r.md,
 		value: r.value,
@@ -197,7 +197,7 @@ func (r *SentenceResource) SetValue(v string) {
 }
 
 // DeepCopy implements resource.Resource.
-func (r *SentenceResource) DeepCopy() resource.Resource {
+func (r *SentenceResource) DeepCopy() resource.Resource { //nolint:ireturn
 	return &SentenceResource{
 		md:    r.md,
 		value: r.value,

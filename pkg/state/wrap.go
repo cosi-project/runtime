@@ -11,7 +11,7 @@ import (
 )
 
 // WrapCore converts CoreState to State.
-func WrapCore(coreState CoreState) State {
+func WrapCore(coreState CoreState) State { //nolint:ireturn
 	return coreWrapper{
 		coreState,
 	}
@@ -22,7 +22,7 @@ type coreWrapper struct {
 }
 
 // UpdateWithConflicts automatically handles conflicts on update.
-func (state coreWrapper) UpdateWithConflicts(ctx context.Context, resourcePointer resource.Pointer, f UpdaterFunc, opts ...UpdateOption) (resource.Resource, error) {
+func (state coreWrapper) UpdateWithConflicts(ctx context.Context, resourcePointer resource.Pointer, f UpdaterFunc, opts ...UpdateOption) (resource.Resource, error) { //nolint:ireturn
 	options := DefaultUpdateOptions()
 
 	for _, opt := range opts {
@@ -68,7 +68,7 @@ func (state coreWrapper) UpdateWithConflicts(ctx context.Context, resourcePointe
 }
 
 // WatchFor watches for resource to reach all of the specified conditions.
-func (state coreWrapper) WatchFor(ctx context.Context, pointer resource.Pointer, conditionFunc ...WatchForConditionFunc) (resource.Resource, error) {
+func (state coreWrapper) WatchFor(ctx context.Context, pointer resource.Pointer, conditionFunc ...WatchForConditionFunc) (resource.Resource, error) { //nolint:ireturn
 	var condition WatchForCondition
 
 	for _, f := range conditionFunc {

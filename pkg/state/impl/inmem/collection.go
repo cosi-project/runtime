@@ -57,7 +57,7 @@ func (collection *ResourceCollection) publish(event state.Event) {
 }
 
 // Get a resource.
-func (collection *ResourceCollection) Get(resourceID resource.ID) (resource.Resource, error) {
+func (collection *ResourceCollection) Get(resourceID resource.ID) (resource.Resource, error) { //nolint:ireturn
 	collection.mu.Lock()
 	defer collection.mu.Unlock()
 

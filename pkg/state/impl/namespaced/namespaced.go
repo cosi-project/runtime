@@ -30,20 +30,20 @@ func NewState(builder StateBuilder) *State {
 	}
 }
 
-func (st *State) getNamespace(ns resource.Namespace) state.CoreState {
+func (st *State) getNamespace(ns resource.Namespace) state.CoreState { //nolint:ireturn
 	if s, ok := st.namespaces.Load(ns); ok {
-		return s.(state.CoreState)
+		return s.(state.CoreState) //nolint:forcetypeassert
 	}
 
 	s, _ := st.namespaces.LoadOrStore(ns, st.builder(ns))
 
-	return s.(state.CoreState)
+	return s.(state.CoreState) //nolint:forcetypeassert
 }
 
 // Get a resource by type and ID.
 //
 // If a resource is not found, error is returned.
-func (st *State) Get(ctx context.Context, ptr resource.Pointer, opts ...state.GetOption) (resource.Resource, error) {
+func (st *State) Get(ctx context.Context, ptr resource.Pointer, opts ...state.GetOption) (resource.Resource, error) { //nolint:ireturn
 	return st.getNamespace(ptr.Namespace()).Get(ctx, ptr, opts...)
 }
 

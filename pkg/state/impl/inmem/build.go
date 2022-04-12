@@ -10,6 +10,6 @@ import (
 )
 
 // Build a local state for namespace.
-func Build(ns resource.Namespace) state.CoreState {
+func Build(ns resource.Namespace) state.CoreState { //nolint:ireturn
 	return NewState(ns)
 }

@@ -31,7 +31,7 @@ type RuntimeSuite struct { //nolint:govet
 
 	wg sync.WaitGroup
 
-	ctx       context.Context
+	ctx       context.Context //nolint:containedctx
 	ctxCancel context.CancelFunc
 }
 
@@ -75,7 +75,7 @@ func (suite *RuntimeSuite) assertStrObjects(ns resource.Namespace, typ resource.
 				return err
 			}
 
-			strValue := r.(StringResource).Value()
+			strValue := r.(StringResource).Value() //nolint:forcetypeassert
 
 			if strValue != values[i] {
 				return retry.ExpectedError(fmt.Errorf("expected value of %q to be %q, found %q", id, values[i], strValue))
@@ -86,8 +86,10 @@ func (suite *RuntimeSuite) assertStrObjects(ns resource.Namespace, typ resource.
 	}
 }
 
-//nolint:unparam
-func (suite *RuntimeSuite) assertIntObjects(ns resource.Namespace, typ resource.Type, ids []string, values []int) retry.RetryableFunc {
+func (suite *RuntimeSuite) assertIntObjects(ids []string, values []int) retry.RetryableFunc {
+	ns := "target"
+	typ := IntResourceType
+
 	return func() error {
 		items, err := suite.State.List(suite.ctx, resource.NewMetadata(ns, typ, "", resource.VersionUndefined))
 		if err != nil {
@@ -108,7 +110,7 @@ func (suite *RuntimeSuite) assertIntObjects(ns resource.Namespace, typ resource.
 				return err
 			}
 
-			intValue := r.(IntegerResource).Value()
+			intValue := r.(IntegerResource).Value() //nolint:forcetypeassert
 
 			if intValue != values[i] {
 				return retry.ExpectedError(fmt.Errorf("expected value of %q to be %d, found %d", id, values[i], intValue))
@@ -171,7 +173,7 @@ func (suite *RuntimeSuite) TestIntToStrControllers() {
 		Retry(suite.assertStrObjects("default", StrResourceType, []string{"one", "two", "three"}, []string{"1", "2", "3"})))
 
 	_, err := suite.State.UpdateWithConflicts(suite.ctx, three.Metadata(), func(r resource.Resource) error {
-		r.(IntegerResource).SetValue(33)
+		r.(IntegerResource).SetValue(33) //nolint:forcetypeassert
 
 		return nil
 	})
@@ -221,7 +223,7 @@ func (suite *RuntimeSuite) TestIntToStrToSentenceControllers() {
 		Retry(suite.assertStrObjects("sentences", SentenceResourceType, []string{"one", "two", "three"}, []string{"1 sentence", "2 sentence", "3 sentence"})))
 
 	_, err := suite.State.UpdateWithConflicts(suite.ctx, one.Metadata(), func(r resource.Resource) error {
-		r.(IntegerResource).SetValue(11)
+		r.(IntegerResource).SetValue(11) //nolint:forcetypeassert
 
 		return nil
 	})
@@ -255,18 +257,18 @@ func (suite *RuntimeSuite) TestSumControllers() {
 	suite.startRuntime()
 
 	suite.Assert().NoError(retry.Constant(10*time.Second, retry.WithUnits(10*time.Millisecond)).
-		Retry(suite.assertIntObjects("target", IntResourceType, []string{"sum"}, []int{0})))
+		Retry(suite.assertIntObjects([]string{"sum"}, []int{0})))
 
 	suite.Assert().NoError(suite.State.Create(suite.ctx, NewIntResource("source", "one", 1)))
 	suite.Assert().NoError(suite.State.Create(suite.ctx, NewIntResource("source", "two", 2)))
 
 	suite.Assert().NoError(retry.Constant(10*time.Second, retry.WithUnits(10*time.Millisecond)).
-		Retry(suite.assertIntObjects("target", IntResourceType, []string{"sum"}, []int{3})))
+		Retry(suite.assertIntObjects([]string{"sum"}, []int{3})))
 
 	suite.Assert().NoError(suite.State.Destroy(suite.ctx, NewIntResource("source", "one", 1).Metadata()))
 
 	suite.Assert().NoError(retry.Constant(10*time.Second, retry.WithUnits(10*time.Millisecond)).
-		Retry(suite.assertIntObjects("target", IntResourceType, []string{"sum"}, []int{2})))
+		Retry(suite.assertIntObjects([]string{"sum"}, []int{2})))
 }
 
 // TestCascadingSumControllers ...
@@ -293,7 +295,7 @@ func (suite *RuntimeSuite) TestCascadingSumControllers() {
 	}))
 
 	suite.Assert().NoError(retry.Constant(10*time.Second, retry.WithUnits(10*time.Millisecond)).
-		Retry(suite.assertIntObjects("target", IntResourceType, []string{"sum"}, []int{0})))
+		Retry(suite.assertIntObjects([]string{"sum"}, []int{0})))
 
 	suite.Assert().NoError(suite.State.Create(suite.ctx, NewIntResource("source1", "one", 1)))
 	suite.Assert().NoError(suite.State.Create(suite.ctx, NewIntResource("source1", "two", 2)))
@@ -301,7 +303,7 @@ func (suite *RuntimeSuite) TestCascadingSumControllers() {
 	suite.Assert().NoError(suite.State.Create(suite.ctx, NewIntResource("source2", "four", 4)))
 
 	suite.Assert().NoError(retry.Constant(10*time.Second, retry.WithUnits(10*time.Millisecond)).
-		Retry(suite.assertIntObjects("target", IntResourceType, []string{"sum"}, []int{10})))
+		Retry(suite.assertIntObjects([]string{"sum"}, []int{10})))
 }
 
 // TestFailingController ...
@@ -313,8 +315,8 @@ func (suite *RuntimeSuite) TestFailingController() {
 	suite.startRuntime()
 
 	suite.Assert().NoError(retry.Constant(5*time.Second, retry.WithUnits(10*time.Millisecond)).
-		Retry(suite.assertIntObjects("target", IntResourceType, []string{"0"}, []int{0})))
+		Retry(suite.assertIntObjects([]string{"0"}, []int{0})))
 
 	suite.Assert().NoError(retry.Constant(5*time.Second, retry.WithUnits(10*time.Millisecond)).
-		Retry(suite.assertIntObjects("target", IntResourceType, []string{"0", "1"}, []int{0, 1})))
+		Retry(suite.assertIntObjects([]string{"0", "1"}, []int{0, 1})))
 }

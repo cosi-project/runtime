@@ -30,7 +30,7 @@ type Runtime struct { //nolint:govet
 	controllers sync.Map
 
 	ctxMu            sync.Mutex
-	runtimeCtx       context.Context
+	runtimeCtx       context.Context //nolint:containedctx
 	runtimeCtxCancel context.CancelFunc
 	runtimeWg        sync.WaitGroup
 }

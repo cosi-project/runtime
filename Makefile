@@ -1,6 +1,6 @@
 # THIS FILE WAS AUTOMATICALLY GENERATED, PLEASE DO NOT EDIT.
 #
-# Generated on 2021-06-21T09:20:43Z by kres latest.
+# Generated on 2022-04-12T21:42:27Z by kres 4975f30.
 
 # common variables
 
@@ -12,12 +12,13 @@ REGISTRY ?= ghcr.io
 USERNAME ?= cosi-project
 REGISTRY_AND_USERNAME ?= $(REGISTRY)/$(USERNAME)
 GOFUMPT_VERSION ?= abc0db2c416aca0f60ea33c23c76665f6e7ba0b6
-GO_VERSION ?= 1.16
-PROTOBUF_GO_VERSION ?= 1.25.0
-GRPC_GO_VERSION ?= 1.1.0
-GRPC_GATEWAY_VERSION ?= 2.4.0
+GO_VERSION ?= 1.18
+PROTOBUF_GO_VERSION ?= 1.28.0
+GRPC_GO_VERSION ?= 1.2.0
+GRPC_GATEWAY_VERSION ?= 2.10.0
+VTPROTOBUF_VERSION ?= d8520340f57329767fd3b2c9cc0aea3703dd68c9
 TESTPKGS ?= ./...
-KRES_IMAGE ?= ghcr.io/talos-systems/kres:latest
+KRES_IMAGE ?= ghcr.io/siderolabs/kres:latest
 
 # docker build settings
 
@@ -39,8 +40,9 @@ COMMON_ARGS += --build-arg=GOFUMPT_VERSION=$(GOFUMPT_VERSION)
 COMMON_ARGS += --build-arg=PROTOBUF_GO_VERSION=$(PROTOBUF_GO_VERSION)
 COMMON_ARGS += --build-arg=GRPC_GO_VERSION=$(GRPC_GO_VERSION)
 COMMON_ARGS += --build-arg=GRPC_GATEWAY_VERSION=$(GRPC_GATEWAY_VERSION)
+COMMON_ARGS += --build-arg=VTPROTOBUF_VERSION=$(VTPROTOBUF_VERSION)
 COMMON_ARGS += --build-arg=TESTPKGS=$(TESTPKGS)
-TOOLCHAIN ?= docker.io/golang:1.16-alpine
+TOOLCHAIN ?= docker.io/golang:1.18-alpine
 
 # help menu
 
@@ -97,8 +99,8 @@ lint-gofumpt:  ## Runs gofumpt linter.
 fmt:  ## Formats the source code
 	@docker run --rm -it -v $(PWD):/src -w /src golang:$(GO_VERSION) \
 		bash -c "export GO111MODULE=on; export GOPROXY=https://proxy.golang.org; \
-		cd /tmp && go mod init tmp && go get mvdan.cc/gofumpt/gofumports@$(GOFUMPT_VERSION) && \
-		cd - && gofumports -w -local github.com/cosi-project/runtime ."
+		go install mvdan.cc/gofumpt/gofumports@$(GOFUMPT_VERSION) && \
+		gofumports -w -local github.com/cosi-project/runtime ."
 
 generate:  ## Generate .proto definitions.
 	@$(MAKE) local-$@ DEST=./
@@ -127,7 +129,7 @@ $(ARTIFACTS)/runtime-linux-amd64:
 runtime-linux-amd64: $(ARTIFACTS)/runtime-linux-amd64  ## Builds executable for runtime-linux-amd64.
 
 .PHONY: runtime
-runtime: runtime-linux-amd64
+runtime: runtime-linux-amd64  ## Builds executables for runtime.
 
 .PHONY: lint-markdown
 lint-markdown:  ## Runs markdownlint.

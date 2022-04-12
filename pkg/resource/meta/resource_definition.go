@@ -160,7 +160,7 @@ func (r *ResourceDefinition) Spec() interface{} {
 }
 
 // DeepCopy implements resource.Resource.
-func (r *ResourceDefinition) DeepCopy() resource.Resource {
+func (r *ResourceDefinition) DeepCopy() resource.Resource { //nolint:ireturn
 	return &ResourceDefinition{
 		md:   r.md,
 		spec: r.spec,

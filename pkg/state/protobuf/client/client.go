@@ -35,7 +35,7 @@ func NewAdapter(client v1alpha1.StateClient) *Adapter {
 // Get a resource by type and ID.
 //
 // If a resource is not found, error is returned.
-func (adapter *Adapter) Get(ctx context.Context, resourcePointer resource.Pointer, opt ...state.GetOption) (resource.Resource, error) {
+func (adapter *Adapter) Get(ctx context.Context, resourcePointer resource.Pointer, opt ...state.GetOption) (resource.Resource, error) { //nolint:ireturn
 	opts := state.GetOptions{}
 
 	for _, o := range opt {

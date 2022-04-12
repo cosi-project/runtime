@@ -13,7 +13,7 @@ import (
 // Filter state access by some rules.
 //
 // Filter allows building RBAC access pattern or any other kinds of restictions.
-func Filter(coreState CoreState, rule FilteringRule) CoreState {
+func Filter(coreState CoreState, rule FilteringRule) CoreState { //nolint:ireturn
 	return &stateFilter{
 		state: coreState,
 		rule:  rule,
@@ -61,7 +61,7 @@ type stateFilter struct {
 // Get a resource by type and ID.
 //
 // If a resource is not found, error is returned.
-func (filter *stateFilter) Get(ctx context.Context, resourcePointer resource.Pointer, opts ...GetOption) (resource.Resource, error) {
+func (filter *stateFilter) Get(ctx context.Context, resourcePointer resource.Pointer, opts ...GetOption) (resource.Resource, error) { //nolint:ireturn
 	if err := filter.rule(ctx, Access{
 		ResourceNamespace: resourcePointer.Namespace(),
 		ResourceType:      resourcePointer.Type(),

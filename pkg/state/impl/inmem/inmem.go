@@ -43,18 +43,18 @@ func NewStateWithOptions(opts ...StateOption) func(ns resource.Namespace) *State
 
 func (st *State) getCollection(typ resource.Type) *ResourceCollection {
 	if r, ok := st.collections.Load(typ); ok {
-		return r.(*ResourceCollection)
+		return r.(*ResourceCollection) //nolint:forcetypeassert
 	}
 
 	collection := NewResourceCollection(st.ns, typ, st.capacity, st.gap)
 
 	r, _ := st.collections.LoadOrStore(typ, collection)
 
-	return r.(*ResourceCollection)
+	return r.(*ResourceCollection) //nolint:forcetypeassert
 }
 
 // Get a resource.
-func (st *State) Get(ctx context.Context, resourcePointer resource.Pointer, opts ...state.GetOption) (resource.Resource, error) {
+func (st *State) Get(ctx context.Context, resourcePointer resource.Pointer, opts ...state.GetOption) (resource.Resource, error) { //nolint:ireturn
 	return st.getCollection(resourcePointer.Type()).Get(resourcePointer.ID())
 }
 

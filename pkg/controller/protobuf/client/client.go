@@ -35,7 +35,7 @@ type Adapter struct {
 	logger *zap.Logger
 
 	controllersCond    *sync.Cond
-	controllersCtx     context.Context
+	controllersCtx     context.Context //nolint:containedctx
 	controllers        []*controllerAdapter
 	controllersMu      sync.Mutex
 	controllersRunning int
@@ -209,7 +209,7 @@ func (adapter *Adapter) runControllers(ctx context.Context) error {
 }
 
 type controllerAdapter struct {
-	ctx     context.Context
+	ctx     context.Context //nolint:containedctx
 	adapter *Adapter
 
 	eventCh chan controller.ReconcileEvent
@@ -347,7 +347,7 @@ func (ctrlAdapter *controllerAdapter) UpdateInputs(inputs []controller.Input) er
 	return err
 }
 
-func (ctrlAdapter *controllerAdapter) Get(ctx context.Context, resourcePointer resource.Pointer) (resource.Resource, error) {
+func (ctrlAdapter *controllerAdapter) Get(ctx context.Context, resourcePointer resource.Pointer) (resource.Resource, error) { //nolint:ireturn
 	resp, err := ctrlAdapter.adapter.client.Get(ctx, &v1alpha1.RuntimeGetRequest{
 		ControllerToken: ctrlAdapter.token,
 
@@ -414,7 +414,7 @@ func (ctrlAdapter *controllerAdapter) List(ctx context.Context, resourceKind res
 	}
 }
 
-func (ctrlAdapter *controllerAdapter) WatchFor(ctx context.Context, resourcePointer resource.Pointer, conditions ...state.WatchForConditionFunc) (resource.Resource, error) {
+func (ctrlAdapter *controllerAdapter) WatchFor(ctx context.Context, resourcePointer resource.Pointer, conditions ...state.WatchForConditionFunc) (resource.Resource, error) { //nolint:ireturn
 	var opt state.WatchForCondition
 
 	for _, cond := range conditions {

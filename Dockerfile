@@ -2,13 +2,13 @@
 
 # THIS FILE WAS AUTOMATICALLY GENERATED, PLEASE DO NOT EDIT.
 #
-# Generated on 2021-06-21T09:20:43Z by kres latest.
+# Generated on 2022-04-12T21:42:27Z by kres 4975f30.
 
 ARG TOOLCHAIN
 
-FROM ghcr.io/talos-systems/ca-certificates:v0.3.0-12-g90722c3 AS image-ca-certificates
+FROM ghcr.io/siderolabs/ca-certificates:v1.0.0 AS image-ca-certificates
 
-FROM ghcr.io/talos-systems/fhs:v0.3.0-12-g90722c3 AS image-fhs
+FROM ghcr.io/siderolabs/fhs:v1.0.0 AS image-fhs
 
 # runs markdownlint
 FROM node:14.8.0-alpine AS lint-markdown
@@ -34,11 +34,9 @@ FROM toolchain AS tools
 ENV GO111MODULE on
 ENV CGO_ENABLED 0
 ENV GOPATH /go
-RUN curl -sfL https://install.goreleaser.com/github.com/golangci/golangci-lint.sh | bash -s -- -b /bin v1.38.0
+RUN curl -sfL https://install.goreleaser.com/github.com/golangci/golangci-lint.sh | bash -s -- -b /bin v1.45.2
 ARG GOFUMPT_VERSION
-RUN cd $(mktemp -d) \
-	&& go mod init tmp \
-	&& go get mvdan.cc/gofumpt/gofumports@${GOFUMPT_VERSION} \
+RUN go install mvdan.cc/gofumpt/gofumports@${GOFUMPT_VERSION} \
 	&& mv /go/bin/gofumports /bin/gofumports
 ARG PROTOBUF_GO_VERSION
 RUN go install google.golang.org/protobuf/cmd/protoc-gen-go@v${PROTOBUF_GO_VERSION}
@@ -57,9 +55,9 @@ COPY ./go.mod .
 COPY ./go.sum .
 RUN --mount=type=cache,target=/go/pkg go mod download
 RUN --mount=type=cache,target=/go/pkg go mod verify
-COPY ./pkg ./pkg
-COPY ./cmd ./cmd
 COPY ./api ./api
+COPY ./cmd ./cmd
+COPY ./pkg ./pkg
 RUN --mount=type=cache,target=/go/pkg go list -mod=readonly all >/dev/null
 
 # runs protobuf compiler

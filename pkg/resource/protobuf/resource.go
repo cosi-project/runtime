@@ -49,7 +49,7 @@ func (r *Resource) Spec() interface{} {
 }
 
 // DeepCopy of the resource.
-func (r *Resource) DeepCopy() resource.Resource {
+func (r *Resource) DeepCopy() resource.Resource { //nolint:ireturn
 	specCopy := protoSpec{
 		yaml: r.spec.yaml,
 	}

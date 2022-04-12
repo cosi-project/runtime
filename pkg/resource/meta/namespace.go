@@ -45,7 +45,7 @@ func (r *Namespace) Spec() interface{} {
 }
 
 // DeepCopy implements resource.Resource.
-func (r *Namespace) DeepCopy() resource.Resource {
+func (r *Namespace) DeepCopy() resource.Resource { //nolint:ireturn
 	return &Namespace{
 		md:   r.md,
 		spec: r.spec,

@@ -36,18 +36,18 @@ func NewAnyFromProto(protoMd MetadataProto, protoSpec SpecProto) (*Any, error) {
 		return nil, err
 	}
 
-	any := &Any{
+	result := &Any{
 		md: md,
 		spec: anySpec{
 			yaml: protoSpec.GetYaml(),
 		},
 	}
 
-	if err = yaml.Unmarshal(any.spec.yaml, &any.spec.value); err != nil {
+	if err = yaml.Unmarshal(result.spec.yaml, &result.spec.value); err != nil {
 		return nil, err
 	}
 
-	return any, nil
+	return result, nil
 }
 
 // Metadata implements resource.Resource.
@@ -66,7 +66,7 @@ func (a *Any) Value() interface{} {
 }
 
 // DeepCopy implements resource.Resource.
-func (a *Any) DeepCopy() Resource {
+func (a *Any) DeepCopy() Resource { //nolint:ireturn
 	return &Any{
 		md:   a.md,
 		spec: a.spec,

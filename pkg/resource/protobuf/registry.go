@@ -52,7 +52,7 @@ func RegisterResource(resourceType resource.Type, r ResourceUnmarshaler) error {
 // UnmarshalResource converts proto.Resource to real resource if possible.
 //
 // If conversion is not registered, proto.Resource is returned.
-func UnmarshalResource(r *Resource) (resource.Resource, error) {
+func UnmarshalResource(r *Resource) (resource.Resource, error) { //nolint:ireturn
 	initOnce.Do(initRegistry)
 
 	registry.mu.Lock()

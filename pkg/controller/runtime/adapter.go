@@ -187,7 +187,7 @@ func (adapter *adapter) checkFinalizerAccess(resourceNamespace resource.Namespac
 }
 
 // Get implements controller.Runtime interface.
-func (adapter *adapter) Get(ctx context.Context, resourcePointer resource.Pointer) (resource.Resource, error) {
+func (adapter *adapter) Get(ctx context.Context, resourcePointer resource.Pointer) (resource.Resource, error) { //nolint:ireturn
 	if err := adapter.checkReadAccess(resourcePointer.Namespace(), resourcePointer.Type(), pointer.ToString(resourcePointer.ID())); err != nil {
 		return nil, err
 	}
@@ -205,7 +205,7 @@ func (adapter *adapter) List(ctx context.Context, resourceKind resource.Kind) (r
 }
 
 // WatchFor implements controller.Runtime interface.
-func (adapter *adapter) WatchFor(ctx context.Context, resourcePointer resource.Pointer, opts ...state.WatchForConditionFunc) (resource.Resource, error) {
+func (adapter *adapter) WatchFor(ctx context.Context, resourcePointer resource.Pointer, opts ...state.WatchForConditionFunc) (resource.Resource, error) { //nolint:ireturn
 	if err := adapter.checkReadAccess(resourcePointer.Namespace(), resourcePointer.Type(), nil); err != nil {
 		return nil, err
 	}

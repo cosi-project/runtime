@@ -47,7 +47,7 @@ func (path *PathResource) Spec() interface{} {
 }
 
 // DeepCopy implements resource.Resource.
-func (path *PathResource) DeepCopy() resource.Resource {
+func (path *PathResource) DeepCopy() resource.Resource { //nolint:ireturn
 	return &PathResource{
 		md: path.md,
 	}

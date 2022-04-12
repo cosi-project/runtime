@@ -84,7 +84,7 @@ func (ctrl *IntToStrController) Run(ctx context.Context, r controller.Runtime, l
 
 				if err = r.Modify(ctx, strRes,
 					func(r resource.Resource) error {
-						r.(StringResource).SetValue(strconv.Itoa(intRes.(IntegerResource).Value()))
+						r.(StringResource).SetValue(strconv.Itoa(intRes.(IntegerResource).Value())) //nolint:forcetypeassert
 
 						return nil
 					}); err != nil {
@@ -186,7 +186,7 @@ func (ctrl *StrToSentenceController) Run(ctx context.Context, r controller.Runti
 				}
 
 				if err = r.Modify(ctx, sentenceRes, func(r resource.Resource) error {
-					r.(StringResource).SetValue(strRes.(StringResource).Value() + " sentence")
+					r.(StringResource).SetValue(strRes.(StringResource).Value() + " sentence") //nolint:forcetypeassert
 
 					return nil
 				}); err != nil {
@@ -272,11 +272,11 @@ func (ctrl *SumController) Run(ctx context.Context, r controller.Runtime, logger
 		var sum int
 
 		for _, intRes := range intList.Items {
-			sum += intRes.(IntegerResource).Value()
+			sum += intRes.(IntegerResource).Value() //nolint:forcetypeassert
 		}
 
 		if err = r.Modify(ctx, NewIntResource(ctrl.TargetNamespace, ctrl.TargetID, 0), func(r resource.Resource) error {
-			r.(IntegerResource).SetValue(sum)
+			r.(IntegerResource).SetValue(sum) //nolint:forcetypeassert
 
 			return nil
 		}); err != nil {
@@ -321,7 +321,7 @@ func (ctrl *FailingController) Run(ctx context.Context, r controller.Runtime, lo
 	}
 
 	if err := r.Modify(ctx, NewIntResource(ctrl.TargetNamespace, strconv.Itoa(ctrl.count), 0), func(r resource.Resource) error {
-		r.(IntegerResource).SetValue(ctrl.count)
+		r.(IntegerResource).SetValue(ctrl.count) //nolint:forcetypeassert
 
 		return nil
 	}); err != nil {

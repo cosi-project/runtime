@@ -36,7 +36,7 @@ type Runtime struct { //nolint:govet
 	controllersRunning int
 	controllers        map[string]*adapter
 
-	runCtx context.Context
+	runCtx context.Context //nolint:containedctx
 }
 
 type watchKey struct {

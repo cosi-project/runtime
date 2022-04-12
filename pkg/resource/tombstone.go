@@ -38,7 +38,7 @@ func (t *Tombstone) Spec() interface{} {
 }
 
 // DeepCopy returns self, as tombstone is immutable.
-func (t *Tombstone) DeepCopy() Resource {
+func (t *Tombstone) DeepCopy() Resource { //nolint:ireturn
 	return t
 }
 
