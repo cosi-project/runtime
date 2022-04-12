@@ -159,10 +159,6 @@ func (r *ResourceDefinition) Spec() interface{} {
 	return r.spec
 }
 
-func (r *ResourceDefinition) String() string {
-	return fmt.Sprintf("ResourceDefinition(%q)", r.md.ID())
-}
-
 // DeepCopy implements resource.Resource.
 func (r *ResourceDefinition) DeepCopy() resource.Resource {
 	return &ResourceDefinition{

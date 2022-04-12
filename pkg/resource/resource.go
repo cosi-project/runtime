@@ -27,9 +27,6 @@ type (
 // Resource might have additional opaque data in Spec().
 // When resource is updated, Version should change with each update.
 type Resource interface {
-	// String() method for debugging/logging.
-	fmt.Stringer
-
 	// Metadata for the resource.
 	//
 	// Metadata.Version should change each time Spec changes.
@@ -60,4 +57,11 @@ func MarshalYAML(r Resource) (interface{}, error) {
 		Metadata: r.Metadata(),
 		Spec:     r.Spec(),
 	}, nil
+}
+
+// String returns representation suitable for %s formatting.
+func String(r Resource) string {
+	md := r.Metadata()
+
+	return fmt.Sprintf("%s(%s/%s)", md.Type(), md.Namespace(), md.ID())
 }

@@ -5,8 +5,6 @@
 package resource
 
 import (
-	"fmt"
-
 	"gopkg.in/yaml.v3"
 )
 
@@ -65,10 +63,6 @@ func (a *Any) Spec() interface{} {
 // Value returns decoded value as Go type.
 func (a *Any) Value() interface{} {
 	return a.spec.value
-}
-
-func (a *Any) String() string {
-	return fmt.Sprintf("Any(%s)", a.md)
 }
 
 // DeepCopy implements resource.Resource.

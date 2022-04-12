@@ -40,7 +40,7 @@ func (suite *StateSuite) TestCRD() {
 	path1 := NewPathResource(suite.getNamespace(), "var/run")
 	path2 := NewPathResource(suite.getNamespace(), "var/lib")
 
-	suite.Require().NotEqual(path1.String(), path2.String())
+	suite.Require().NotEqual(resource.String(path1), resource.String(path2))
 
 	ctx := context.Background()
 
@@ -61,11 +61,11 @@ func (suite *StateSuite) TestCRD() {
 
 	r, err := suite.State.Get(ctx, path1.Metadata())
 	suite.Require().NoError(err)
-	suite.Assert().Equal(path1.String(), r.String())
+	suite.Assert().Equal(resource.String(path1), resource.String(r))
 
 	r, err = suite.State.Get(ctx, path2.Metadata())
 	suite.Require().NoError(err)
-	suite.Assert().Equal(path2.String(), r.String())
+	suite.Assert().Equal(resource.String(path2), resource.String(r))
 
 	for _, res := range []resource.Resource{path1, path2} {
 		list, err = suite.State.List(ctx, res.Metadata())
@@ -77,14 +77,14 @@ func (suite *StateSuite) TestCRD() {
 			ids := make([]string, len(list.Items))
 
 			for i := range ids {
-				ids[i] = list.Items[i].String()
+				ids[i] = resource.String(list.Items[i])
 			}
 
-			suite.Assert().Equal([]string{path2.String(), path1.String()}, ids)
+			suite.Assert().Equal([]string{resource.String(path2), resource.String(path1)}, ids)
 		} else {
 			suite.Assert().Len(list.Items, 1)
 
-			suite.Assert().Equal(res.String(), list.Items[0].String())
+			suite.Assert().Equal(resource.String(res), resource.String(list.Items[0]))
 		}
 	}
 
@@ -113,7 +113,7 @@ func (suite *StateSuite) TestCRD() {
 	list, err = suite.State.List(ctx, path2.Metadata())
 	suite.Require().NoError(err)
 	suite.Assert().Len(list.Items, 1)
-	suite.Assert().Equal(path2.String(), list.Items[0].String())
+	suite.Assert().Equal(resource.String(path2), resource.String(list.Items[0]))
 
 	destroyReady, err = suite.State.Teardown(ctx, path2.Metadata())
 	suite.Require().NoError(err)
@@ -129,7 +129,7 @@ func (suite *StateSuite) TestCRDWithOwners() {
 
 	owner1, owner2 := "owner1", "owner2"
 
-	suite.Require().NotEqual(path1.String(), path2.String())
+	suite.Require().NotEqual(resource.String(path1), resource.String(path2))
 
 	ctx := context.Background()
 
@@ -138,12 +138,12 @@ func (suite *StateSuite) TestCRDWithOwners() {
 
 	r, err := suite.State.Get(ctx, path1.Metadata())
 	suite.Require().NoError(err)
-	suite.Assert().Equal(path1.String(), r.String())
+	suite.Assert().Equal(resource.String(path1), resource.String(r))
 	suite.Assert().Equal(owner1, r.Metadata().Owner())
 
 	r, err = suite.State.Get(ctx, path2.Metadata())
 	suite.Require().NoError(err)
-	suite.Assert().Equal(path2.String(), r.String())
+	suite.Assert().Equal(resource.String(path2), resource.String(r))
 	suite.Assert().Equal(owner2, r.Metadata().Owner())
 
 	oldVersion := r.Metadata().Version()
@@ -203,7 +203,7 @@ func (suite *StateSuite) TestWatchKind() {
 	select {
 	case event := <-ch:
 		suite.Assert().Equal(state.Created, event.Type)
-		suite.Assert().Equal(path2.String(), event.Resource.String())
+		suite.Assert().Equal(resource.String(path2), resource.String(event.Resource))
 
 		expectedEvents[event] = struct{}{}
 	case <-time.After(time.Second):
@@ -217,7 +217,7 @@ func (suite *StateSuite) TestWatchKind() {
 	select {
 	case event := <-ch:
 		suite.Assert().Equal(state.Updated, event.Type)
-		suite.Assert().Equal(path1.String(), event.Resource.String())
+		suite.Assert().Equal(resource.String(path1), resource.String(event.Resource))
 
 		expectedEvents[event] = struct{}{}
 	case <-time.After(time.Second):
@@ -227,7 +227,7 @@ func (suite *StateSuite) TestWatchKind() {
 	select {
 	case event := <-ch:
 		suite.Assert().Equal(state.Destroyed, event.Type)
-		suite.Assert().Equal(path1.String(), event.Resource.String())
+		suite.Assert().Equal(resource.String(path1), resource.String(event.Resource))
 
 		expectedEvents[event] = struct{}{}
 	case <-time.After(time.Second):
@@ -242,7 +242,7 @@ func (suite *StateSuite) TestWatchKind() {
 	select {
 	case event := <-ch:
 		suite.Assert().Equal(state.Updated, event.Type)
-		suite.Assert().Equal(path2.String(), event.Resource.String())
+		suite.Assert().Equal(resource.String(path2), resource.String(event.Resource))
 		suite.Assert().Equal(path2.Metadata().Version(), event.Resource.Metadata().Version())
 
 		expectedEvents[event] = struct{}{}
@@ -261,7 +261,7 @@ func (suite *StateSuite) TestWatchKind() {
 		select {
 		case event := <-chWithBootstrap:
 			suite.Assert().Equal(state.Created, event.Type)
-			suite.Assert().Equal(res.String(), event.Resource.String())
+			suite.Assert().Equal(resource.String(res), resource.String(event.Resource))
 			suite.Assert().Equal(res.Metadata().Version(), event.Resource.Metadata().Version())
 		case <-time.After(time.Second):
 			suite.FailNow("timed out waiting for event")
@@ -276,7 +276,7 @@ func (suite *StateSuite) TestWatchKind() {
 	select {
 	case event := <-ch:
 		suite.Assert().Equal(state.Updated, event.Type)
-		suite.Assert().Equal(path2.String(), event.Resource.String())
+		suite.Assert().Equal(resource.String(path2), resource.String(event.Resource))
 		suite.Assert().Equal(path2.Metadata().Version(), event.Resource.Metadata().Version())
 
 		expectedEvents[event] = struct{}{}
@@ -287,7 +287,7 @@ func (suite *StateSuite) TestWatchKind() {
 	select {
 	case event := <-chWithBootstrap:
 		suite.Assert().Equal(state.Updated, event.Type)
-		suite.Assert().Equal(path2.String(), event.Resource.String())
+		suite.Assert().Equal(resource.String(path2), resource.String(event.Resource))
 		suite.Assert().Equal(path2.Metadata().Version(), event.Resource.Metadata().Version())
 	case <-time.After(time.Second):
 		suite.FailNow("timed out waiting for event")
@@ -464,7 +464,7 @@ func (suite *StateSuite) TestWatch() {
 	select {
 	case event := <-ch:
 		suite.Assert().Equal(state.Created, event.Type)
-		suite.Assert().Equal(path1.String(), event.Resource.String())
+		suite.Assert().Equal(resource.String(path1), resource.String(event.Resource))
 		suite.Assert().Equal(path1.Metadata().Version(), event.Resource.Metadata().Version())
 
 		expectedEvents[event] = struct{}{}
@@ -479,7 +479,7 @@ func (suite *StateSuite) TestWatch() {
 	select {
 	case event := <-ch:
 		suite.Assert().Equal(state.Updated, event.Type)
-		suite.Assert().Equal(path1.String(), event.Resource.String())
+		suite.Assert().Equal(resource.String(path1), resource.String(event.Resource))
 		suite.Assert().Equal(resource.PhaseTearingDown, event.Resource.Metadata().Phase())
 
 		expectedEvents[event] = struct{}{}
@@ -492,7 +492,7 @@ func (suite *StateSuite) TestWatch() {
 	select {
 	case event := <-ch:
 		suite.Assert().Equal(state.Updated, event.Type)
-		suite.Assert().Equal(path1.String(), event.Resource.String())
+		suite.Assert().Equal(resource.String(path1), resource.String(event.Resource))
 
 		expectedEvents[event] = struct{}{}
 	case <-time.After(time.Second):
@@ -504,7 +504,7 @@ func (suite *StateSuite) TestWatch() {
 	select {
 	case event := <-ch:
 		suite.Assert().Equal(state.Updated, event.Type)
-		suite.Assert().Equal(path1.String(), event.Resource.String())
+		suite.Assert().Equal(resource.String(path1), resource.String(event.Resource))
 
 		expectedEvents[event] = struct{}{}
 	case <-time.After(time.Second):
@@ -516,7 +516,7 @@ func (suite *StateSuite) TestWatch() {
 	select {
 	case event := <-ch:
 		suite.Assert().Equal(state.Destroyed, event.Type)
-		suite.Assert().Equal(path1.String(), event.Resource.String())
+		suite.Assert().Equal(resource.String(path1), resource.String(event.Resource))
 
 		expectedEvents[event] = struct{}{}
 	case <-time.After(time.Second):

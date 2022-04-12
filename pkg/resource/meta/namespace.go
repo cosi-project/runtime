@@ -5,8 +5,6 @@
 package meta
 
 import (
-	"fmt"
-
 	"github.com/cosi-project/runtime/pkg/resource"
 )
 
@@ -44,10 +42,6 @@ func (r *Namespace) Metadata() *resource.Metadata {
 // Spec implements resource.Resource.
 func (r *Namespace) Spec() interface{} {
 	return r.spec
-}
-
-func (r *Namespace) String() string {
-	return fmt.Sprintf("Namespace(%q)", r.md.ID())
 }
 
 // DeepCopy implements resource.Resource.

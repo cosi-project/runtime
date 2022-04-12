@@ -6,7 +6,6 @@ package conformance
 
 import (
 	"encoding/binary"
-	"fmt"
 
 	"github.com/cosi-project/runtime/pkg/resource"
 )
@@ -75,10 +74,6 @@ func (r *IntResource) SetValue(v int) {
 	r.value.value = v
 }
 
-func (r *IntResource) String() string {
-	return fmt.Sprintf("IntResource(%q -> %d)", r.md.ID(), r.value.value)
-}
-
 // DeepCopy implements resource.Resource.
 func (r *IntResource) DeepCopy() resource.Resource {
 	return &IntResource{
@@ -145,10 +140,6 @@ func (r *StrResource) SetValue(v string) {
 	r.value.value = v
 }
 
-func (r *StrResource) String() string {
-	return fmt.Sprintf("StrResource(%q -> %q)", r.md.ID(), r.value.value)
-}
-
 // DeepCopy implements resource.Resource.
 func (r *StrResource) DeepCopy() resource.Resource {
 	return &StrResource{
@@ -203,10 +194,6 @@ func (r *SentenceResource) Value() string {
 // SetValue implements StringResource.
 func (r *SentenceResource) SetValue(v string) {
 	r.value.value = v
-}
-
-func (r *SentenceResource) String() string {
-	return fmt.Sprintf("SentenceResource(%q -> %q)", r.md.ID(), r.value.value)
 }
 
 // DeepCopy implements resource.Resource.

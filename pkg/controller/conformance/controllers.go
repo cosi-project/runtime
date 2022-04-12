@@ -78,7 +78,7 @@ func (ctrl *IntToStrController) Run(ctx context.Context, r controller.Runtime, l
 
 			switch intRes.Metadata().Phase() {
 			case resource.PhaseRunning:
-				if err = r.AddFinalizer(ctx, intRes.Metadata(), strRes.String()); err != nil {
+				if err = r.AddFinalizer(ctx, intRes.Metadata(), resource.String(strRes)); err != nil {
 					return fmt.Errorf("error adding finalizer: %w", err)
 				}
 
@@ -105,7 +105,7 @@ func (ctrl *IntToStrController) Run(ctx context.Context, r controller.Runtime, l
 					return fmt.Errorf("error destroying: %w", err)
 				}
 
-				if err = r.RemoveFinalizer(ctx, intRes.Metadata(), strRes.String()); err != nil {
+				if err = r.RemoveFinalizer(ctx, intRes.Metadata(), resource.String(strRes)); err != nil {
 					if !state.IsNotFoundError(err) {
 						return fmt.Errorf("error removing finalizer (str controller): %w", err)
 					}
@@ -181,7 +181,7 @@ func (ctrl *StrToSentenceController) Run(ctx context.Context, r controller.Runti
 
 			switch strRes.Metadata().Phase() {
 			case resource.PhaseRunning:
-				if err = r.AddFinalizer(ctx, strRes.Metadata(), sentenceRes.String()); err != nil {
+				if err = r.AddFinalizer(ctx, strRes.Metadata(), resource.String(sentenceRes)); err != nil {
 					return fmt.Errorf("error adding finalizer: %w", err)
 				}
 
@@ -207,7 +207,7 @@ func (ctrl *StrToSentenceController) Run(ctx context.Context, r controller.Runti
 					return fmt.Errorf("error destroying: %w", err)
 				}
 
-				if err = r.RemoveFinalizer(ctx, strRes.Metadata(), sentenceRes.String()); err != nil {
+				if err = r.RemoveFinalizer(ctx, strRes.Metadata(), resource.String(sentenceRes)); err != nil {
 					return fmt.Errorf("error removing finalizer (sentence controller): %w", err)
 				}
 			}

@@ -46,10 +46,6 @@ func (path *PathResource) Spec() interface{} {
 	return pathSpec{}
 }
 
-func (path *PathResource) String() string {
-	return fmt.Sprintf("PathResource(%q)", path.md.ID())
-}
-
 // DeepCopy implements resource.Resource.
 func (path *PathResource) DeepCopy() resource.Resource {
 	return &PathResource{
