@@ -1,6 +1,6 @@
 module github.com/cosi-project/runtime
 
-go 1.16
+go 1.18
 
 // forked yaml that introduces RawYAML interface that can be used to provide YAML encoder bytes
 // which are then encoded as a valid YAML block with proper indentiation
@@ -23,6 +23,16 @@ require (
 )
 
 require (
+	github.com/davecgh/go-spew v1.1.1 // indirect
+	github.com/hashicorp/go-immutable-radix v1.3.0 // indirect
+	github.com/hashicorp/golang-lru v0.5.4 // indirect
+	github.com/pmezard/go-difflib v1.0.0 // indirect
+	go.uber.org/atomic v1.7.0 // indirect
 	go.uber.org/multierr v1.7.0 // indirect
+	golang.org/x/lint v0.0.0-20190930215403-16217165b5de // indirect
+	golang.org/x/net v0.0.0-20210405180319-a5a99cb37ef4 // indirect
+	golang.org/x/sys v0.0.0-20210510120138-977fb7262007 // indirect
+	golang.org/x/text v0.3.3 // indirect
 	golang.org/x/tools v0.1.4 // indirect
+	google.golang.org/genproto v0.0.0-20200526211855-cb27e3aa2013 // indirect
 )
