@@ -36,8 +36,11 @@ ENV CGO_ENABLED 0
 ENV GOPATH /go
 RUN curl -sfL https://install.goreleaser.com/github.com/golangci/golangci-lint.sh | bash -s -- -b /bin v1.45.2
 ARG GOFUMPT_VERSION
-RUN go install mvdan.cc/gofumpt/gofumports@${GOFUMPT_VERSION} \
-	&& mv /go/bin/gofumports /bin/gofumports
+RUN go install mvdan.cc/gofumpt@${GOFUMPT_VERSION} \
+    && mv /go/bin/gofumpt /bin/gofumpt
+ARG GOIMPORTS_VERSION
+RUN go install golang.org/x/tools/cmd/goimports@${GOIMPORTS_VERSION} \
+    && mv /go/bin/goimports /bin/goimports
 ARG PROTOBUF_GO_VERSION
 RUN go install google.golang.org/protobuf/cmd/protoc-gen-go@v${PROTOBUF_GO_VERSION}
 RUN mv /go/bin/protoc-gen-go /bin
@@ -71,7 +74,7 @@ RUN protoc -I/api --go_out=paths=source_relative:/api --go-grpc_out=paths=source
 FROM base AS lint-gofumpt
 RUN find . -name '*.pb.go' | xargs -r rm
 RUN find . -name '*.pb.gw.go' | xargs -r rm
-RUN FILES="$(gofumports -l -local github.com/cosi-project/runtime .)" && test -z "${FILES}" || (echo -e "Source code is not formatted with 'gofumports -w -local github.com/cosi-project/runtime .':\n${FILES}"; exit 1)
+RUN FILES="$(goimports -w -local github.com/cosi-project/runtime . && gofumpt -w .)" && test -z "${FILES}" || (echo -e "Source code is not formatted with 'gofumports -w -local github.com/cosi-project/runtime .':\n${FILES}"; exit 1)
 
 # runs golangci-lint
 FROM base AS lint-golangci-lint
