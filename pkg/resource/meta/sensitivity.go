@@ -4,17 +4,10 @@
 
 package meta
 
-// Sensitivity indicates how secret resource is.
-// The empty value represents a non-sensitive resource.
-type Sensitivity string
+import "github.com/cosi-project/runtime/pkg/resource/meta/spec"
 
 // Sensitivity values.
 const (
-	NonSensitive Sensitivity = ""
-	Sensitive    Sensitivity = "sensitive"
+	NonSensitive = spec.NonSensitive
+	Sensitive    = spec.Sensitive
 )
-
-var allSensitivities = map[Sensitivity]struct{}{
-	NonSensitive: {},
-	Sensitive:    {},
-}

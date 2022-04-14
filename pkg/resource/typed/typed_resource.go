@@ -6,7 +6,7 @@ package typed
 
 import (
 	"github.com/cosi-project/runtime/pkg/resource"
-	"github.com/cosi-project/runtime/pkg/resource/meta"
+	"github.com/cosi-project/runtime/pkg/resource/meta/spec"
 )
 
 // DeepCopyable requires a spec to have DeepCopy method which will be used during Resource copy.
@@ -18,7 +18,7 @@ type DeepCopyable[T any] interface {
 // methods. It intantianed only during String and ResourceDefinition calls, so it should never contain any data which
 // survives those calls. Any empty struct{} will do.
 type ResourceDefinition[T any] interface {
-	ResourceDefinition(md resource.Metadata, spec T) meta.ResourceDefinitionSpec
+	ResourceDefinition(md resource.Metadata, spec T) spec.ResourceDefinitionSpec
 }
 
 // Resource provides a generic base implementation for resource.Resource.
@@ -47,8 +47,8 @@ func (t *Resource[T, RD]) DeepCopy() resource.Resource { //nolint:ireturn
 	return &Resource[T, RD]{t.spec.DeepCopy(), t.md}
 }
 
-// ResourceDefinition implements meta.ResourceDefinitionProvider interface.
-func (t *Resource[T, RD]) ResourceDefinition() meta.ResourceDefinitionSpec {
+// ResourceDefinition implements spec.ResourceDefinitionProvider interface.
+func (t *Resource[T, RD]) ResourceDefinition() spec.ResourceDefinitionSpec {
 	var zero RD
 
 	return zero.ResourceDefinition(t.md, t.spec)
