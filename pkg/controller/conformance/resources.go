@@ -26,188 +26,61 @@ type StringResource interface {
 const IntResourceType = resource.Type("test/int")
 
 // IntResource represents some integer value.
-type IntResource struct {
-	md    resource.Metadata
-	value intSpec
-}
-
-type intSpec struct {
-	value int
-}
-
-func (spec intSpec) MarshalProto() ([]byte, error) {
-	buf := make([]byte, binary.MaxVarintLen64)
-
-	n := binary.PutVarint(buf, int64(spec.value))
-
-	return buf[:n], nil
-}
+type IntResource = Resource[int, intSpec, *intSpec]
 
 // NewIntResource creates new IntResource.
 func NewIntResource(ns resource.Namespace, id resource.ID, value int) *IntResource {
-	r := &IntResource{
-		md:    resource.NewMetadata(ns, IntResourceType, id, resource.VersionUndefined),
-		value: intSpec{value},
-	}
-	r.md.BumpVersion()
-
-	return r
+	return NewResource[int, intSpec, *intSpec](resource.NewMetadata(ns, IntResourceType, id, resource.VersionUndefined), value)
 }
 
-// Metadata implements resource.Resource.
-func (r *IntResource) Metadata() *resource.Metadata {
-	return &r.md
+type intSpec struct{ ValueGetSet[int] }
+
+func (is *intSpec) FromProto(bytes []byte) {
+	v, _ := binary.Varint(bytes)
+	is.value = int(v)
 }
 
-// Spec implements resource.Resource.
-func (r *IntResource) Spec() interface{} {
-	return r.value
-}
+func (is intSpec) MarshalProto() ([]byte, error) {
+	buf := make([]byte, binary.MaxVarintLen64)
+	n := binary.PutVarint(buf, int64(is.value))
 
-// Value implements IntegerResource.
-func (r *IntResource) Value() int {
-	return r.value.value
-}
-
-// SetValue implements IntegerResource.
-func (r *IntResource) SetValue(v int) {
-	r.value.value = v
-}
-
-// DeepCopy implements resource.Resource.
-func (r *IntResource) DeepCopy() resource.Resource { //nolint:ireturn
-	return &IntResource{
-		md:    r.md,
-		value: r.value,
-	}
-}
-
-// UnmarshalProto implements protobuf.ResourceUnmarshaler.
-func (r *IntResource) UnmarshalProto(md *resource.Metadata, protoSpec []byte) error {
-	r.md = *md
-
-	v, _ := binary.Varint(protoSpec)
-	r.value.value = int(v)
-
-	return nil
+	return buf[:n], nil
 }
 
 // StrResourceType is the type of StrResource.
 const StrResourceType = resource.Type("test/str")
 
 // StrResource represents some string value.
-type StrResource struct { //nolint:govet
-	md    resource.Metadata
-	value strSpec
-}
-
-type strSpec struct {
-	value string
-}
-
-func (spec strSpec) MarshalProto() ([]byte, error) {
-	return []byte(spec.value), nil
-}
+type StrResource = Resource[string, strSpec, *strSpec]
 
 // NewStrResource creates new StrResource.
 func NewStrResource(ns resource.Namespace, id resource.ID, value string) *StrResource {
-	r := &StrResource{
-		md:    resource.NewMetadata(ns, StrResourceType, id, resource.VersionUndefined),
-		value: strSpec{value},
-	}
-	r.md.BumpVersion()
-
-	return r
+	return NewResource[string, strSpec, *strSpec](resource.NewMetadata(ns, StrResourceType, id, resource.VersionUndefined), value)
 }
 
-// Metadata implements resource.Resource.
-func (r *StrResource) Metadata() *resource.Metadata {
-	return &r.md
-}
+type strSpec struct{ ValueGetSet[string] }
 
-// Spec implements resource.Resource.
-func (r *StrResource) Spec() interface{} {
-	return r.value
-}
-
-// Value implements StringResource.
-func (r *StrResource) Value() string {
-	return r.value.value
-}
-
-// SetValue implements StringResource.
-func (r *StrResource) SetValue(v string) {
-	r.value.value = v
-}
-
-// DeepCopy implements resource.Resource.
-func (r *StrResource) DeepCopy() resource.Resource { //nolint:ireturn
-	return &StrResource{
-		md:    r.md,
-		value: r.value,
-	}
-}
-
-// UnmarshalProto implements protobuf.ResourceUnmarshaler.
-func (r *StrResource) UnmarshalProto(md *resource.Metadata, protoSpec []byte) error {
-	r.md = *md
-	r.value.value = string(protoSpec)
-
-	return nil
-}
+func (s *strSpec) FromProto(bytes []byte)       { s.value = string(bytes) }
+func (s strSpec) MarshalProto() ([]byte, error) { return []byte(s.value), nil }
 
 // SentenceResourceType is the type of SentenceResource.
 const SentenceResourceType = resource.Type("test/sentence")
 
 // SentenceResource represents some string value.
-type SentenceResource struct { //nolint:govet
-	md    resource.Metadata
-	value strSpec
-}
+type SentenceResource = Resource[string, sentenceSpec, *sentenceSpec]
 
 // NewSentenceResource creates new SentenceResource.
 func NewSentenceResource(ns resource.Namespace, id resource.ID, value string) *SentenceResource {
-	r := &SentenceResource{
-		md:    resource.NewMetadata(ns, SentenceResourceType, id, resource.VersionUndefined),
-		value: strSpec{value},
-	}
-	r.md.BumpVersion()
-
-	return r
+	return NewResource[string, sentenceSpec, *sentenceSpec](resource.NewMetadata(ns, SentenceResourceType, id, resource.VersionUndefined), value)
 }
 
-// Metadata implements resource.Resource.
-func (r *SentenceResource) Metadata() *resource.Metadata {
-	return &r.md
-}
+type sentenceSpec struct{ ValueGetSet[string] }
 
-// Spec implements resource.Resource.
-func (r *SentenceResource) Spec() interface{} {
-	return r.value
-}
+func (s *sentenceSpec) FromProto(bytes []byte)       { s.value = string(bytes) }
+func (s sentenceSpec) MarshalProto() ([]byte, error) { return []byte(s.value), nil }
 
-// Value implements StringResource.
-func (r *SentenceResource) Value() string {
-	return r.value.value
-}
+// ValueGetSet is a basic building block for IntegerResource and StringResource implementations.
+type ValueGetSet[T any] struct{ value T }
 
-// SetValue implements StringResource.
-func (r *SentenceResource) SetValue(v string) {
-	r.value.value = v
-}
-
-// DeepCopy implements resource.Resource.
-func (r *SentenceResource) DeepCopy() resource.Resource { //nolint:ireturn
-	return &SentenceResource{
-		md:    r.md,
-		value: r.value,
-	}
-}
-
-// UnmarshalProto implements protobuf.ResourceUnmarshaler.
-func (r *SentenceResource) UnmarshalProto(md *resource.Metadata, protoSpec []byte) error {
-	r.md = *md
-	r.value.value = string(protoSpec)
-
-	return nil
-}
+func (s *ValueGetSet[T]) SetValue(t T) { s.value = t }
+func (s ValueGetSet[T]) Value() T      { return s.value } //nolint:ireturn
