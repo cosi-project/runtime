@@ -7,7 +7,7 @@ package dependency_test
 import (
 	"testing"
 
-	"github.com/AlekSi/pointer"
+	"github.com/siderolabs/go-pointer"
 	"github.com/stretchr/testify/assert"
 
 	"github.com/cosi-project/runtime/pkg/controller"
@@ -27,13 +27,13 @@ func TestLess(t *testing.T) {
 			A: controller.Input{
 				Namespace: "default",
 				Type:      "Config",
-				ID:        pointer.ToString("id"),
+				ID:        pointer.To("id"),
 				Kind:      controller.InputStrong,
 			},
 			B: controller.Input{
 				Namespace: "default",
 				Type:      "Config",
-				ID:        pointer.ToString("id"),
+				ID:        pointer.To("id"),
 				Kind:      controller.InputStrong,
 			},
 			Expected: false,
@@ -43,13 +43,13 @@ func TestLess(t *testing.T) {
 			A: controller.Input{
 				Namespace: "default",
 				Type:      "Config",
-				ID:        pointer.ToString("id"),
+				ID:        pointer.To("id"),
 				Kind:      controller.InputStrong,
 			},
 			B: controller.Input{
 				Namespace: "default",
 				Type:      "Config",
-				ID:        pointer.ToString("jd"),
+				ID:        pointer.To("jd"),
 				Kind:      controller.InputStrong,
 			},
 			Expected: true,
@@ -94,13 +94,13 @@ func TestEqual(t *testing.T) {
 			A: controller.Input{
 				Namespace: "default",
 				Type:      "Config",
-				ID:        pointer.ToString("id"),
+				ID:        pointer.To("id"),
 				Kind:      controller.InputStrong,
 			},
 			B: controller.Input{
 				Namespace: "default",
 				Type:      "Config",
-				ID:        pointer.ToString("id"),
+				ID:        pointer.To("id"),
 				Kind:      controller.InputStrong,
 			},
 			Expected: true,
@@ -110,13 +110,13 @@ func TestEqual(t *testing.T) {
 			A: controller.Input{
 				Namespace: "default",
 				Type:      "Config",
-				ID:        pointer.ToString("id"),
+				ID:        pointer.To("id"),
 				Kind:      controller.InputStrong,
 			},
 			B: controller.Input{
 				Namespace: "default",
 				Type:      "Config",
-				ID:        pointer.ToString("jd"),
+				ID:        pointer.To("jd"),
 				Kind:      controller.InputStrong,
 			},
 			Expected: false,
@@ -126,7 +126,7 @@ func TestEqual(t *testing.T) {
 			A: controller.Input{
 				Namespace: "default",
 				Type:      "Config",
-				ID:        pointer.ToString("id"),
+				ID:        pointer.To("id"),
 				Kind:      controller.InputStrong,
 			},
 			B: controller.Input{
@@ -174,13 +174,13 @@ func TestEqual(t *testing.T) {
 			A: controller.Input{
 				Namespace: "user",
 				Type:      "Config",
-				ID:        pointer.ToString("id"),
+				ID:        pointer.To("id"),
 				Kind:      controller.InputStrong,
 			},
 			B: controller.Input{
 				Namespace: "default",
 				Type:      "Config",
-				ID:        pointer.ToString("id"),
+				ID:        pointer.To("id"),
 				Kind:      controller.InputStrong,
 			},
 			Expected: false,
@@ -209,13 +209,13 @@ func TestEqualKeys(t *testing.T) {
 			A: controller.Input{
 				Namespace: "default",
 				Type:      "Config",
-				ID:        pointer.ToString("id"),
+				ID:        pointer.To("id"),
 				Kind:      controller.InputStrong,
 			},
 			B: controller.Input{
 				Namespace: "default",
 				Type:      "Config",
-				ID:        pointer.ToString("id"),
+				ID:        pointer.To("id"),
 				Kind:      controller.InputStrong,
 			},
 			Expected: true,
@@ -225,13 +225,13 @@ func TestEqualKeys(t *testing.T) {
 			A: controller.Input{
 				Namespace: "default",
 				Type:      "Config",
-				ID:        pointer.ToString("id"),
+				ID:        pointer.To("id"),
 				Kind:      controller.InputWeak,
 			},
 			B: controller.Input{
 				Namespace: "default",
 				Type:      "Config",
-				ID:        pointer.ToString("id"),
+				ID:        pointer.To("id"),
 				Kind:      controller.InputStrong,
 			},
 			Expected: true,
@@ -241,13 +241,13 @@ func TestEqualKeys(t *testing.T) {
 			A: controller.Input{
 				Namespace: "default",
 				Type:      "Config",
-				ID:        pointer.ToString("id"),
+				ID:        pointer.To("id"),
 				Kind:      controller.InputStrong,
 			},
 			B: controller.Input{
 				Namespace: "default",
 				Type:      "Config",
-				ID:        pointer.ToString("jd"),
+				ID:        pointer.To("jd"),
 				Kind:      controller.InputStrong,
 			},
 			Expected: false,
@@ -257,7 +257,7 @@ func TestEqualKeys(t *testing.T) {
 			A: controller.Input{
 				Namespace: "default",
 				Type:      "Config",
-				ID:        pointer.ToString("id"),
+				ID:        pointer.To("id"),
 				Kind:      controller.InputStrong,
 			},
 			B: controller.Input{

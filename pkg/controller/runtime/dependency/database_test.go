@@ -7,7 +7,7 @@ package dependency_test
 import (
 	"testing"
 
-	"github.com/AlekSi/pointer"
+	"github.com/siderolabs/go-pointer"
 	"github.com/stretchr/testify/suite"
 
 	"github.com/cosi-project/runtime/pkg/controller"
@@ -118,7 +118,7 @@ func (suite *DatabaseSuite) TestControllerDependency() {
 	suite.Require().NoError(suite.db.AddControllerInput("ConfigController", controller.Input{
 		Namespace: "state",
 		Type:      "Machine",
-		ID:        pointer.ToString("system"),
+		ID:        pointer.To("system"),
 		Kind:      controller.InputStrong,
 	}))
 
@@ -139,7 +139,7 @@ func (suite *DatabaseSuite) TestControllerDependency() {
 	ctrls, err := suite.db.GetDependentControllers(controller.Input{
 		Namespace: "user",
 		Type:      "Config",
-		ID:        pointer.ToString("config"),
+		ID:        pointer.To("config"),
 	})
 	suite.Require().NoError(err)
 	suite.Assert().Equal([]string{"ConfigController"}, ctrls)
@@ -161,7 +161,7 @@ func (suite *DatabaseSuite) TestControllerDependency() {
 	ctrls, err = suite.db.GetDependentControllers(controller.Input{
 		Namespace: "state",
 		Type:      "Machine",
-		ID:        pointer.ToString("node"),
+		ID:        pointer.To("node"),
 	})
 	suite.Require().NoError(err)
 	suite.Assert().Empty(ctrls)
@@ -169,7 +169,7 @@ func (suite *DatabaseSuite) TestControllerDependency() {
 	ctrls, err = suite.db.GetDependentControllers(controller.Input{
 		Namespace: "state",
 		Type:      "Machine",
-		ID:        pointer.ToString("system"),
+		ID:        pointer.To("system"),
 	})
 	suite.Require().NoError(err)
 	suite.Assert().Equal([]string{"ConfigController"}, ctrls)
@@ -184,7 +184,7 @@ func (suite *DatabaseSuite) TestControllerDependency() {
 	suite.Require().NoError(suite.db.DeleteControllerInput("ConfigController", controller.Input{
 		Namespace: "state",
 		Type:      "Machine",
-		ID:        pointer.ToString("system"),
+		ID:        pointer.To("system"),
 	}))
 
 	ctrls, err = suite.db.GetDependentControllers(controller.Input{
@@ -221,7 +221,7 @@ func (suite *DatabaseSuite) TestExport() {
 		Namespace: "user",
 		Type:      "Config",
 		Kind:      controller.InputWeak,
-		ID:        pointer.ToString("config"),
+		ID:        pointer.To("config"),
 	}))
 
 	suite.Require().NoError(suite.db.AddControllerInput("ControllerTable", controller.Input{

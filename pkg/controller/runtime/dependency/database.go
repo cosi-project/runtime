@@ -7,8 +7,8 @@ package dependency
 import (
 	"fmt"
 
-	"github.com/AlekSi/pointer"
 	"github.com/hashicorp/go-memdb"
+	"github.com/siderolabs/go-pointer"
 
 	"github.com/cosi-project/runtime/pkg/controller"
 	"github.com/cosi-project/runtime/pkg/resource"
@@ -327,7 +327,7 @@ func (db *Database) GetControllerInputs(controllerName string) ([]controller.Inp
 		}
 
 		if model.ID != StarID {
-			dep.ID = pointer.ToString(model.ID)
+			dep.ID = pointer.To(model.ID)
 		}
 
 		result = append(result, dep)

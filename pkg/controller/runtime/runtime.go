@@ -10,8 +10,8 @@ import (
 	"fmt"
 	"sync"
 
-	"github.com/AlekSi/pointer"
 	"github.com/cenkalti/backoff/v4"
+	"github.com/siderolabs/go-pointer"
 	"go.uber.org/zap"
 
 	"github.com/cosi-project/runtime/pkg/controller"
@@ -234,7 +234,7 @@ func (runtime *Runtime) processWatched() {
 		controllers, err := runtime.depDB.GetDependentControllers(controller.Input{
 			Namespace: md.Namespace(),
 			Type:      md.Type(),
-			ID:        pointer.ToString(md.ID()),
+			ID:        pointer.To(md.ID()),
 		})
 		if err != nil {
 			// TODO: no way to handle it here

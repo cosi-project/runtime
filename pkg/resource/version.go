@@ -8,7 +8,7 @@ import (
 	"fmt"
 	"strconv"
 
-	"github.com/AlekSi/pointer"
+	"github.com/siderolabs/go-pointer"
 )
 
 // Version of a resource.
@@ -55,6 +55,6 @@ func ParseVersion(ver string) (Version, error) {
 	}
 
 	return Version{
-		uint64: pointer.ToUint64(uint64(intVersion)),
+		uint64: pointer.To(uint64(intVersion)),
 	}, nil
 }

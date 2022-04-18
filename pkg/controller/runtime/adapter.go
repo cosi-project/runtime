@@ -13,8 +13,8 @@ import (
 	"sync"
 	"time"
 
-	"github.com/AlekSi/pointer"
 	"github.com/cenkalti/backoff/v4"
+	"github.com/siderolabs/go-pointer"
 	"go.uber.org/zap"
 
 	"github.com/cosi-project/runtime/pkg/controller"
@@ -188,7 +188,7 @@ func (adapter *adapter) checkFinalizerAccess(resourceNamespace resource.Namespac
 
 // Get implements controller.Runtime interface.
 func (adapter *adapter) Get(ctx context.Context, resourcePointer resource.Pointer) (resource.Resource, error) { //nolint:ireturn
-	if err := adapter.checkReadAccess(resourcePointer.Namespace(), resourcePointer.Type(), pointer.ToString(resourcePointer.ID())); err != nil {
+	if err := adapter.checkReadAccess(resourcePointer.Namespace(), resourcePointer.Type(), pointer.To(resourcePointer.ID())); err != nil {
 		return nil, err
 	}
 

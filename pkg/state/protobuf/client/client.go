@@ -10,7 +10,7 @@ import (
 	"errors"
 	"io"
 
-	"github.com/AlekSi/pointer"
+	"github.com/siderolabs/go-pointer"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 
@@ -182,7 +182,7 @@ func (adapter *Adapter) Update(ctx context.Context, curVersion resource.Version,
 	var expectedPhase *string
 
 	if opts.ExpectedPhase != nil {
-		expectedPhase = pointer.ToString(opts.ExpectedPhase.String())
+		expectedPhase = pointer.To(opts.ExpectedPhase.String())
 	}
 
 	_, err = adapter.client.Update(ctx, &v1alpha1.UpdateRequest{
@@ -264,7 +264,7 @@ func (adapter *Adapter) Watch(ctx context.Context, resourcePointer resource.Poin
 	cli, err := adapter.client.Watch(ctx, &v1alpha1.WatchRequest{
 		Namespace: resourcePointer.Namespace(),
 		Type:      resourcePointer.Type(),
-		Id:        pointer.ToString(resourcePointer.ID()),
+		Id:        pointer.To(resourcePointer.ID()),
 		Options: &v1alpha1.WatchOptions{
 			TailEvents: int32(opts.TailEvents),
 		},
