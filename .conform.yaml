@@ -1,13 +1,16 @@
 # THIS FILE WAS AUTOMATICALLY GENERATED, PLEASE DO NOT EDIT.
 #
-# Generated on 2022-04-12T21:42:27Z by kres 4975f30.
+# Generated on 2022-04-22T12:24:48Z by kres 685be7b.
 
 ---
 policies:
 - type: commit
   spec:
     dco: true
-    gpg: false
+    gpg:
+      required: true
+      identity:
+        gitHubOrganization: cosi-project
     spellcheck:
       locale: US
     maximumOfOneCommit: true

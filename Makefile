@@ -1,6 +1,6 @@
 # THIS FILE WAS AUTOMATICALLY GENERATED, PLEASE DO NOT EDIT.
 #
-# Generated on 2022-04-12T21:42:27Z by kres 4975f30.
+# Generated on 2022-04-22T17:29:34Z by kres 685be7b-dirty.
 
 # common variables
 
@@ -11,13 +11,13 @@ ARTIFACTS := _out
 REGISTRY ?= ghcr.io
 USERNAME ?= cosi-project
 REGISTRY_AND_USERNAME ?= $(REGISTRY)/$(USERNAME)
-GOFUMPT_VERSION ?= v0.3.0
-GOIMPORTS_VERSION ?= v0.1.10
+GOFUMPT_VERSION ?= v0.3.1
 GO_VERSION ?= 1.18
+GOIMPORTS_VERSION ?= v0.1.10
 PROTOBUF_GO_VERSION ?= 1.28.0
 GRPC_GO_VERSION ?= 1.2.0
 GRPC_GATEWAY_VERSION ?= 2.10.0
-VTPROTOBUF_VERSION ?= d8520340f57329767fd3b2c9cc0aea3703dd68c9
+VTPROTOBUF_VERSION ?= 0.3.0
 TESTPKGS ?= ./...
 KRES_IMAGE ?= ghcr.io/siderolabs/kres:latest
 
@@ -101,10 +101,11 @@ lint-gofumpt:  ## Runs gofumpt linter.
 fmt:  ## Formats the source code
 	@docker run --rm -it -v $(PWD):/src -w /src golang:$(GO_VERSION) \
 		bash -c "export GO111MODULE=on; export GOPROXY=https://proxy.golang.org; \
-		go install golang.org/x/tools/cmd/goimports@$(GOIMPORTS_VERSION) && \
 		go install mvdan.cc/gofumpt@$(GOFUMPT_VERSION) && \
-		goimports -w -local github.com/cosi-project/runtime . && \
 		gofumpt -w ."
+
+lint-goimports:  ## Runs goimports linter.
+	@$(MAKE) target-$@
 
 generate:  ## Generate .proto definitions.
 	@$(MAKE) local-$@ DEST=./
@@ -140,7 +141,7 @@ lint-markdown:  ## Runs markdownlint.
 	@$(MAKE) target-$@
 
 .PHONY: lint
-lint: lint-golangci-lint lint-gofumpt lint-markdown  ## Run all linters for the project.
+lint: lint-golangci-lint lint-gofumpt lint-goimports lint-markdown  ## Run all linters for the project.
 
 .PHONY: image-runtime
 image-runtime:  ## Builds image for runtime.

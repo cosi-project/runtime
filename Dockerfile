@@ -2,7 +2,7 @@
 
 # THIS FILE WAS AUTOMATICALLY GENERATED, PLEASE DO NOT EDIT.
 #
-# Generated on 2022-04-12T21:42:27Z by kres 4975f30.
+# Generated on 2022-04-22T17:30:48Z by kres 685be7b-dirty.
 
 ARG TOOLCHAIN
 
@@ -37,10 +37,10 @@ ENV GOPATH /go
 RUN curl -sfL https://install.goreleaser.com/github.com/golangci/golangci-lint.sh | bash -s -- -b /bin v1.45.2
 ARG GOFUMPT_VERSION
 RUN go install mvdan.cc/gofumpt@${GOFUMPT_VERSION} \
-    && mv /go/bin/gofumpt /bin/gofumpt
+	&& mv /go/bin/gofumpt /bin/gofumpt
 ARG GOIMPORTS_VERSION
 RUN go install golang.org/x/tools/cmd/goimports@${GOIMPORTS_VERSION} \
-    && mv /go/bin/goimports /bin/goimports
+	&& mv /go/bin/goimports /bin/goimports
 ARG PROTOBUF_GO_VERSION
 RUN go install google.golang.org/protobuf/cmd/protoc-gen-go@v${PROTOBUF_GO_VERSION}
 RUN mv /go/bin/protoc-gen-go /bin
@@ -50,6 +50,9 @@ RUN mv /go/bin/protoc-gen-go-grpc /bin
 ARG GRPC_GATEWAY_VERSION
 RUN go install github.com/grpc-ecosystem/grpc-gateway/v2/protoc-gen-grpc-gateway@v${GRPC_GATEWAY_VERSION}
 RUN mv /go/bin/protoc-gen-grpc-gateway /bin
+ARG VTPROTOBUF_VERSION
+RUN go install github.com/planetscale/vtprotobuf/cmd/protoc-gen-go-vtproto@v${VTPROTOBUF_VERSION}
+RUN mv /go/bin/protoc-gen-go-vtproto /bin
 
 # tools and sources
 FROM tools AS base
@@ -66,15 +69,17 @@ RUN --mount=type=cache,target=/go/pkg go list -mod=readonly all >/dev/null
 # runs protobuf compiler
 FROM tools AS proto-compile
 COPY --from=proto-specs / /
-RUN protoc -I/api --go_out=paths=source_relative:/api --go-grpc_out=paths=source_relative:/api --experimental_allow_proto3_optional /api/v1alpha1/resource.proto
-RUN protoc -I/api --go_out=paths=source_relative:/api --go-grpc_out=paths=source_relative:/api --experimental_allow_proto3_optional /api/v1alpha1/state.proto
-RUN protoc -I/api --go_out=paths=source_relative:/api --go-grpc_out=paths=source_relative:/api --experimental_allow_proto3_optional /api/v1alpha1/runtime.proto
+RUN protoc -I/api --go_out=paths=source_relative:/api --go-grpc_out=paths=source_relative:/api --go-vtproto_out=paths=source_relative:/api --go-vtproto_opt=features=marshal+unmarshal+size --experimental_allow_proto3_optional /api/v1alpha1/resource.proto /api/v1alpha1/state.proto /api/v1alpha1/runtime.proto
+RUN goimports -w -local github.com/cosi-project/runtime /api
+RUN gofumpt -w /api
 
 # runs gofumpt
 FROM base AS lint-gofumpt
-RUN find . -name '*.pb.go' | xargs -r rm
-RUN find . -name '*.pb.gw.go' | xargs -r rm
-RUN FILES="$(goimports -w -local github.com/cosi-project/runtime . && gofumpt -w .)" && test -z "${FILES}" || (echo -e "Source code is not formatted with 'gofumports -w -local github.com/cosi-project/runtime .':\n${FILES}"; exit 1)
+RUN FILES="$(gofumpt -l .)" && test -z "${FILES}" || (echo -e "Source code is not formatted with 'gofumpt -w .':\n${FILES}"; exit 1)
+
+# runs goimports
+FROM base AS lint-goimports
+RUN FILES="$(goimports -l -local github.com/cosi-project/runtime .)" && test -z "${FILES}" || (echo -e "Source code is not formatted with 'goimports -w -local github.com/cosi-project/runtime .':\n${FILES}"; exit 1)
 
 # runs golangci-lint
 FROM base AS lint-golangci-lint
