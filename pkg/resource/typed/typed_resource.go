@@ -5,8 +5,12 @@
 package typed
 
 import (
+	"fmt"
+	"reflect"
+
 	"github.com/cosi-project/runtime/pkg/resource"
 	"github.com/cosi-project/runtime/pkg/resource/meta/spec"
+	"github.com/cosi-project/runtime/pkg/resource/protobuf"
 )
 
 // DeepCopyable requires a spec to have DeepCopy method which will be used during Resource copy.
@@ -52,6 +56,25 @@ func (t *Resource[T, RD]) ResourceDefinition() spec.ResourceDefinitionSpec {
 	var zero RD
 
 	return zero.ResourceDefinition(t.md, t.spec)
+}
+
+// UnmarshalProto impelements protobuf.Unmarshaler interface in a generic way.
+//
+// UnmarshalProto requires that the spec implements the protobuf.ProtoUnmarshaller interface.
+func (t *Resource[T, RD]) UnmarshalProto(md *resource.Metadata, protoBytes []byte) error {
+	// Go doesn't allow to do type assertion on a generic type T, so use reflection instead.
+	protoSpec, ok := reflect.ValueOf(&t.spec).Interface().(protobuf.ProtoUnmarshaler)
+	if !ok {
+		return fmt.Errorf("spec does not implement ProtoUnmarshaler")
+	}
+
+	if err := protoSpec.UnmarshalProto(protoBytes); err != nil {
+		return err
+	}
+
+	t.md = *md
+
+	return nil
 }
 
 // NewResource initializes and returns a new instance of Resource with typed spec field.

@@ -100,6 +100,11 @@ type ProtoMarshaler interface {
 	MarshalProto() ([]byte, error)
 }
 
+// ProtoUnmarshaler is an interface which should be implemented by Resource spec to support conversion from protobuf.Resource.
+type ProtoUnmarshaler interface {
+	UnmarshalProto([]byte) error
+}
+
 // FromResource converts a resource which supports spec protobuf marshaling to protobuf.Resource.
 func FromResource(r resource.Resource) (*Resource, error) {
 	if protoR, ok := r.(*Resource); ok {
