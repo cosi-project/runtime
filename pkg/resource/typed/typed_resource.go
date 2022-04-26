@@ -6,7 +6,6 @@ package typed
 
 import (
 	"fmt"
-	"reflect"
 
 	"github.com/cosi-project/runtime/pkg/resource"
 	"github.com/cosi-project/runtime/pkg/resource/meta/spec"
@@ -62,8 +61,8 @@ func (t *Resource[T, RD]) ResourceDefinition() spec.ResourceDefinitionSpec {
 //
 // UnmarshalProto requires that the spec implements the protobuf.ProtoUnmarshaller interface.
 func (t *Resource[T, RD]) UnmarshalProto(md *resource.Metadata, protoBytes []byte) error {
-	// Go doesn't allow to do type assertion on a generic type T, so use reflection instead.
-	protoSpec, ok := reflect.ValueOf(&t.spec).Interface().(protobuf.ProtoUnmarshaler)
+	// Go doesn't allow to do type assertion on a generic type T, so use intermediate any value.
+	protoSpec, ok := any(&t.spec).(protobuf.ProtoUnmarshaler)
 	if !ok {
 		return fmt.Errorf("spec does not implement ProtoUnmarshaler")
 	}
