@@ -10,7 +10,7 @@ require (
 	github.com/cenkalti/backoff/v4 v4.1.1
 	github.com/gertd/go-pluralize v0.1.7
 	github.com/golang/protobuf v1.5.2
-	github.com/hashicorp/go-memdb v1.3.2
+	github.com/hashicorp/go-memdb v1.3.3
 	github.com/siderolabs/go-pointer v1.0.0
 	github.com/stretchr/testify v1.7.0
 	github.com/talos-systems/go-retry v0.3.1
