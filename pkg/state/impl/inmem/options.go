@@ -6,6 +6,7 @@ package inmem
 
 // StateOptions configure inmem.State.
 type StateOptions struct {
+	BackingStore    BackingStore
 	HistoryCapacity int
 	HistoryGap      int
 }
@@ -31,6 +32,15 @@ func WithHistoryCapacity(capacity int) StateOption {
 func WithHistoryGap(gap int) StateOption {
 	return func(options *StateOptions) {
 		options.HistoryGap = gap
+	}
+}
+
+// WithBackingStore sets a BackingStore for a in-memory resource collection.
+//
+// Default value is nil (no backing store).
+func WithBackingStore(store BackingStore) StateOption {
+	return func(options *StateOptions) {
+		options.BackingStore = store
 	}
 }
 

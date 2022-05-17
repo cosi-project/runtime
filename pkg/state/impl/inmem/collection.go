@@ -22,6 +22,8 @@ type ResourceCollection struct {
 	ns  resource.Namespace
 	typ resource.Type
 
+	store BackingStore
+
 	stream []state.Event
 
 	mu sync.Mutex
@@ -33,7 +35,7 @@ type ResourceCollection struct {
 }
 
 // NewResourceCollection returns new ResourceCollection.
-func NewResourceCollection(ns resource.Namespace, typ resource.Type, capacity, gap int) *ResourceCollection {
+func NewResourceCollection(ns resource.Namespace, typ resource.Type, capacity, gap int, store BackingStore) *ResourceCollection {
 	collection := &ResourceCollection{
 		ns:       ns,
 		typ:      typ,
@@ -41,6 +43,7 @@ func NewResourceCollection(ns resource.Namespace, typ resource.Type, capacity, g
 		gap:      gap,
 		storage:  make(map[resource.ID]resource.Resource),
 		stream:   make([]state.Event, capacity),
+		store:    store,
 	}
 
 	collection.c = sync.NewCond(&collection.mu)
@@ -90,34 +93,42 @@ func (collection *ResourceCollection) List() (resource.List, error) {
 	return result, nil
 }
 
+func (collection *ResourceCollection) inject(resource resource.Resource) {
+	collection.storage[resource.Metadata().ID()] = resource
+	collection.publish(state.Event{
+		Type:     state.Created,
+		Resource: resource,
+	})
+}
+
 // Create a resource.
-func (collection *ResourceCollection) Create(resource resource.Resource, owner string) error {
+func (collection *ResourceCollection) Create(ctx context.Context, resource resource.Resource, owner string) error {
 	resource = resource.DeepCopy()
 
 	if err := resource.Metadata().SetOwner(owner); err != nil {
 		return err
 	}
 
-	id := resource.Metadata().ID()
-
 	collection.mu.Lock()
 	defer collection.mu.Unlock()
 
-	if _, exists := collection.storage[id]; exists {
+	if _, exists := collection.storage[resource.Metadata().ID()]; exists {
 		return ErrAlreadyExists(resource.Metadata())
 	}
 
-	collection.storage[id] = resource
-	collection.publish(state.Event{
-		Type:     state.Created,
-		Resource: resource,
-	})
+	if collection.store != nil {
+		if err := collection.store.Put(ctx, collection.typ, resource); err != nil {
+			return err
+		}
+	}
+
+	collection.inject(resource)
 
 	return nil
 }
 
 // Update a resource.
-func (collection *ResourceCollection) Update(curVersion resource.Version, newResource resource.Resource, options *state.UpdateOptions) error {
+func (collection *ResourceCollection) Update(ctx context.Context, curVersion resource.Version, newResource resource.Resource, options *state.UpdateOptions) error {
 	newResource = newResource.DeepCopy()
 	id := newResource.Metadata().ID()
 
@@ -145,6 +156,12 @@ func (collection *ResourceCollection) Update(curVersion resource.Version, newRes
 		return ErrPhaseConflict(curResource.Metadata(), *options.ExpectedPhase)
 	}
 
+	if collection.store != nil {
+		if err := collection.store.Put(ctx, collection.typ, newResource); err != nil {
+			return err
+		}
+	}
+
 	collection.storage[id] = newResource
 
 	collection.publish(state.Event{
@@ -156,7 +173,7 @@ func (collection *ResourceCollection) Update(curVersion resource.Version, newRes
 }
 
 // Destroy a resource.
-func (collection *ResourceCollection) Destroy(ptr resource.Pointer, owner string) error {
+func (collection *ResourceCollection) Destroy(ctx context.Context, ptr resource.Pointer, owner string) error {
 	id := ptr.ID()
 
 	collection.mu.Lock()
@@ -173,6 +190,12 @@ func (collection *ResourceCollection) Destroy(ptr resource.Pointer, owner string
 
 	if !resource.Metadata().Finalizers().Empty() {
 		return ErrPendingFinalizers(*resource.Metadata())
+	}
+
+	if collection.store != nil {
+		if err := collection.store.Destroy(ctx, collection.typ, ptr); err != nil {
+			return err
+		}
 	}
 
 	delete(collection.storage, id)
