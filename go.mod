@@ -7,7 +7,7 @@ go 1.18
 replace gopkg.in/yaml.v3 => github.com/unix4ever/yaml v0.0.0-20210315173758-8fb30b8e5a5b
 
 require (
-	github.com/cenkalti/backoff/v4 v4.1.1
+	github.com/cenkalti/backoff/v4 v4.1.3
 	github.com/gertd/go-pluralize v0.1.7
 	github.com/golang/protobuf v1.5.2
 	github.com/hashicorp/go-memdb v1.3.2
