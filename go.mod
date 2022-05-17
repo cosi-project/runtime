@@ -12,7 +12,7 @@ require (
 	github.com/golang/protobuf v1.5.2
 	github.com/hashicorp/go-memdb v1.3.2
 	github.com/siderolabs/go-pointer v1.0.0
-	github.com/stretchr/testify v1.7.0
+	github.com/stretchr/testify v1.7.1
 	github.com/talos-systems/go-retry v0.3.1
 	go.uber.org/goleak v1.1.10
 	go.uber.org/zap v1.18.1
