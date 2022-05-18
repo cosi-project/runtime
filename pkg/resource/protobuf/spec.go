@@ -41,7 +41,7 @@ func (spec *ResourceSpec[T, S]) UnmarshalProto(protoBytes []byte) error {
 }
 
 // GetValue returns wrapped protobuf object.
-func (spec *ResourceSpec[T, S]) GetValue() proto.Message { //nolint:ireturn
+func (spec ResourceSpec[T, S]) GetValue() proto.Message { //nolint:ireturn
 	return spec.Value
 }
 
