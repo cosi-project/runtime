@@ -12,6 +12,13 @@ type Spec[T any] interface {
 	*T
 }
 
+// ResourceSpecWrapper defines interface for the protobuf resource wrapped by a generic structure.
+type ResourceSpecWrapper interface {
+	ProtoMarshaler
+	ProtoUnmarshaler
+	GetValue() proto.Message
+}
+
 // ResourceSpec wraps proto.Message structures and adds DeepCopy and marshaling methods.
 // T is a protobuf generated structure.
 // S is a pointer to T.
@@ -38,6 +45,11 @@ func (spec *ResourceSpec[T, S]) UnmarshalProto(protoBytes []byte) error {
 	spec.Value = new(T)
 
 	return proto.Unmarshal(protoBytes, spec.Value)
+}
+
+// GetValue returns wrapped protobuf object.
+func (spec *ResourceSpec[T, S]) GetValue() proto.Message { //nolint:ireturn
+	return spec.Value
 }
 
 // NewResourceSpec creates new ResourceSpec[T, S].
