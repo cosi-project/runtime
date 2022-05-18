@@ -12,13 +12,6 @@ type Spec[T any] interface {
 	*T
 }
 
-// ResourceSpecWrapper defines interface for the protobuf resource wrapped by a generic structure.
-type ResourceSpecWrapper interface {
-	ProtoMarshaler
-	ProtoUnmarshaler
-	GetValue() proto.Message
-}
-
 // ResourceSpec wraps proto.Message structures and adds DeepCopy and marshaling methods.
 // T is a protobuf generated structure.
 // S is a pointer to T.
