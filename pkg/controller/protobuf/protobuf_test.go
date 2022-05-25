@@ -73,7 +73,7 @@ func TestProtobufConformance(t *testing.T) {
 			suite.grpcServer.Serve(l) //nolint:errcheck
 		}()
 
-		suite.grpcConn, err = grpc.Dial("unix://"+suite.sock.Name(), grpc.WithInsecure())
+		suite.grpcConn, err = grpc.Dial("unix://"+suite.sock.Name(), grpc.WithInsecure()) //nolint:staticcheck
 		require.NoError(t, err)
 
 		stateClient := v1alpha1.NewStateClient(suite.grpcConn)

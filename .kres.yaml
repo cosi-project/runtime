@@ -1,5 +1,5 @@
 ---
-kind: golang.Protobuf
+kind: golang.Generate
 spec:
   experimentalFlags:
     - --experimental_allow_proto3_optional

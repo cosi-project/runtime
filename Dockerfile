@@ -2,7 +2,7 @@
 
 # THIS FILE WAS AUTOMATICALLY GENERATED, PLEASE DO NOT EDIT.
 #
-# Generated on 2022-04-22T17:30:48Z by kres 685be7b-dirty.
+# Generated on 2022-05-25T15:53:03Z by kres latest.
 
 ARG TOOLCHAIN
 
@@ -11,13 +11,13 @@ FROM ghcr.io/siderolabs/ca-certificates:v1.0.0 AS image-ca-certificates
 FROM ghcr.io/siderolabs/fhs:v1.0.0 AS image-fhs
 
 # runs markdownlint
-FROM node:14.8.0-alpine AS lint-markdown
-RUN npm i -g markdownlint-cli@0.23.2
-RUN npm i sentences-per-line@0.2.1
+FROM node:18.2.0-alpine AS lint-markdown
 WORKDIR /src
+RUN npm i -g markdownlint-cli@0.31.1
+RUN npm i sentences-per-line@0.2.1
 COPY .markdownlint.json .
 COPY ./README.md ./README.md
-RUN markdownlint --ignore "CHANGELOG.md" --ignore "**/node_modules/**" --ignore '**/hack/chglog/**' --rules /node_modules/sentences-per-line/index.js .
+RUN markdownlint --ignore "CHANGELOG.md" --ignore "**/node_modules/**" --ignore '**/hack/chglog/**' --rules node_modules/sentences-per-line/index.js .
 
 # collects proto specs
 FROM scratch AS proto-specs
@@ -34,7 +34,8 @@ FROM toolchain AS tools
 ENV GO111MODULE on
 ENV CGO_ENABLED 0
 ENV GOPATH /go
-RUN curl -sfL https://install.goreleaser.com/github.com/golangci/golangci-lint.sh | bash -s -- -b /bin v1.45.2
+ARG GOLANGCILINT_VERSION
+RUN curl -sfL https://raw.githubusercontent.com/golangci/golangci-lint/${GOLANGCILINT_VERSION}/install.sh | bash -s -- -b /bin ${GOLANGCILINT_VERSION}
 ARG GOFUMPT_VERSION
 RUN go install mvdan.cc/gofumpt@${GOFUMPT_VERSION} \
 	&& mv /go/bin/gofumpt /bin/gofumpt
@@ -53,6 +54,9 @@ RUN mv /go/bin/protoc-gen-grpc-gateway /bin
 ARG VTPROTOBUF_VERSION
 RUN go install github.com/planetscale/vtprotobuf/cmd/protoc-gen-go-vtproto@v${VTPROTOBUF_VERSION}
 RUN mv /go/bin/protoc-gen-go-vtproto /bin
+ARG DEEPCOPY_VERSION
+RUN go install github.com/siderolabs/deep-copy@${DEEPCOPY_VERSION} \
+	&& mv /go/bin/deep-copy /bin/deep-copy
 
 # tools and sources
 FROM tools AS base

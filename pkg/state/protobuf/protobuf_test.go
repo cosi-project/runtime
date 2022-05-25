@@ -45,7 +45,7 @@ func TestProtobufConformance(t *testing.T) {
 
 	defer grpcServer.Stop()
 
-	grpcConn, err := grpc.Dial("unix://"+sock.Name(), grpc.WithInsecure())
+	grpcConn, err := grpc.Dial("unix://"+sock.Name(), grpc.WithInsecure()) //nolint:staticcheck
 	require.NoError(t, err)
 
 	defer grpcConn.Close() //nolint:errcheck

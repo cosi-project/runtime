@@ -49,23 +49,33 @@ func RegisterResource(resourceType resource.Type, r ResourceUnmarshaler) error {
 	return nil
 }
 
-// UnmarshalResource converts proto.Resource to real resource if possible.
-//
-// If conversion is not registered, proto.Resource is returned.
-func UnmarshalResource(r *Resource) (resource.Resource, error) { //nolint:ireturn
+// CreateResource creates an empty resource for a type.
+func CreateResource(resourceType resource.Type) (resource.Resource, error) { //nolint:ireturn
 	initOnce.Do(initRegistry)
 
 	registry.mu.Lock()
 	defer registry.mu.Unlock()
 
-	unmarshaler, ok := registry.registry[r.Metadata().Type()]
+	unmarshaler, ok := registry.registry[resourceType]
 	if !ok {
-		return r, nil
+		return nil, fmt.Errorf("no resource is registered for the resource type %s", resourceType)
 	}
 
 	resourceInstance := reflect.New(reflect.ValueOf(unmarshaler).Type().Elem()).Interface()
 
-	unmarshaler, ok = resourceInstance.(ResourceUnmarshaler)
+	return resourceInstance.(resource.Resource), nil //nolint:forcetypeassert
+}
+
+// UnmarshalResource converts proto.Resource to real resource if possible.
+//
+// If conversion is not registered, proto.Resource is returned.
+func UnmarshalResource(r *Resource) (resource.Resource, error) { //nolint:ireturn
+	resourceInstance, err := CreateResource(r.Metadata().Type())
+	if err != nil {
+		return r, nil
+	}
+
+	unmarshaler, ok := resourceInstance.(ResourceUnmarshaler)
 	if !ok {
 		return nil, fmt.Errorf("unexpected interface mismatch")
 	}
@@ -74,10 +84,5 @@ func UnmarshalResource(r *Resource) (resource.Resource, error) { //nolint:iretur
 		return nil, err
 	}
 
-	resourceInterface, ok := resourceInstance.(resource.Resource)
-	if !ok {
-		return nil, fmt.Errorf("unexpected resource interface mismatch")
-	}
-
-	return resourceInterface, nil
+	return resourceInstance, nil
 }

@@ -13,7 +13,7 @@ type Finalizer = string
 type Finalizers []Finalizer
 
 // Add a (unique) Finalizer to the set.
-func (fins *Finalizers) Add(fin Finalizer) (added bool) {
+func (fins *Finalizers) Add(fin Finalizer) bool {
 	*fins = append(Finalizers(nil), *fins...)
 
 	for _, f := range *fins {
@@ -28,20 +28,18 @@ func (fins *Finalizers) Add(fin Finalizer) (added bool) {
 }
 
 // Remove a (unique) Finalizer from the set.
-func (fins *Finalizers) Remove(fin Finalizer) (removed bool) {
+func (fins *Finalizers) Remove(fin Finalizer) bool {
 	*fins = append(Finalizers(nil), *fins...)
 
 	for i, f := range *fins {
 		if f == fin {
-			removed = true
-
 			*fins = append((*fins)[:i], (*fins)[i+1:]...)
 
-			return
+			return true
 		}
 	}
 
-	return
+	return false
 }
 
 // Empty returns true if list of finalizers is empty.
