@@ -45,6 +45,16 @@ func (spec ResourceSpec[T, S]) GetValue() proto.Message { //nolint:ireturn
 	return spec.Value
 }
 
+// Equal implements spec equality check.
+func (spec ResourceSpec[T, S]) Equal(other interface{}) bool {
+	otherSpec, ok := other.(ResourceSpec[T, S])
+	if !ok {
+		return false
+	}
+
+	return proto.Equal(spec.Value, otherSpec.Value)
+}
+
 // NewResourceSpec creates new ResourceSpec[T, S].
 // T is a protobuf generated structure.
 // S is a pointer to T.

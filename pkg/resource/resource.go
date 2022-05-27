@@ -45,7 +45,15 @@ func Equal(r1, r2 Resource) bool {
 		return false
 	}
 
-	return reflect.DeepEqual(r1.Spec(), r2.Spec())
+	spec1, spec2 := r1.Spec(), r2.Spec()
+
+	if equality, ok := spec1.(interface {
+		Equal(interface{}) bool
+	}); ok {
+		return equality.Equal(spec2)
+	}
+
+	return reflect.DeepEqual(spec1, spec2)
 }
 
 // MarshalYAML marshals resource to YAML definition.
