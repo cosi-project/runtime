@@ -15,6 +15,7 @@ import (
 	"golang.org/x/sync/errgroup"
 
 	"github.com/cosi-project/runtime/pkg/resource"
+	"github.com/cosi-project/runtime/pkg/safe"
 	"github.com/cosi-project/runtime/pkg/state"
 )
 
@@ -358,10 +359,8 @@ func (suite *StateSuite) TestConcurrentFinalizers() {
 
 	suite.Assert().NoError(eg.Wait())
 
-	pathRes, err := suite.State.Get(ctx, path.Metadata())
+	path, err := safe.StateGetResource(ctx, suite.State, path)
 	suite.Require().NoError(err)
-
-	path = pathRes.(*PathResource) //nolint:errcheck,forcetypeassert
 
 	finalizers := path.Metadata().Finalizers()
 	sort.Strings(*finalizers)
@@ -619,10 +618,8 @@ func (suite *StateSuite) TestUpdate() {
 	_, err = suite.State.Teardown(ctx, path1.Metadata())
 	suite.Require().NoError(err)
 
-	r, err := suite.State.Get(ctx, path1.Metadata())
+	path1, err = safe.StateGetResource(ctx, suite.State, path1)
 	suite.Require().NoError(err)
-
-	path1 = r.(*PathResource) //nolint:errcheck,forcetypeassert
 
 	curVersion = path1.Metadata().Version()
 	path1.Metadata().BumpVersion()

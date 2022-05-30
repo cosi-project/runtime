@@ -13,6 +13,7 @@ import (
 
 	"github.com/cosi-project/runtime/pkg/controller"
 	"github.com/cosi-project/runtime/pkg/resource"
+	"github.com/cosi-project/runtime/pkg/safe"
 	"github.com/cosi-project/runtime/pkg/state"
 )
 
@@ -66,13 +67,16 @@ func (ctrl *IntToStrController) Run(ctx context.Context, r controller.Runtime, l
 		case <-r.EventCh():
 		}
 
-		intList, err := r.List(ctx, sourceMd)
+		intList, err := safe.ReaderList[interface {
+			IntegerResource
+			resource.Resource
+		}](ctx, r, sourceMd)
 		if err != nil {
 			return fmt.Errorf("error listing objects: %w", err)
 		}
 
-		for _, intRes := range intList.Items {
-			intRes := intRes
+		for iter := safe.IteratorFromList(intList); iter.Next(); {
+			intRes := iter.Value()
 
 			strRes := NewStrResource(ctrl.TargetNamespace, intRes.Metadata().ID(), "")
 
@@ -82,9 +86,9 @@ func (ctrl *IntToStrController) Run(ctx context.Context, r controller.Runtime, l
 					return fmt.Errorf("error adding finalizer: %w", err)
 				}
 
-				if err = r.Modify(ctx, strRes,
-					func(r resource.Resource) error {
-						r.(StringResource).SetValue(strconv.Itoa(intRes.(IntegerResource).Value())) //nolint:forcetypeassert
+				if err = safe.WriterModify(ctx, r, strRes,
+					func(r *StrResource) error {
+						r.SetValue(strconv.Itoa(intRes.Value()))
 
 						return nil
 					}); err != nil {
@@ -169,13 +173,16 @@ func (ctrl *StrToSentenceController) Run(ctx context.Context, r controller.Runti
 		case <-r.EventCh():
 		}
 
-		strList, err := r.List(ctx, sourceMd)
+		strList, err := safe.ReaderList[interface {
+			StringResource
+			resource.Resource
+		}](ctx, r, sourceMd)
 		if err != nil {
 			return fmt.Errorf("error listing objects: %w", err)
 		}
 
-		for _, strRes := range strList.Items {
-			strRes := strRes
+		for iter := safe.IteratorFromList(strList); iter.Next(); {
+			strRes := iter.Value()
 
 			sentenceRes := NewSentenceResource(ctrl.TargetNamespace, strRes.Metadata().ID(), "")
 
@@ -185,8 +192,8 @@ func (ctrl *StrToSentenceController) Run(ctx context.Context, r controller.Runti
 					return fmt.Errorf("error adding finalizer: %w", err)
 				}
 
-				if err = r.Modify(ctx, sentenceRes, func(r resource.Resource) error {
-					r.(StringResource).SetValue(strRes.(StringResource).Value() + " sentence") //nolint:forcetypeassert
+				if err = safe.WriterModify(ctx, r, sentenceRes, func(r *SentenceResource) error {
+					r.SetValue(strRes.Value() + " sentence")
 
 					return nil
 				}); err != nil {
@@ -264,19 +271,22 @@ func (ctrl *SumController) Run(ctx context.Context, r controller.Runtime, logger
 		case <-r.EventCh():
 		}
 
-		intList, err := r.List(ctx, sourceMd)
+		intList, err := safe.ReaderList[interface {
+			IntegerResource
+			resource.Resource
+		}](ctx, r, sourceMd)
 		if err != nil {
 			return fmt.Errorf("error listing objects: %w", err)
 		}
 
 		var sum int
 
-		for _, intRes := range intList.Items {
-			sum += intRes.(IntegerResource).Value() //nolint:forcetypeassert
+		for iter := safe.IteratorFromList(intList); iter.Next(); {
+			sum += iter.Value().Value()
 		}
 
-		if err = r.Modify(ctx, NewIntResource(ctrl.TargetNamespace, ctrl.TargetID, 0), func(r resource.Resource) error {
-			r.(IntegerResource).SetValue(sum) //nolint:forcetypeassert
+		if err = safe.WriterModify(ctx, r, NewIntResource(ctrl.TargetNamespace, ctrl.TargetID, 0), func(r *IntResource) error {
+			r.SetValue(sum)
 
 			return nil
 		}); err != nil {
@@ -320,8 +330,8 @@ func (ctrl *FailingController) Run(ctx context.Context, r controller.Runtime, lo
 	case <-r.EventCh():
 	}
 
-	if err := r.Modify(ctx, NewIntResource(ctrl.TargetNamespace, strconv.Itoa(ctrl.count), 0), func(r resource.Resource) error {
-		r.(IntegerResource).SetValue(ctrl.count) //nolint:forcetypeassert
+	if err := safe.WriterModify(ctx, r, NewIntResource(ctrl.TargetNamespace, strconv.Itoa(ctrl.count), 0), func(r *IntResource) error {
+		r.SetValue(ctrl.count)
 
 		return nil
 	}); err != nil {

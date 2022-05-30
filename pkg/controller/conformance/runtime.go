@@ -15,6 +15,7 @@ import (
 
 	"github.com/cosi-project/runtime/pkg/controller"
 	"github.com/cosi-project/runtime/pkg/resource"
+	"github.com/cosi-project/runtime/pkg/safe"
 	"github.com/cosi-project/runtime/pkg/state"
 )
 
@@ -54,7 +55,7 @@ func (suite *RuntimeSuite) startRuntime() {
 	}()
 }
 
-func (suite *RuntimeSuite) assertStrObjects(ns resource.Namespace, typ resource.Type, ids, values []string) retry.RetryableFunc {
+func (suite *RuntimeSuite) assertStrObjects(ns resource.Namespace, typ resource.Type, ids []string, values []string) retry.RetryableFunc {
 	return func() error {
 		items, err := suite.State.List(suite.ctx, resource.NewMetadata(ns, typ, "", resource.VersionUndefined))
 		if err != nil {
@@ -66,7 +67,13 @@ func (suite *RuntimeSuite) assertStrObjects(ns resource.Namespace, typ resource.
 		}
 
 		for i, id := range ids {
-			r, err := suite.State.Get(suite.ctx, resource.NewMetadata(ns, typ, id, resource.VersionUndefined))
+			type stringResource interface {
+				StringResource
+				resource.Resource
+			}
+
+			// We cannot use the StateGetResource method here because we want to work with strSpec and sentenceSpec
+			r, err := safe.StateGet[stringResource](suite.ctx, suite.State, resource.NewMetadata(ns, typ, id, resource.VersionUndefined))
 			if err != nil {
 				if state.IsNotFoundError(err) {
 					return retry.ExpectedError(err)
@@ -75,7 +82,7 @@ func (suite *RuntimeSuite) assertStrObjects(ns resource.Namespace, typ resource.
 				return err
 			}
 
-			strValue := r.(StringResource).Value() //nolint:forcetypeassert
+			strValue := r.Value()
 
 			if strValue != values[i] {
 				return retry.ExpectedError(fmt.Errorf("expected value of %q to be %q, found %q", id, values[i], strValue))
@@ -101,7 +108,7 @@ func (suite *RuntimeSuite) assertIntObjects(ids []string, values []int) retry.Re
 		}
 
 		for i, id := range ids {
-			r, err := suite.State.Get(suite.ctx, resource.NewMetadata(ns, typ, id, resource.VersionUndefined))
+			r, err := safe.StateGetResource(suite.ctx, suite.State, NewIntResource(ns, id, values[i]))
 			if err != nil {
 				if state.IsNotFoundError(err) {
 					return retry.ExpectedError(err)
@@ -110,7 +117,7 @@ func (suite *RuntimeSuite) assertIntObjects(ids []string, values []int) retry.Re
 				return err
 			}
 
-			intValue := r.(IntegerResource).Value() //nolint:forcetypeassert
+			intValue := r.Value()
 
 			if intValue != values[i] {
 				return retry.ExpectedError(fmt.Errorf("expected value of %q to be %d, found %d", id, values[i], intValue))
@@ -172,8 +179,13 @@ func (suite *RuntimeSuite) TestIntToStrControllers() {
 	suite.Assert().NoError(retry.Constant(10*time.Second, retry.WithUnits(10*time.Millisecond)).
 		Retry(suite.assertStrObjects("default", StrResourceType, []string{"one", "two", "three"}, []string{"1", "2", "3"})))
 
-	_, err := suite.State.UpdateWithConflicts(suite.ctx, three.Metadata(), func(r resource.Resource) error {
-		r.(IntegerResource).SetValue(33) //nolint:forcetypeassert
+	type integerResource interface {
+		IntegerResource
+		resource.Resource
+	}
+
+	_, err := safe.StateUpdateWithConflicts[integerResource](suite.ctx, suite.State, three.Metadata(), func(r integerResource) error {
+		r.SetValue(33)
 
 		return nil
 	})
@@ -222,8 +234,13 @@ func (suite *RuntimeSuite) TestIntToStrToSentenceControllers() {
 	suite.Assert().NoError(retry.Constant(10*time.Second, retry.WithUnits(10*time.Millisecond)).
 		Retry(suite.assertStrObjects("sentences", SentenceResourceType, []string{"one", "two", "three"}, []string{"1 sentence", "2 sentence", "3 sentence"})))
 
-	_, err := suite.State.UpdateWithConflicts(suite.ctx, one.Metadata(), func(r resource.Resource) error {
-		r.(IntegerResource).SetValue(11) //nolint:forcetypeassert
+	type integerResource interface {
+		IntegerResource
+		resource.Resource
+	}
+
+	_, err := safe.StateUpdateWithConflicts[integerResource](suite.ctx, suite.State, one.Metadata(), func(r integerResource) error {
+		r.SetValue(11)
 
 		return nil
 	})
