@@ -5,8 +5,6 @@
 package store
 
 import (
-	"google.golang.org/protobuf/proto"
-
 	"github.com/cosi-project/runtime/api/v1alpha1"
 	"github.com/cosi-project/runtime/pkg/resource"
 	"github.com/cosi-project/runtime/pkg/resource/protobuf"
@@ -29,14 +27,14 @@ func (ProtobufMarshaler) MarshalResource(r resource.Resource) ([]byte, error) {
 		return nil, err
 	}
 
-	return Marshal(protoD)
+	return protobuf.ProtoMarshal(protoD)
 }
 
 // UnmarshalResource implements Marshaler interface.
 func (ProtobufMarshaler) UnmarshalResource(b []byte) (resource.Resource, error) { //nolint:ireturn
 	var protoD v1alpha1.Resource
 
-	if err := Unmarshal(b, &protoD); err != nil {
+	if err := protobuf.ProtoUnmarshal(b, &protoD); err != nil {
 		return nil, err
 	}
 
@@ -46,34 +44,4 @@ func (ProtobufMarshaler) UnmarshalResource(b []byte) (resource.Resource, error) 
 	}
 
 	return protobuf.UnmarshalResource(protoR)
-}
-
-// vtprotoMessage is the interface for vtproto additions.
-//
-// We use only a subset of that interface but include additional methods
-// to prevent accidental successful type assertion for unrelated types.
-type vtprotoMessage interface {
-	MarshalVT() ([]byte, error)
-	MarshalToVT([]byte) (int, error)
-	MarshalToSizedBufferVT([]byte) (int, error)
-	UnmarshalVT([]byte) error
-}
-
-// Marshal returns the wire-format encoding of m.
-func Marshal(m proto.Message) ([]byte, error) {
-	if vm, ok := m.(vtprotoMessage); ok {
-		return vm.MarshalVT()
-	}
-
-	return proto.Marshal(m)
-}
-
-// Unmarshal parses the wire-format message in b and places the result in m.
-// The provided message must be mutable (e.g., a non-nil pointer to a message).
-func Unmarshal(b []byte, m proto.Message) error {
-	if vm, ok := m.(vtprotoMessage); ok {
-		return vm.UnmarshalVT(b)
-	}
-
-	return proto.Unmarshal(b, m)
 }

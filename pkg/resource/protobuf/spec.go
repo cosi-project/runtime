@@ -30,14 +30,14 @@ func (spec ResourceSpec[T, S]) DeepCopy() ResourceSpec[T, S] {
 
 // MarshalProto implements ProtoMarshaler.
 func (spec ResourceSpec[T, S]) MarshalProto() ([]byte, error) {
-	return proto.Marshal(spec.Value)
+	return ProtoMarshal(spec.Value)
 }
 
 // UnmarshalProto implements protobuf.ResourceUnmarshaler.
 func (spec *ResourceSpec[T, S]) UnmarshalProto(protoBytes []byte) error {
 	spec.Value = new(T)
 
-	return proto.Unmarshal(protoBytes, spec.Value)
+	return ProtoUnmarshal(protoBytes, spec.Value)
 }
 
 // GetValue returns wrapped protobuf object.

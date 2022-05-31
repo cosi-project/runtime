@@ -4,3 +4,35 @@
 
 // Package protobuf provides a bridge between resources and protobuf interface.
 package protobuf
+
+import "google.golang.org/protobuf/proto"
+
+// vtprotoMessage is the interface for vtproto additions.
+//
+// We use only a subset of that interface but include additional methods
+// to prevent accidental successful type assertion for unrelated types.
+type vtprotoMessage interface {
+	MarshalVT() ([]byte, error)
+	MarshalToVT([]byte) (int, error)
+	MarshalToSizedBufferVT([]byte) (int, error)
+	UnmarshalVT([]byte) error
+}
+
+// ProtoMarshal returns the wire-format encoding of m.
+func ProtoMarshal(m proto.Message) ([]byte, error) {
+	if vm, ok := m.(vtprotoMessage); ok {
+		return vm.MarshalVT()
+	}
+
+	return proto.Marshal(m)
+}
+
+// ProtoUnmarshal parses the wire-format message in b and places the result in m.
+// The provided message must be mutable (e.g., a non-nil pointer to a message).
+func ProtoUnmarshal(b []byte, m proto.Message) error {
+	if vm, ok := m.(vtprotoMessage); ok {
+		return vm.UnmarshalVT(b)
+	}
+
+	return proto.Unmarshal(b, m)
+}
