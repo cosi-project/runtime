@@ -73,7 +73,7 @@ func (collection *ResourceCollection) Get(resourceID resource.ID) (resource.Reso
 }
 
 // List resources.
-func (collection *ResourceCollection) List() (resource.List, error) {
+func (collection *ResourceCollection) List(options *state.ListOptions) (resource.List, error) {
 	collection.mu.Lock()
 
 	result := resource.List{
@@ -81,6 +81,10 @@ func (collection *ResourceCollection) List() (resource.List, error) {
 	}
 
 	for _, res := range collection.storage {
+		if !options.LabelQuery.Matches(*res.Metadata().Labels()) {
+			continue
+		}
+
 		result.Items = append(result.Items, res.DeepCopy())
 	}
 

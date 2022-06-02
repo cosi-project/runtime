@@ -633,3 +633,64 @@ func (suite *StateSuite) TestUpdate() {
 	err = suite.State.Update(ctx, curVersion, path1, state.WithExpectedPhase(resource.PhaseTearingDown))
 	suite.Require().NoError(err)
 }
+
+// TestLabels verifies operations with labels.
+func (suite *StateSuite) TestLabels() {
+	ns := suite.getNamespace()
+
+	path1 := NewPathResource(ns, "labeled/app1")
+	path1.Metadata().Labels().Set("app", "app1")
+	path1.Metadata().Labels().Set("frozen", "")
+
+	path2 := NewPathResource(ns, "labeled/app2")
+	path2.Metadata().Labels().Set("app", "app2")
+	path2.Metadata().Labels().Set("frozen", "")
+
+	path3 := NewPathResource(ns, "labeled/app3")
+	path3.Metadata().Labels().Set("app", "app3")
+
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	err := suite.State.Create(ctx, path1)
+	suite.Require().NoError(err)
+
+	err = suite.State.Create(ctx, path2)
+	suite.Require().NoError(err)
+
+	err = suite.State.Create(ctx, path3)
+	suite.Require().NoError(err)
+
+	r, err := suite.State.Get(ctx, path1.Metadata())
+	suite.Require().NoError(err)
+
+	path1Copy := r.(*PathResource) //nolint:errcheck,forcetypeassert
+
+	v, ok := path1Copy.Metadata().Labels().Get("app")
+	suite.Assert().True(ok)
+	suite.Assert().Equal("app1", v)
+
+	list, err := safe.StateList[*PathResource](ctx, suite.State, path1.Metadata(), state.WithLabelExists("frozen"))
+	suite.Require().NoError(err)
+
+	suite.Require().Equal(2, list.Len())
+	suite.Assert().True(resource.Equal(path1, list.Get(0)))
+	suite.Assert().True(resource.Equal(path2, list.Get(1)))
+
+	list, err = safe.StateList[*PathResource](ctx, suite.State, path1.Metadata(), state.WithLabelExists("frozen"), state.WithLabelEqual("app", "app2"))
+	suite.Require().NoError(err)
+
+	suite.Require().Equal(1, list.Len())
+	suite.Assert().True(resource.Equal(path2, list.Get(0)))
+
+	list, err = safe.StateList[*PathResource](ctx, suite.State, path1.Metadata(), state.WithLabelExists("frozen"), state.WithLabelEqual("app", "app3"))
+	suite.Require().NoError(err)
+
+	suite.Require().Equal(0, list.Len())
+
+	list, err = safe.StateList[*PathResource](ctx, suite.State, path1.Metadata(), state.WithLabelEqual("app", "app3"))
+	suite.Require().NoError(err)
+
+	suite.Require().Equal(1, list.Len())
+	suite.Assert().True(resource.Equal(path3, list.Get(0)))
+}

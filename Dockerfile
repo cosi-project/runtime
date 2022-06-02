@@ -2,7 +2,7 @@
 
 # THIS FILE WAS AUTOMATICALLY GENERATED, PLEASE DO NOT EDIT.
 #
-# Generated on 2022-05-25T15:53:03Z by kres latest.
+# Generated on 2022-06-02T13:52:52Z by kres 65530e7.
 
 ARG TOOLCHAIN
 
@@ -21,9 +21,9 @@ RUN markdownlint --ignore "CHANGELOG.md" --ignore "**/node_modules/**" --ignore 
 
 # collects proto specs
 FROM scratch AS proto-specs
-ADD https://raw.githubusercontent.com/smira/specification/resource-proto/proto/v1alpha1/resource.proto /api/v1alpha1/
-ADD https://raw.githubusercontent.com/smira/specification/resource-proto/proto/v1alpha1/state.proto /api/v1alpha1/
-ADD https://raw.githubusercontent.com/smira/specification/resource-proto/proto/v1alpha1/runtime.proto /api/v1alpha1/
+ADD https://raw.githubusercontent.com/smira/specification/48d774040826bea6c81009585f1d067611f2323e/proto/v1alpha1/resource.proto /api/v1alpha1/
+ADD https://raw.githubusercontent.com/smira/specification/48d774040826bea6c81009585f1d067611f2323e/proto/v1alpha1/state.proto /api/v1alpha1/
+ADD https://raw.githubusercontent.com/smira/specification/48d774040826bea6c81009585f1d067611f2323e/proto/v1alpha1/runtime.proto /api/v1alpha1/
 
 # base toolchain image
 FROM ${TOOLCHAIN} AS toolchain

@@ -196,12 +196,12 @@ func (adapter *adapter) Get(ctx context.Context, resourcePointer resource.Pointe
 }
 
 // List implements controller.Runtime interface.
-func (adapter *adapter) List(ctx context.Context, resourceKind resource.Kind) (resource.List, error) {
+func (adapter *adapter) List(ctx context.Context, resourceKind resource.Kind, opts ...state.ListOption) (resource.List, error) {
 	if err := adapter.checkReadAccess(resourceKind.Namespace(), resourceKind.Type(), nil); err != nil {
 		return resource.List{}, err
 	}
 
-	return adapter.runtime.state.List(ctx, resourceKind)
+	return adapter.runtime.state.List(ctx, resourceKind, opts...)
 }
 
 // WatchFor implements controller.Runtime interface.

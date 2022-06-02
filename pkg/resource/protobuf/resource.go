@@ -77,6 +77,7 @@ func (r *Resource) Marshal() (*v1alpha1.Resource, error) {
 			Created:    timestamppb.New(r.md.Created()),
 			Updated:    timestamppb.New(r.md.Updated()),
 			Finalizers: *r.md.Finalizers(),
+			Labels:     r.md.Labels().Raw(),
 		},
 		Spec: &v1alpha1.Spec{
 			ProtoSpec: r.spec.protobuf,

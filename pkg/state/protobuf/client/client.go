@@ -8,6 +8,7 @@ package client
 import (
 	"context"
 	"errors"
+	"fmt"
 	"io"
 
 	"github.com/siderolabs/go-pointer"
@@ -73,10 +74,38 @@ func (adapter *Adapter) List(ctx context.Context, resourceKind resource.Kind, op
 		o(&opts)
 	}
 
+	var labelQuery *v1alpha1.LabelQuery
+
+	if len(opts.LabelQuery.Terms) > 0 {
+		labelQuery = &v1alpha1.LabelQuery{
+			Terms: make([]*v1alpha1.LabelTerm, 0, len(opts.LabelQuery.Terms)),
+		}
+
+		for _, term := range opts.LabelQuery.Terms {
+			switch term.Op {
+			case resource.LabelOpEqual:
+				labelQuery.Terms = append(labelQuery.Terms, &v1alpha1.LabelTerm{
+					Key:   term.Key,
+					Value: term.Value,
+					Op:    v1alpha1.LabelTerm_EQUAL,
+				})
+			case resource.LabelOpExists:
+				labelQuery.Terms = append(labelQuery.Terms, &v1alpha1.LabelTerm{
+					Key: term.Key,
+					Op:  v1alpha1.LabelTerm_EXISTS,
+				})
+			default:
+				return resource.List{}, fmt.Errorf("unsupported label query operator: %v", term.Op)
+			}
+		}
+	}
+
 	cli, err := adapter.client.List(ctx, &v1alpha1.ListRequest{
 		Namespace: resourceKind.Namespace(),
 		Type:      resourceKind.Type(),
-		Options:   &v1alpha1.ListOptions{},
+		Options: &v1alpha1.ListOptions{
+			LabelQuery: labelQuery,
+		},
 	})
 	if err != nil {
 		switch status.Code(err) { //nolint:exhaustive

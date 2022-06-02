@@ -108,7 +108,13 @@ func (st *State) List(ctx context.Context, resourceKind resource.Kind, opts ...s
 		return resource.List{}, err
 	}
 
-	return st.getCollection(resourceKind.Type()).List()
+	var options state.ListOptions
+
+	for _, opt := range opts {
+		opt(&options)
+	}
+
+	return st.getCollection(resourceKind.Type()).List(&options)
 }
 
 // Create a resource.

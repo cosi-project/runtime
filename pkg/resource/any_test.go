@@ -51,6 +51,9 @@ metadata:
     phase: running
     created: 2021-06-23T19:22:29Z
     updated: 2021-06-23T19:22:29Z
+    labels:
+        app: foo
+        stage: initial
     finalizers:
         - resource1
         - resource2

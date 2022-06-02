@@ -75,7 +75,7 @@ type Output struct {
 // Reader provides read-only access to the state.
 type Reader interface {
 	Get(context.Context, resource.Pointer) (resource.Resource, error)
-	List(context.Context, resource.Kind) (resource.List, error)
+	List(context.Context, resource.Kind, ...state.ListOption) (resource.List, error)
 	WatchFor(context.Context, resource.Pointer, ...state.WatchForConditionFunc) (resource.Resource, error)
 }
 

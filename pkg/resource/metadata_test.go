@@ -75,6 +75,16 @@ func TestMetadata(t *testing.T) {
 
 	md.SetPhase(resource.PhaseTearingDown)
 	assert.False(t, md.Equal(mdCopy))
+
+	mdCopy = md.Copy()
+
+	assert.True(t, md.Equal(mdCopy))
+
+	mdCopy.Labels().Set("a", "b")
+	assert.False(t, md.Equal(mdCopy))
+
+	md.Labels().Set("a", "b")
+	assert.True(t, md.Equal(mdCopy))
 }
 
 func TestMetadataMarshalYAML(t *testing.T) {
@@ -108,6 +118,25 @@ version: 1
 owner: FooController
 phase: running
 `+timestamps+`finalizers:
+    - '"resource1'
+    - resource2
+`, string(out))
+
+	md.Labels().Set("stage", "initial")
+	md.Labels().Set("app", "foo")
+
+	out, err = yaml.Marshal(&md)
+	assert.NoError(t, err)
+	assert.Equal(t, `namespace: default
+type: type
+id: aaa
+version: 1
+owner: FooController
+phase: running
+`+timestamps+`labels:
+    app: foo
+    stage: initial
+finalizers:
     - '"resource1'
     - resource2
 `, string(out))
@@ -154,6 +183,10 @@ func (p *protoMd) GetUpdated() *timestamp.Timestamp {
 	return timestamppb.New(ts)
 }
 
+func (p *protoMd) GetLabels() map[string]string {
+	return map[string]string{"stage": "initial", "app": "foo"}
+}
+
 func TestNewMedataFromProto(t *testing.T) {
 	md, err := resource.NewMetadataFromProto(&protoMd{})
 	assert.NoError(t, err)
@@ -164,6 +197,9 @@ func TestNewMedataFromProto(t *testing.T) {
 	assert.NoError(t, other.SetOwner("FooController"))
 	other.Finalizers().Add("resource1")
 	other.Finalizers().Add("resource2")
+
+	other.Labels().Set("stage", "initial")
+	other.Labels().Set("app", "foo")
 
 	assert.True(t, md.Equal(other))
 }

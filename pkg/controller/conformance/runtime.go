@@ -6,7 +6,6 @@ package conformance
 
 import (
 	"context"
-	"fmt"
 	"sync"
 	"time"
 
@@ -63,7 +62,7 @@ func (suite *RuntimeSuite) assertStrObjects(ns resource.Namespace, typ resource.
 		}
 
 		if len(items.Items) != len(ids) {
-			return retry.ExpectedError(fmt.Errorf("expected %d objects, got %d", len(ids), len(items.Items)))
+			return retry.ExpectedErrorf("expected %d objects, got %d", len(ids), len(items.Items))
 		}
 
 		for i, id := range ids {
@@ -85,7 +84,15 @@ func (suite *RuntimeSuite) assertStrObjects(ns resource.Namespace, typ resource.
 			strValue := r.Value()
 
 			if strValue != values[i] {
-				return retry.ExpectedError(fmt.Errorf("expected value of %q to be %q, found %q", id, values[i], strValue))
+				return retry.ExpectedErrorf("expected value of %q to be %q, found %q", id, values[i], strValue)
+			}
+
+			if typ == SentenceResourceType {
+				_, combined := r.Metadata().Labels().Get("combined")
+
+				if !combined {
+					return retry.ExpectedErrorf("no combined label found for %q", id)
+				}
 			}
 		}
 
@@ -104,7 +111,7 @@ func (suite *RuntimeSuite) assertIntObjects(ids []string, values []int) retry.Re
 		}
 
 		if len(items.Items) != len(ids) {
-			return retry.ExpectedError(fmt.Errorf("expected %d objects, got %d", len(ids), len(items.Items)))
+			return retry.ExpectedErrorf("expected %d objects, got %d", len(ids), len(items.Items))
 		}
 
 		for i, id := range ids {
@@ -120,7 +127,7 @@ func (suite *RuntimeSuite) assertIntObjects(ids []string, values []int) retry.Re
 			intValue := r.Value()
 
 			if intValue != values[i] {
-				return retry.ExpectedError(fmt.Errorf("expected value of %q to be %d, found %d", id, values[i], intValue))
+				return retry.ExpectedErrorf("expected value of %q to be %d, found %d", id, values[i], intValue)
 			}
 		}
 
@@ -286,6 +293,61 @@ func (suite *RuntimeSuite) TestSumControllers() {
 
 	suite.Assert().NoError(retry.Constant(10*time.Second, retry.WithUnits(10*time.Millisecond)).
 		Retry(suite.assertIntObjects([]string{"sum"}, []int{2})))
+}
+
+// TestSumControllersFiltered ...
+func (suite *RuntimeSuite) TestSumControllersFiltered() {
+	suite.Require().NoError(suite.Runtime.RegisterController(&SumController{
+		SourceNamespace: "source",
+		SourceLabelQuery: resource.LabelQuery{
+			Terms: []resource.LabelTerm{
+				{
+					Op:  resource.LabelOpExists,
+					Key: "summable",
+				},
+				{
+					Op:    resource.LabelOpEqual,
+					Key:   "app",
+					Value: "app1",
+				},
+			},
+		},
+		TargetNamespace: "target",
+		TargetID:        "sum",
+		ControllerName:  "SumController",
+	}))
+
+	suite.startRuntime()
+
+	suite.Assert().NoError(retry.Constant(10*time.Second, retry.WithUnits(10*time.Millisecond)).
+		Retry(suite.assertIntObjects([]string{"sum"}, []int{0})))
+
+	int1 := NewIntResource("source", "one", 1)
+	int1.Metadata().Labels().Set("summable", "true")
+
+	int2 := NewIntResource("source", "two", 2)
+	int2.Metadata().Labels().Set("summable", "true")
+	int2.Metadata().Labels().Set("app", "app1")
+
+	suite.Assert().NoError(suite.State.Create(suite.ctx, int1))
+	suite.Assert().NoError(suite.State.Create(suite.ctx, int2))
+
+	suite.Assert().NoError(retry.Constant(10*time.Second, retry.WithUnits(10*time.Millisecond)).
+		Retry(suite.assertIntObjects([]string{"sum"}, []int{2})))
+
+	int3 := NewIntResource("source", "three", 3)
+	int3.Metadata().Labels().Set("summable", "yep")
+	int3.Metadata().Labels().Set("app", "app1")
+
+	suite.Assert().NoError(suite.State.Create(suite.ctx, int3))
+
+	suite.Assert().NoError(retry.Constant(10*time.Second, retry.WithUnits(10*time.Millisecond)).
+		Retry(suite.assertIntObjects([]string{"sum"}, []int{5})))
+
+	suite.Assert().NoError(suite.State.Destroy(suite.ctx, NewIntResource("source", "two", 2).Metadata()))
+
+	suite.Assert().NoError(retry.Constant(10*time.Second, retry.WithUnits(10*time.Millisecond)).
+		Retry(suite.assertIntObjects([]string{"sum"}, []int{3})))
 }
 
 // TestCascadingSumControllers ...

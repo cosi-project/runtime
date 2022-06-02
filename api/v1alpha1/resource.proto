@@ -24,6 +24,7 @@ message Metadata {
     google.protobuf.Timestamp created = 7;
     google.protobuf.Timestamp updated = 8;
     repeated string finalizers = 9;
+    map<string, string> labels = 10;
 }
 
 // Spec defines content of the resource.
@@ -38,4 +39,25 @@ message Spec {
 message Resource {
     Metadata metadata = 1;
     Spec spec = 2;
+}
+
+// LabelTerm is an expression on a label.
+message LabelTerm {
+    enum Operation {
+        // Labels exists.
+        EXISTS = 0;
+        // Label value is equal.
+        EQUAL = 1;
+    }
+
+    string key = 1;
+    Operation op = 2;
+    string value = 3;
+}
+
+// LabelQuery is a query on resource metadata labels.
+//
+// Terms are combined with AND.
+message LabelQuery {
+    repeated LabelTerm terms = 1;
 }

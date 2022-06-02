@@ -22,6 +22,7 @@ type Metadata struct {
 	id      ID
 	ver     Version
 	owner   Owner
+	labels  Labels
 	fins    Finalizers
 	phase   Phase
 }
@@ -100,6 +101,11 @@ func (md *Metadata) Finalizers() *Finalizers {
 	return &md.fins
 }
 
+// Labels returns a reference to the labels.
+func (md *Metadata) Labels() *Labels {
+	return &md.labels
+}
+
 // Phase returns current resource phase.
 func (md Metadata) Phase() Phase {
 	return md.phase
@@ -137,6 +143,10 @@ func (md Metadata) String() string {
 func (md Metadata) Equal(other Metadata) bool {
 	equal := md.ns == other.ns && md.typ == other.typ && md.id == other.id && md.phase == other.phase && md.owner == other.owner && md.ver.Equal(other.ver)
 	if !equal {
+		return false
+	}
+
+	if !md.labels.Equal(other.labels) {
 		return false
 	}
 
@@ -183,6 +193,39 @@ func (md *Metadata) MarshalYAML() (interface{}, error) {
 			finalizers[1].Content = append(finalizers[1].Content, &yaml.Node{
 				Kind:  yaml.ScalarNode,
 				Value: fin,
+			})
+		}
+	}
+
+	var labels []*yaml.Node
+
+	if !md.labels.Empty() {
+		labels = []*yaml.Node{
+			{
+				Kind:  yaml.ScalarNode,
+				Value: "labels",
+			},
+			{
+				Kind:    yaml.MappingNode,
+				Content: make([]*yaml.Node, 0, len(md.labels.m)),
+			},
+		}
+
+		keys := make([]string, 0, len(md.labels.m))
+
+		for k := range md.labels.m {
+			keys = append(keys, k)
+		}
+
+		sort.Strings(keys)
+
+		for _, k := range keys {
+			labels[1].Content = append(labels[1].Content, &yaml.Node{
+				Kind:  yaml.ScalarNode,
+				Value: k,
+			}, &yaml.Node{
+				Kind:  yaml.ScalarNode,
+				Value: md.labels.m[k],
 			})
 		}
 	}
@@ -256,7 +299,7 @@ func (md *Metadata) MarshalYAML() (interface{}, error) {
 					Value: md.updated.Format(time.RFC3339),
 				},
 			},
-			finalizers...),
+			append(labels, finalizers...)...),
 	}, nil
 }
 
@@ -271,6 +314,7 @@ type MetadataProto interface {
 	GetFinalizers() []string
 	GetCreated() *timestamp.Timestamp
 	GetUpdated() *timestamp.Timestamp
+	GetLabels() map[string]string
 }
 
 // NewMetadataFromProto builds Metadata object from ProtoMetadata interface data.
@@ -296,6 +340,10 @@ func NewMetadataFromProto(proto MetadataProto) (Metadata, error) {
 
 	for _, fin := range proto.GetFinalizers() {
 		md.Finalizers().Add(fin)
+	}
+
+	for k, v := range proto.GetLabels() {
+		md.Labels().Set(k, v)
 	}
 
 	return md, nil

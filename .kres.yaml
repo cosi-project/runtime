@@ -5,9 +5,9 @@ spec:
     - --experimental_allow_proto3_optional
   vtProtobufEnabled: true
   specs:
-    - source: https://raw.githubusercontent.com/smira/specification/resource-proto/proto/v1alpha1/resource.proto
+    - source: https://raw.githubusercontent.com/smira/specification/48d774040826bea6c81009585f1d067611f2323e/proto/v1alpha1/resource.proto
       subdirectory: v1alpha1/
-    - source: https://raw.githubusercontent.com/smira/specification/resource-proto/proto/v1alpha1/state.proto
+    - source: https://raw.githubusercontent.com/smira/specification/48d774040826bea6c81009585f1d067611f2323e/proto/v1alpha1/state.proto
       subdirectory: v1alpha1/
-    - source: https://raw.githubusercontent.com/smira/specification/resource-proto/proto/v1alpha1/runtime.proto
+    - source: https://raw.githubusercontent.com/smira/specification/48d774040826bea6c81009585f1d067611f2323e/proto/v1alpha1/runtime.proto
       subdirectory: v1alpha1/

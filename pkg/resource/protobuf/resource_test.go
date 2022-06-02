@@ -42,6 +42,10 @@ func TestMarshalUnmarshal(t *testing.T) {
 			Created:    timestamppb.New(created),
 			Updated:    timestamppb.New(updated),
 			Finalizers: []string{"a1", "a2"},
+			Labels: map[string]string{
+				"app":   "foo",
+				"stage": "initial",
+			},
 		},
 		Spec: &v1alpha1.Spec{
 			YamlSpec:  "true",
@@ -79,6 +83,9 @@ func TestMarshalUnmarshal(t *testing.T) {
     phase: running
     created: 2021-06-23T19:22:29Z
     updated: 2021-06-23T20:22:29Z
+    labels:
+        app: foo
+        stage: initial
     finalizers:
         - a1
         - a2

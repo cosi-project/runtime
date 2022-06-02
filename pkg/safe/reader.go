@@ -34,8 +34,8 @@ func ReaderGet[T resource.Resource](ctx context.Context, rdr controller.Reader, 
 }
 
 // ReaderList is a type safe wrapper around Reader.List.
-func ReaderList[T resource.Resource](ctx context.Context, rdr controller.Reader, kind resource.Kind) (List[T], error) {
-	got, err := rdr.List(ctx, kind)
+func ReaderList[T resource.Resource](ctx context.Context, rdr controller.Reader, kind resource.Kind, opts ...state.ListOption) (List[T], error) {
+	got, err := rdr.List(ctx, kind, opts...)
 	if err != nil {
 		var zero List[T]
 

@@ -61,7 +61,24 @@ func (server *State) Get(ctx context.Context, req *v1alpha1.GetRequest) (*v1alph
 
 // List resources by type.
 func (server *State) List(req *v1alpha1.ListRequest, srv v1alpha1.State_ListServer) error {
-	items, err := server.state.List(srv.Context(), resource.NewMetadata(req.Namespace, req.Type, "", resource.VersionUndefined))
+	var opts []state.ListOption
+
+	if req.GetOptions() != nil {
+		if req.GetOptions().GetLabelQuery() != nil {
+			for _, term := range req.GetOptions().GetLabelQuery().GetTerms() {
+				switch term.Op {
+				case v1alpha1.LabelTerm_EQUAL:
+					opts = append(opts, state.WithLabelEqual(term.Key, term.Value))
+				case v1alpha1.LabelTerm_EXISTS:
+					opts = append(opts, state.WithLabelExists(term.Key))
+				default:
+					return status.Errorf(codes.Unimplemented, "unsupported label query operator: %v", term.Op)
+				}
+			}
+		}
+	}
+
+	items, err := server.state.List(srv.Context(), resource.NewMetadata(req.Namespace, req.Type, "", resource.VersionUndefined), opts...)
 
 	switch {
 	case state.IsNotFoundError(err):

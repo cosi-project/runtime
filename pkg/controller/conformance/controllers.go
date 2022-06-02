@@ -193,6 +193,7 @@ func (ctrl *StrToSentenceController) Run(ctx context.Context, r controller.Runti
 				}
 
 				if err = safe.WriterModify(ctx, r, sentenceRes, func(r *SentenceResource) error {
+					r.Metadata().Labels().Set("combined", "")
 					r.SetValue(strRes.Value() + " sentence")
 
 					return nil
@@ -224,10 +225,11 @@ func (ctrl *StrToSentenceController) Run(ctx context.Context, r controller.Runti
 
 // SumController calculates sum of IntResources into new IntResource.
 type SumController struct {
-	SourceNamespace resource.Namespace
-	TargetNamespace resource.Namespace
-	TargetID        resource.ID
-	ControllerName  string
+	SourceNamespace  resource.Namespace
+	TargetNamespace  resource.Namespace
+	TargetID         resource.ID
+	ControllerName   string
+	SourceLabelQuery resource.LabelQuery
 }
 
 // Name implements controller.Controller interface.
@@ -274,7 +276,7 @@ func (ctrl *SumController) Run(ctx context.Context, r controller.Runtime, logger
 		intList, err := safe.ReaderList[interface {
 			IntegerResource
 			resource.Resource
-		}](ctx, r, sourceMd)
+		}](ctx, r, sourceMd, state.WithLabelQuery(ctrl.SourceLabelQuery))
 		if err != nil {
 			return fmt.Errorf("error listing objects: %w", err)
 		}

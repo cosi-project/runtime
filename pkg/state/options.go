@@ -14,7 +14,35 @@ type GetOption func(*GetOptions)
 
 // ListOptions for the CoreState.List function.
 type ListOptions struct {
-	Owner string
+	LabelQuery resource.LabelQuery
+}
+
+// WithLabelQuery appends a label query to the list options.
+func WithLabelQuery(query resource.LabelQuery) ListOption {
+	return func(opts *ListOptions) {
+		opts.LabelQuery.Terms = append(opts.LabelQuery.Terms, query.Terms...)
+	}
+}
+
+// WithLabelExists appends a query for label existence.
+func WithLabelExists(label string) ListOption {
+	return func(opts *ListOptions) {
+		opts.LabelQuery.Terms = append(opts.LabelQuery.Terms, resource.LabelTerm{
+			Key: label,
+			Op:  resource.LabelOpExists,
+		})
+	}
+}
+
+// WithLabelEqual appends a query for the label being present with the specified value.
+func WithLabelEqual(label, value string) ListOption {
+	return func(opts *ListOptions) {
+		opts.LabelQuery.Terms = append(opts.LabelQuery.Terms, resource.LabelTerm{
+			Key:   label,
+			Value: value,
+			Op:    resource.LabelOpEqual,
+		})
+	}
 }
 
 // ListOption builds ListOptions.

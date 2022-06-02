@@ -81,6 +81,7 @@ message ListRequest {
 }
 
 message ListOptions {
+    resource.LabelQuery label_query = 1;
 }
 
 message ListResponse {

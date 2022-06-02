@@ -374,12 +374,47 @@ func (ctrlAdapter *controllerAdapter) Get(ctx context.Context, resourcePointer r
 	return protobuf.UnmarshalResource(unmarshaled)
 }
 
-func (ctrlAdapter *controllerAdapter) List(ctx context.Context, resourceKind resource.Kind) (resource.List, error) {
+func (ctrlAdapter *controllerAdapter) List(ctx context.Context, resourceKind resource.Kind, opts ...state.ListOption) (resource.List, error) {
+	var options state.ListOptions
+
+	for _, opt := range opts {
+		opt(&options)
+	}
+
+	var labelQuery *v1alpha1.LabelQuery
+
+	if len(options.LabelQuery.Terms) > 0 {
+		labelQuery = &v1alpha1.LabelQuery{
+			Terms: make([]*v1alpha1.LabelTerm, 0, len(options.LabelQuery.Terms)),
+		}
+
+		for _, term := range options.LabelQuery.Terms {
+			switch term.Op {
+			case resource.LabelOpEqual:
+				labelQuery.Terms = append(labelQuery.Terms, &v1alpha1.LabelTerm{
+					Key:   term.Key,
+					Value: term.Value,
+					Op:    v1alpha1.LabelTerm_EQUAL,
+				})
+			case resource.LabelOpExists:
+				labelQuery.Terms = append(labelQuery.Terms, &v1alpha1.LabelTerm{
+					Key: term.Key,
+					Op:  v1alpha1.LabelTerm_EXISTS,
+				})
+			default:
+				return resource.List{}, fmt.Errorf("unsupporter label term %q", term.Op)
+			}
+		}
+	}
+
 	cli, err := ctrlAdapter.adapter.client.List(ctx, &v1alpha1.RuntimeListRequest{
 		ControllerToken: ctrlAdapter.token,
 
 		Namespace: resourceKind.Namespace(),
 		Type:      resourceKind.Type(),
+		Options: &v1alpha1.RuntimeListOptions{
+			LabelQuery: labelQuery,
+		},
 	})
 	if err != nil {
 		switch status.Code(err) { //nolint:exhaustive
