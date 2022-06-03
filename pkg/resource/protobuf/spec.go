@@ -4,7 +4,11 @@
 
 package protobuf
 
-import "google.golang.org/protobuf/proto"
+import (
+	"encoding/json"
+
+	"google.golang.org/protobuf/proto"
+)
 
 // Spec should be proto.Message and pointer.
 type Spec[T any] interface {
@@ -28,9 +32,21 @@ func (spec ResourceSpec[T, S]) DeepCopy() ResourceSpec[T, S] {
 	}
 }
 
+// MarshalJSON implements json.Marshaler.
+func (spec *ResourceSpec[T, S]) MarshalJSON() ([]byte, error) {
+	return json.Marshal(spec.Value)
+}
+
 // MarshalProto implements ProtoMarshaler.
-func (spec ResourceSpec[T, S]) MarshalProto() ([]byte, error) {
+func (spec *ResourceSpec[T, S]) MarshalProto() ([]byte, error) {
 	return ProtoMarshal(spec.Value)
+}
+
+// UnmarshalJSON implements json.Unmarshaler.
+func (spec *ResourceSpec[T, S]) UnmarshalJSON(bytes []byte) error {
+	spec.Value = new(T)
+
+	return json.Unmarshal(bytes, &spec.Value)
 }
 
 // UnmarshalProto implements protobuf.ResourceUnmarshaler.
@@ -41,13 +57,13 @@ func (spec *ResourceSpec[T, S]) UnmarshalProto(protoBytes []byte) error {
 }
 
 // GetValue returns wrapped protobuf object.
-func (spec ResourceSpec[T, S]) GetValue() proto.Message { //nolint:ireturn
+func (spec *ResourceSpec[T, S]) GetValue() proto.Message { //nolint:ireturn
 	return spec.Value
 }
 
 // Equal implements spec equality check.
-func (spec ResourceSpec[T, S]) Equal(other interface{}) bool {
-	otherSpec, ok := other.(ResourceSpec[T, S])
+func (spec *ResourceSpec[T, S]) Equal(other interface{}) bool {
+	otherSpec, ok := other.(*ResourceSpec[T, S])
 	if !ok {
 		return false
 	}

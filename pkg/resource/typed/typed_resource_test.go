@@ -5,12 +5,15 @@
 package typed_test
 
 import (
+	"encoding/json"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
 
+	"github.com/cosi-project/runtime/api/v1alpha1"
 	"github.com/cosi-project/runtime/pkg/resource"
 	"github.com/cosi-project/runtime/pkg/resource/meta"
+	"github.com/cosi-project/runtime/pkg/resource/protobuf"
 	"github.com/cosi-project/runtime/pkg/resource/typed"
 )
 
@@ -66,4 +69,28 @@ func TestTypedResource(t *testing.T) {
 
 	// check that getting resource definition actually works on phantom types
 	asrt.Equal(res.ResourceDefinition().DisplayType, "test definition")
+}
+
+type jsonResSpec = protobuf.ResourceSpec[v1alpha1.Metadata, *v1alpha1.Metadata]
+
+//nolint:unused
+type jsonResRD struct{}
+
+// ResourceDefinition ...
+//nolint:unused
+func (jsonResRD) ResourceDefinition(md resource.Metadata, spec jsonResSpec) meta.ResourceDefinitionSpec {
+	return meta.ResourceDefinitionSpec{
+		DisplayType: "test definition",
+	}
+}
+
+func TestUnmarshalJSON(t *testing.T) {
+	res := typed.NewResource[jsonResSpec, jsonResRD](
+		resource.NewMetadata("default", "type", "1", resource.VersionUndefined),
+		jsonResSpec{},
+	)
+
+	assert.NoError(t, json.Unmarshal([]byte(`{"id": "1"}`), res.Spec()))
+	assert.NotNil(t, res.TypedSpec().Value)
+	assert.Equal(t, "1", res.TypedSpec().Value.Id)
 }

@@ -38,7 +38,7 @@ func (t *Resource[T, RD]) Metadata() *resource.Metadata {
 
 // Spec implements resource.Resource.
 func (t *Resource[T, RD]) Spec() interface{} {
-	return t.spec
+	return &t.spec
 }
 
 // TypedSpec returns a pointer to spec field.
@@ -58,7 +58,7 @@ func (t *Resource[T, RD]) ResourceDefinition() spec.ResourceDefinitionSpec {
 	return zero.ResourceDefinition(t.md, t.spec)
 }
 
-// UnmarshalProto impelements protobuf.Unmarshaler interface in a generic way.
+// UnmarshalProto implements protobuf.Unmarshaler interface in a generic way.
 //
 // UnmarshalProto requires that the spec implements the protobuf.ProtoUnmarshaller interface.
 func (t *Resource[T, RD]) UnmarshalProto(md *resource.Metadata, protoBytes []byte) error {
