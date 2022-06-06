@@ -12,15 +12,15 @@ require (
 	github.com/golang/protobuf v1.5.2
 	github.com/hashicorp/go-memdb v1.3.3
 	github.com/siderolabs/go-pointer v1.0.0
-	github.com/stretchr/testify v1.7.1
+	github.com/stretchr/testify v1.7.2
 	github.com/talos-systems/go-retry v0.3.1
 	go.etcd.io/bbolt v1.3.6
 	go.uber.org/goleak v1.1.12
 	go.uber.org/zap v1.21.0
-	golang.org/x/sync v0.0.0-20220513210516-0976fa681c29
-	google.golang.org/grpc v1.46.2
+	golang.org/x/sync v0.0.0-20220601150217-0de741cfad7f
+	google.golang.org/grpc v1.47.0
 	google.golang.org/protobuf v1.28.0
-	gopkg.in/yaml.v3 v3.0.0-20210107192922-496545a6307b
+	gopkg.in/yaml.v3 v3.0.1
 )
 
 require (
