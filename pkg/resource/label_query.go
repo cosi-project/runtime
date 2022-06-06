@@ -13,6 +13,8 @@ const (
 	LabelOpExists LabelOp = iota
 	// Label with the key matches the value.
 	LabelOpEqual
+	// Label with the key doesn't exist.
+	LabelOpNotExists
 )
 
 // LabelTerm describes a filter on metadata labels.

@@ -401,6 +401,11 @@ func (ctrlAdapter *controllerAdapter) List(ctx context.Context, resourceKind res
 					Key: term.Key,
 					Op:  v1alpha1.LabelTerm_EXISTS,
 				})
+			case resource.LabelOpNotExists:
+				labelQuery.Terms = append(labelQuery.Terms, &v1alpha1.LabelTerm{
+					Key: term.Key,
+					Op:  v1alpha1.LabelTerm_NOT_EXISTS,
+				})
 			default:
 				return resource.List{}, fmt.Errorf("unsupporter label term %q", term.Op)
 			}

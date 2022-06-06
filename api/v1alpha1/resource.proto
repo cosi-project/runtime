@@ -44,10 +44,12 @@ message Resource {
 // LabelTerm is an expression on a label.
 message LabelTerm {
     enum Operation {
-        // Labels exists.
+        // Label exists.
         EXISTS = 0;
         // Label value is equal.
         EQUAL = 1;
+        // Label doesn't exist.
+        NOT_EXISTS = 2;
     }
 
     string key = 1;

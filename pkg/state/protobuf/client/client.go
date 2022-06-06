@@ -94,6 +94,11 @@ func (adapter *Adapter) List(ctx context.Context, resourceKind resource.Kind, op
 					Key: term.Key,
 					Op:  v1alpha1.LabelTerm_EXISTS,
 				})
+			case resource.LabelOpNotExists:
+				labelQuery.Terms = append(labelQuery.Terms, &v1alpha1.LabelTerm{
+					Key: term.Key,
+					Op:  v1alpha1.LabelTerm_NOT_EXISTS,
+				})
 			default:
 				return resource.List{}, fmt.Errorf("unsupported label query operator: %v", term.Op)
 			}

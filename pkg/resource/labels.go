@@ -104,6 +104,10 @@ func (labels Labels) Matches(term LabelTerm) bool {
 	}
 
 	switch term.Op {
+	case LabelOpNotExists:
+		_, ok := labels.m[term.Key]
+
+		return !ok
 	case LabelOpExists:
 		_, ok := labels.m[term.Key]
 

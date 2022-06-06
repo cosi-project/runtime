@@ -34,6 +34,20 @@ func TestLabelTerm(t *testing.T) {
 
 	assert.True(t, labels.Matches(
 		resource.LabelTerm{
+			Key: "c",
+			Op:  resource.LabelOpNotExists,
+		},
+	))
+
+	assert.False(t, labels.Matches(
+		resource.LabelTerm{
+			Key: "a",
+			Op:  resource.LabelOpNotExists,
+		},
+	))
+
+	assert.True(t, labels.Matches(
+		resource.LabelTerm{
 			Key:   "a",
 			Op:    resource.LabelOpEqual,
 			Value: "b",

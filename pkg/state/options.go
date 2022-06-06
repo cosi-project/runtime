@@ -45,6 +45,16 @@ func WithLabelEqual(label, value string) ListOption {
 	}
 }
 
+// WithoutLabel appends a query for the label being absent.
+func WithoutLabel(label string) ListOption {
+	return func(opts *ListOptions) {
+		opts.LabelQuery.Terms = append(opts.LabelQuery.Terms, resource.LabelTerm{
+			Key: label,
+			Op:  resource.LabelOpNotExists,
+		})
+	}
+}
+
 // ListOption builds ListOptions.
 type ListOption func(*ListOptions)
 

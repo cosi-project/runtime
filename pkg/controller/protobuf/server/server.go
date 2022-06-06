@@ -295,6 +295,8 @@ func (runtime *Runtime) List(req *v1alpha1.RuntimeListRequest, srv v1alpha1.Cont
 					opts = append(opts, state.WithLabelEqual(term.Key, term.Value))
 				case v1alpha1.LabelTerm_EXISTS:
 					opts = append(opts, state.WithLabelExists(term.Key))
+				case v1alpha1.LabelTerm_NOT_EXISTS:
+					opts = append(opts, state.WithoutLabel(term.Key))
 				default:
 					return status.Errorf(codes.Unimplemented, "unsupported label query operator: %v", term.Op)
 				}
