@@ -18,40 +18,11 @@ type ListOptions struct {
 }
 
 // WithLabelQuery appends a label query to the list options.
-func WithLabelQuery(query resource.LabelQuery) ListOption {
+func WithLabelQuery(opt ...resource.LabelQueryOption) ListOption {
 	return func(opts *ListOptions) {
-		opts.LabelQuery.Terms = append(opts.LabelQuery.Terms, query.Terms...)
-	}
-}
-
-// WithLabelExists appends a query for label existence.
-func WithLabelExists(label string) ListOption {
-	return func(opts *ListOptions) {
-		opts.LabelQuery.Terms = append(opts.LabelQuery.Terms, resource.LabelTerm{
-			Key: label,
-			Op:  resource.LabelOpExists,
-		})
-	}
-}
-
-// WithLabelEqual appends a query for the label being present with the specified value.
-func WithLabelEqual(label, value string) ListOption {
-	return func(opts *ListOptions) {
-		opts.LabelQuery.Terms = append(opts.LabelQuery.Terms, resource.LabelTerm{
-			Key:   label,
-			Value: value,
-			Op:    resource.LabelOpEqual,
-		})
-	}
-}
-
-// WithoutLabel appends a query for the label being absent.
-func WithoutLabel(label string) ListOption {
-	return func(opts *ListOptions) {
-		opts.LabelQuery.Terms = append(opts.LabelQuery.Terms, resource.LabelTerm{
-			Key: label,
-			Op:  resource.LabelOpNotExists,
-		})
+		for _, o := range opt {
+			o(&opts.LabelQuery)
+		}
 	}
 }
 
@@ -163,6 +134,7 @@ func WithTailEvents(n int) WatchOption {
 
 // WatchKindOptions for the CoreState.WatchKind function.
 type WatchKindOptions struct {
+	LabelQuery        resource.LabelQuery
 	BootstrapContents bool
 	TailEvents        int
 }
@@ -181,5 +153,14 @@ func WithBootstrapContents(enable bool) WatchKindOption {
 func WithKindTailEvents(n int) WatchKindOption {
 	return func(opts *WatchKindOptions) {
 		opts.TailEvents = n
+	}
+}
+
+// WatchWithLabelQuery appends a label query to the list options.
+func WatchWithLabelQuery(opt ...resource.LabelQueryOption) WatchKindOption {
+	return func(opts *WatchKindOptions) {
+		for _, o := range opt {
+			o(&opts.LabelQuery)
+		}
 	}
 }

@@ -18,6 +18,7 @@ import (
 	"github.com/cosi-project/runtime/pkg/resource"
 	"github.com/cosi-project/runtime/pkg/resource/protobuf"
 	"github.com/cosi-project/runtime/pkg/state"
+	"github.com/cosi-project/runtime/pkg/state/protobuf/server"
 )
 
 // Runtime implements controller.Runtime over gRPC.
@@ -289,18 +290,14 @@ func (runtime *Runtime) List(req *v1alpha1.RuntimeListRequest, srv v1alpha1.Cont
 
 	if req.GetOptions() != nil {
 		if req.GetOptions().GetLabelQuery() != nil {
-			for _, term := range req.GetOptions().GetLabelQuery().GetTerms() {
-				switch term.Op {
-				case v1alpha1.LabelTerm_EQUAL:
-					opts = append(opts, state.WithLabelEqual(term.Key, term.Value))
-				case v1alpha1.LabelTerm_EXISTS:
-					opts = append(opts, state.WithLabelExists(term.Key))
-				case v1alpha1.LabelTerm_NOT_EXISTS:
-					opts = append(opts, state.WithoutLabel(term.Key))
-				default:
-					return status.Errorf(codes.Unimplemented, "unsupported label query operator: %v", term.Op)
-				}
+			var queryOpts []resource.LabelQueryOption
+
+			queryOpts, err = server.ConvertLabelQuery(req.GetOptions().GetLabelQuery().GetTerms())
+			if err != nil {
+				return err
 			}
+
+			opts = append(opts, state.WithLabelQuery(queryOpts...))
 		}
 	}
 

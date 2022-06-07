@@ -8,7 +8,6 @@ package client
 import (
 	"context"
 	"errors"
-	"fmt"
 	"io"
 
 	"github.com/siderolabs/go-pointer"
@@ -77,31 +76,11 @@ func (adapter *Adapter) List(ctx context.Context, resourceKind resource.Kind, op
 	var labelQuery *v1alpha1.LabelQuery
 
 	if len(opts.LabelQuery.Terms) > 0 {
-		labelQuery = &v1alpha1.LabelQuery{
-			Terms: make([]*v1alpha1.LabelTerm, 0, len(opts.LabelQuery.Terms)),
-		}
+		var err error
 
-		for _, term := range opts.LabelQuery.Terms {
-			switch term.Op {
-			case resource.LabelOpEqual:
-				labelQuery.Terms = append(labelQuery.Terms, &v1alpha1.LabelTerm{
-					Key:   term.Key,
-					Value: term.Value,
-					Op:    v1alpha1.LabelTerm_EQUAL,
-				})
-			case resource.LabelOpExists:
-				labelQuery.Terms = append(labelQuery.Terms, &v1alpha1.LabelTerm{
-					Key: term.Key,
-					Op:  v1alpha1.LabelTerm_EXISTS,
-				})
-			case resource.LabelOpNotExists:
-				labelQuery.Terms = append(labelQuery.Terms, &v1alpha1.LabelTerm{
-					Key: term.Key,
-					Op:  v1alpha1.LabelTerm_NOT_EXISTS,
-				})
-			default:
-				return resource.List{}, fmt.Errorf("unsupported label query operator: %v", term.Op)
-			}
+		labelQuery, err = transformLabelQuery(opts.LabelQuery)
+		if err != nil {
+			return resource.List{}, err
 		}
 	}
 
@@ -326,12 +305,24 @@ func (adapter *Adapter) WatchKind(ctx context.Context, resourceKind resource.Kin
 		o(&opts)
 	}
 
+	var labelQuery *v1alpha1.LabelQuery
+
+	if len(opts.LabelQuery.Terms) > 0 {
+		var err error
+
+		labelQuery, err = transformLabelQuery(opts.LabelQuery)
+		if err != nil {
+			return err
+		}
+	}
+
 	cli, err := adapter.client.Watch(ctx, &v1alpha1.WatchRequest{
 		Namespace: resourceKind.Namespace(),
 		Type:      resourceKind.Type(),
 		Options: &v1alpha1.WatchOptions{
 			BootstrapContents: opts.BootstrapContents,
 			TailEvents:        int32(opts.TailEvents),
+			LabelQuery:        labelQuery,
 		},
 	})
 	if err != nil {
@@ -382,6 +373,20 @@ func watchAdapter(ctx context.Context, cli v1alpha1.State_WatchClient, ch chan<-
 		if err != nil {
 			// no way to signal error here?
 			return
+		}
+
+		if msg.Event.Old != nil {
+			unmarshaled, err = protobuf.Unmarshal(msg.Event.Old)
+			if err != nil {
+				// no way to signal error here?
+				return
+			}
+
+			event.Old, err = protobuf.UnmarshalResource(unmarshaled)
+			if err != nil {
+				// no way to signal error here?
+				return
+			}
 		}
 
 		select {

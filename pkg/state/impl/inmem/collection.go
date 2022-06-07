@@ -171,6 +171,7 @@ func (collection *ResourceCollection) Update(ctx context.Context, curVersion res
 	collection.publish(state.Event{
 		Type:     state.Updated,
 		Resource: newResource,
+		Old:      curResource,
 	})
 
 	return nil
@@ -317,11 +318,17 @@ func (collection *ResourceCollection) Watch(ctx context.Context, id resource.ID,
 }
 
 // WatchAll for any resource change stored in this collection.
+//
+//nolint:gocognit,gocyclo,cyclop
 func (collection *ResourceCollection) WatchAll(ctx context.Context, ch chan<- state.Event, opts ...state.WatchKindOption) error {
 	var options state.WatchKindOptions
 
 	for _, opt := range opts {
 		opt(&options)
+	}
+
+	matches := func(res resource.Resource) bool {
+		return options.LabelQuery.Matches(*res.Metadata().Labels())
 	}
 
 	collection.mu.Lock()
@@ -335,7 +342,9 @@ func (collection *ResourceCollection) WatchAll(ctx context.Context, ch chan<- st
 		bootstrapList = make([]resource.Resource, 0, len(collection.storage))
 
 		for _, res := range collection.storage {
-			bootstrapList = append(bootstrapList, res.DeepCopy())
+			if matches(res) {
+				bootstrapList = append(bootstrapList, res.DeepCopy())
+			}
 		}
 
 		sort.Slice(bootstrapList, func(i, j int) bool {
@@ -397,6 +406,32 @@ func (collection *ResourceCollection) WatchAll(ctx context.Context, ch chan<- st
 			pos++
 
 			collection.mu.Unlock()
+
+			switch event.Type {
+			case state.Created, state.Destroyed:
+				if !matches(event.Resource) {
+					// skip the event
+					continue
+				}
+			case state.Updated:
+				oldMatches := matches(event.Old)
+				newMatches := matches(event.Resource)
+
+				switch {
+				// transform the event if matching fact changes with the update
+				case oldMatches && !newMatches:
+					event.Type = state.Destroyed
+					event.Old = nil
+				case !oldMatches && newMatches:
+					event.Type = state.Created
+					event.Old = nil
+				case newMatches && oldMatches:
+					// passthrough the event
+				default:
+					// skip the event
+					continue
+				}
+			}
 
 			// deliver event
 			select {

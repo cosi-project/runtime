@@ -65,17 +65,13 @@ func (server *State) List(req *v1alpha1.ListRequest, srv v1alpha1.State_ListServ
 
 	if req.GetOptions() != nil {
 		if req.GetOptions().GetLabelQuery() != nil {
-			for _, term := range req.GetOptions().GetLabelQuery().GetTerms() {
-				switch term.Op {
-				case v1alpha1.LabelTerm_EQUAL:
-					opts = append(opts, state.WithLabelEqual(term.Key, term.Value))
-				case v1alpha1.LabelTerm_EXISTS:
-					opts = append(opts, state.WithLabelExists(term.Key))
-				case v1alpha1.LabelTerm_NOT_EXISTS:
-					opts = append(opts, state.WithoutLabel(term.Key))
-				default:
-					return status.Errorf(codes.Unimplemented, "unsupported label query operator: %v", term.Op)
+			if req.Options.GetLabelQuery() != nil {
+				labelOpts, err := ConvertLabelQuery(req.Options.GetLabelQuery().GetTerms())
+				if err != nil {
+					return err
 				}
+
+				opts = append(opts, state.WithLabelQuery(labelOpts...))
 			}
 		}
 	}
@@ -225,6 +221,8 @@ func (server *State) Destroy(ctx context.Context, req *v1alpha1.DestroyRequest) 
 // Watch is canceled when context gets canceled.
 // Watch sends initial resource state as the very first event on the channel,
 // and then sends any updates to the resource as events.
+//
+//nolint:gocognit,gocyclo,cyclop
 func (server *State) Watch(req *v1alpha1.WatchRequest, srv v1alpha1.State_WatchServer) error {
 	ch := make(chan state.Event)
 
@@ -241,12 +239,31 @@ func (server *State) Watch(req *v1alpha1.WatchRequest, srv v1alpha1.State_WatchS
 			opts = append(opts, state.WithKindTailEvents(int(req.Options.TailEvents)))
 		}
 
+		if req.Options.GetLabelQuery() != nil {
+			var labelOpts []resource.LabelQueryOption
+
+			labelOpts, err = ConvertLabelQuery(req.Options.GetLabelQuery().GetTerms())
+			if err != nil {
+				return err
+			}
+
+			opts = append(opts, state.WatchWithLabelQuery(labelOpts...))
+		}
+
 		err = server.state.WatchKind(srv.Context(), resource.NewMetadata(req.Namespace, req.Type, "", resource.VersionUndefined), ch, opts...)
 	} else {
 		var opts []state.WatchOption
 
 		if req.Options.TailEvents > 0 {
 			opts = append(opts, state.WithTailEvents(int(req.Options.TailEvents)))
+		}
+
+		if req.Options.BootstrapContents {
+			return status.Error(codes.Unimplemented, "bootstrap contents is not implemented for resource watch")
+		}
+
+		if req.Options.LabelQuery != nil {
+			return status.Error(codes.Unimplemented, "label query is not implemented for resource watch")
 		}
 
 		err = server.state.Watch(srv.Context(), resource.NewMetadata(req.Namespace, req.Type, req.GetId(), resource.VersionUndefined), ch, opts...)
@@ -272,6 +289,22 @@ func (server *State) Watch(req *v1alpha1.WatchRequest, srv v1alpha1.State_WatchS
 			return err
 		}
 
+		var oldMarshaled *v1alpha1.Resource
+
+		if event.Old != nil {
+			var oldProtoR *protobuf.Resource
+
+			oldProtoR, err = protobuf.FromResource(event.Old)
+			if err != nil {
+				return err
+			}
+
+			oldMarshaled, err = oldProtoR.Marshal()
+			if err != nil {
+				return err
+			}
+		}
+
 		var eventType v1alpha1.EventType
 
 		switch event.Type {
@@ -287,6 +320,7 @@ func (server *State) Watch(req *v1alpha1.WatchRequest, srv v1alpha1.State_WatchS
 			Event: &v1alpha1.Event{
 				EventType: eventType,
 				Resource:  marshaled,
+				Old:       oldMarshaled,
 			},
 		}); err != nil {
 			return err

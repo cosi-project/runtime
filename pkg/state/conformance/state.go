@@ -219,6 +219,7 @@ func (suite *StateSuite) TestWatchKind() {
 	case event := <-ch:
 		suite.Assert().Equal(state.Updated, event.Type)
 		suite.Assert().Equal(resource.String(path1), resource.String(event.Resource))
+		suite.Assert().Equal(resource.String(path1), resource.String(event.Old))
 
 		expectedEvents[event] = struct{}{}
 	case <-time.After(time.Second):
@@ -245,6 +246,8 @@ func (suite *StateSuite) TestWatchKind() {
 		suite.Assert().Equal(state.Updated, event.Type)
 		suite.Assert().Equal(resource.String(path2), resource.String(event.Resource))
 		suite.Assert().Equal(path2.Metadata().Version(), event.Resource.Metadata().Version())
+		suite.Assert().Equal(resource.String(path2), resource.String(event.Old))
+		suite.Assert().Equal(oldVersion, event.Old.Metadata().Version())
 
 		expectedEvents[event] = struct{}{}
 	case <-time.After(time.Second):
@@ -314,6 +317,156 @@ func (suite *StateSuite) TestWatchKind() {
 		case <-time.After(time.Second):
 			suite.FailNow("timed out waiting for event", "missed events %v", expectedEvents)
 		}
+	}
+}
+
+// TestWatchKindWithLabels verifies WatchKind API with label selectors.
+func (suite *StateSuite) TestWatchKindWithLabels() {
+	ns := suite.getNamespace()
+
+	path1 := NewPathResource(ns, "var/label1")
+	path1.Metadata().Labels().Set("label", "label1")
+	path1.Metadata().Labels().Set("common", "app")
+
+	path2 := NewPathResource(ns, "var/label2")
+	path2.Metadata().Labels().Set("label", "label2")
+	path2.Metadata().Labels().Set("common", "app")
+
+	path3 := NewPathResource(ns, "var/label3")
+	path3.Metadata().Labels().Set("label", "label3")
+
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	suite.Require().NoError(suite.State.Create(ctx, path1))
+
+	chLabel1 := make(chan state.Event)
+	chCommonApp := make(chan state.Event)
+
+	// watch with label == label1
+	suite.Require().NoError(suite.State.WatchKind(
+		ctx,
+		path1.Metadata(),
+		chLabel1,
+		state.WithBootstrapContents(true),
+		state.WatchWithLabelQuery(resource.LabelEqual("label", "label1")),
+	))
+
+	// watch with exists(common)
+	suite.Require().NoError(suite.State.WatchKind(
+		ctx,
+		path1.Metadata(),
+		chCommonApp,
+		state.WithBootstrapContents(true),
+		state.WatchWithLabelQuery(resource.LabelExists("common")),
+	))
+
+	suite.Require().NoError(suite.State.Create(ctx, path2))
+	suite.Require().NoError(suite.State.Create(ctx, path3))
+
+	// label1 matches only path1
+	select {
+	case event := <-chLabel1:
+		suite.Assert().Equal(state.Created, event.Type)
+		suite.Assert().Equal(resource.String(path1), resource.String(event.Resource))
+	case <-time.After(time.Second):
+		suite.FailNow("timed out waiting for event")
+	}
+
+	// exists(common) matches path1 and path2
+	select {
+	case event := <-chCommonApp:
+		suite.Assert().Equal(state.Created, event.Type)
+		suite.Assert().Equal(resource.String(path1), resource.String(event.Resource))
+	case <-time.After(time.Second):
+		suite.FailNow("timed out waiting for event")
+	}
+
+	select {
+	case event := <-chCommonApp:
+		suite.Assert().Equal(state.Created, event.Type)
+		suite.Assert().Equal(resource.String(path2), resource.String(event.Resource))
+	case <-time.After(time.Second):
+		suite.FailNow("timed out waiting for event")
+	}
+
+	// modify path3 so that it matches common
+	_, err := safe.StateUpdateWithConflicts(ctx, suite.State, path3.Metadata(), func(r *PathResource) error {
+		r.Metadata().Labels().Set("common", "foo")
+
+		return nil
+	})
+	suite.Require().NoError(err)
+
+	select {
+	case event := <-chCommonApp:
+		// state should mock this as "created" event
+		suite.Assert().Equal(state.Created, event.Type)
+		suite.Assert().Equal(resource.String(path3), resource.String(event.Resource))
+		suite.Assert().Nil(event.Old)
+	case <-time.After(time.Second):
+		suite.FailNow("timed out waiting for event")
+	}
+
+	// do an update on path1, it should match both watch channels
+	_, err = safe.StateUpdateWithConflicts(ctx, suite.State, path1.Metadata(), func(r *PathResource) error {
+		r.Metadata().Labels().Set("app", "app-awesome")
+
+		return nil
+	})
+	suite.Require().NoError(err)
+
+	for _, ch := range []chan state.Event{chLabel1, chCommonApp} {
+		select {
+		case event := <-ch:
+			suite.Assert().Equal(state.Updated, event.Type)
+			suite.Assert().Equal(resource.String(path1), resource.String(event.Resource))
+
+			_, ok := event.Resource.Metadata().Labels().Get("app")
+			suite.Assert().True(ok)
+
+			suite.Assert().Equal(resource.String(path1), resource.String(event.Old))
+
+			_, ok = event.Old.Metadata().Labels().Get("app")
+			suite.Assert().False(ok)
+		case <-time.After(time.Second):
+			suite.FailNow("timed out waiting for event")
+		}
+	}
+
+	// modify path1 so that it no longer matches common
+	_, err = safe.StateUpdateWithConflicts(ctx, suite.State, path1.Metadata(), func(r *PathResource) error {
+		r.Metadata().Labels().Delete("common")
+
+		return nil
+	})
+	suite.Require().NoError(err)
+
+	// chCommon should receive synthetic "destroy"
+	select {
+	case event := <-chCommonApp:
+		suite.Assert().Equal(state.Destroyed, event.Type)
+		suite.Assert().Equal(resource.String(path1), resource.String(event.Resource))
+		suite.Assert().Nil(event.Old)
+	case <-time.After(time.Second):
+		suite.FailNow("timed out waiting for event")
+	}
+
+	// chLabel1 should receive normal update
+	select {
+	case event := <-chLabel1:
+		suite.Assert().Equal(state.Updated, event.Type)
+		suite.Assert().Equal(resource.String(path1), resource.String(event.Resource))
+
+		_, ok := event.Resource.Metadata().Labels().Get("common")
+		suite.Assert().False(ok)
+
+		suite.Assert().Equal(resource.String(path1), resource.String(event.Old))
+
+		_, ok = event.Old.Metadata().Labels().Get("common")
+		suite.Assert().True(ok)
+	case <-time.After(time.Second):
+		suite.FailNow("timed out waiting for event")
 	}
 }
 
@@ -480,6 +633,8 @@ func (suite *StateSuite) TestWatch() {
 		suite.Assert().Equal(state.Updated, event.Type)
 		suite.Assert().Equal(resource.String(path1), resource.String(event.Resource))
 		suite.Assert().Equal(resource.PhaseTearingDown, event.Resource.Metadata().Phase())
+		suite.Assert().Equal(resource.String(path1), resource.String(event.Old))
+		suite.Assert().Equal(resource.PhaseRunning, event.Old.Metadata().Phase())
 
 		expectedEvents[event] = struct{}{}
 	case <-time.After(time.Second):
@@ -670,25 +825,25 @@ func (suite *StateSuite) TestLabels() {
 	suite.Assert().True(ok)
 	suite.Assert().Equal("app1", v)
 
-	list, err := safe.StateList[*PathResource](ctx, suite.State, path1.Metadata(), state.WithLabelExists("frozen"))
+	list, err := safe.StateList[*PathResource](ctx, suite.State, path1.Metadata(), state.WithLabelQuery(resource.LabelExists("frozen")))
 	suite.Require().NoError(err)
 
 	suite.Require().Equal(2, list.Len())
 	suite.Assert().True(resource.Equal(path1, list.Get(0)))
 	suite.Assert().True(resource.Equal(path2, list.Get(1)))
 
-	list, err = safe.StateList[*PathResource](ctx, suite.State, path1.Metadata(), state.WithLabelExists("frozen"), state.WithLabelEqual("app", "app2"))
+	list, err = safe.StateList[*PathResource](ctx, suite.State, path1.Metadata(), state.WithLabelQuery(resource.LabelExists("frozen"), resource.LabelEqual("app", "app2")))
 	suite.Require().NoError(err)
 
 	suite.Require().Equal(1, list.Len())
 	suite.Assert().True(resource.Equal(path2, list.Get(0)))
 
-	list, err = safe.StateList[*PathResource](ctx, suite.State, path1.Metadata(), state.WithLabelExists("frozen"), state.WithLabelEqual("app", "app3"))
+	list, err = safe.StateList[*PathResource](ctx, suite.State, path1.Metadata(), state.WithLabelQuery(resource.LabelExists("frozen"), resource.LabelEqual("app", "app3")))
 	suite.Require().NoError(err)
 
 	suite.Require().Equal(0, list.Len())
 
-	list, err = safe.StateList[*PathResource](ctx, suite.State, path1.Metadata(), state.WithLabelEqual("app", "app3"))
+	list, err = safe.StateList[*PathResource](ctx, suite.State, path1.Metadata(), state.WithLabelQuery(resource.LabelEqual("app", "app3")))
 	suite.Require().NoError(err)
 
 	suite.Require().Equal(1, list.Len())

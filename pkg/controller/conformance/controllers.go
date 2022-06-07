@@ -276,7 +276,7 @@ func (ctrl *SumController) Run(ctx context.Context, r controller.Runtime, logger
 		intList, err := safe.ReaderList[interface {
 			IntegerResource
 			resource.Resource
-		}](ctx, r, sourceMd, state.WithLabelQuery(ctrl.SourceLabelQuery))
+		}](ctx, r, sourceMd, state.WithLabelQuery(resource.RawLabelQuery(ctrl.SourceLabelQuery)))
 		if err != nil {
 			return fmt.Errorf("error listing objects: %w", err)
 		}

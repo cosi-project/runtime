@@ -48,6 +48,16 @@ func (m *Event) MarshalToSizedBufferVT(dAtA []byte) (int, error) {
 		i -= len(m.unknownFields)
 		copy(dAtA[i:], m.unknownFields)
 	}
+	if m.Old != nil {
+		size, err := m.Old.MarshalToSizedBufferVT(dAtA[:i])
+		if err != nil {
+			return 0, err
+		}
+		i -= size
+		i = encodeVarint(dAtA, i, uint64(size))
+		i--
+		dAtA[i] = 0x1a
+	}
 	if m.EventType != 0 {
 		i = encodeVarint(dAtA, i, uint64(m.EventType))
 		i--
@@ -846,6 +856,16 @@ func (m *WatchOptions) MarshalToSizedBufferVT(dAtA []byte) (int, error) {
 		i -= len(m.unknownFields)
 		copy(dAtA[i:], m.unknownFields)
 	}
+	if m.LabelQuery != nil {
+		size, err := m.LabelQuery.MarshalToSizedBufferVT(dAtA[:i])
+		if err != nil {
+			return 0, err
+		}
+		i -= size
+		i = encodeVarint(dAtA, i, uint64(size))
+		i--
+		dAtA[i] = 0x1a
+	}
 	if m.TailEvents != 0 {
 		i = encodeVarint(dAtA, i, uint64(m.TailEvents))
 		i--
@@ -919,6 +939,10 @@ func (m *Event) SizeVT() (n int) {
 	}
 	if m.EventType != 0 {
 		n += 1 + sov(uint64(m.EventType))
+	}
+	if m.Old != nil {
+		l = m.Old.SizeVT()
+		n += 1 + l + sov(uint64(l))
 	}
 	if m.unknownFields != nil {
 		n += len(m.unknownFields)
@@ -1238,6 +1262,10 @@ func (m *WatchOptions) SizeVT() (n int) {
 	if m.TailEvents != 0 {
 		n += 1 + sov(uint64(m.TailEvents))
 	}
+	if m.LabelQuery != nil {
+		l = m.LabelQuery.SizeVT()
+		n += 1 + l + sov(uint64(l))
+	}
 	if m.unknownFields != nil {
 		n += len(m.unknownFields)
 	}
@@ -1344,6 +1372,42 @@ func (m *Event) UnmarshalVT(dAtA []byte) error {
 					break
 				}
 			}
+		case 3:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field Old", wireType)
+			}
+			var msglen int
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflow
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				msglen |= int(b&0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			if msglen < 0 {
+				return ErrInvalidLength
+			}
+			postIndex := iNdEx + msglen
+			if postIndex < 0 {
+				return ErrInvalidLength
+			}
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			if m.Old == nil {
+				m.Old = &Resource{}
+			}
+			if err := m.Old.UnmarshalVT(dAtA[iNdEx:postIndex]); err != nil {
+				return err
+			}
+			iNdEx = postIndex
 		default:
 			iNdEx = preIndex
 			skippy, err := skip(dAtA[iNdEx:])
@@ -3160,6 +3224,42 @@ func (m *WatchOptions) UnmarshalVT(dAtA []byte) error {
 					break
 				}
 			}
+		case 3:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field LabelQuery", wireType)
+			}
+			var msglen int
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflow
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				msglen |= int(b&0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			if msglen < 0 {
+				return ErrInvalidLength
+			}
+			postIndex := iNdEx + msglen
+			if postIndex < 0 {
+				return ErrInvalidLength
+			}
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			if m.LabelQuery == nil {
+				m.LabelQuery = &LabelQuery{}
+			}
+			if err := m.LabelQuery.UnmarshalVT(dAtA[iNdEx:postIndex]); err != nil {
+				return err
+			}
+			iNdEx = postIndex
 		default:
 			iNdEx = preIndex
 			skippy, err := skip(dAtA[iNdEx:])

@@ -31,6 +31,7 @@ func (eventType EventType) String() string {
 // Event is emitted when resource changes.
 type Event struct {
 	Resource resource.Resource
+	Old      resource.Resource
 	Type     EventType
 }
 
