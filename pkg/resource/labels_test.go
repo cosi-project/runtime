@@ -57,4 +57,28 @@ func TestLabels(t *testing.T) {
 
 	_, ok = labels.Get("a")
 	assert.True(t, ok)
+
+	var termTests resource.Labels
+
+	assert.True(t, termTests.Matches(resource.LabelTerm{
+		Key: "nope",
+		Op:  resource.LabelOpNotExists,
+	}))
+
+	assert.False(t, termTests.Matches(resource.LabelTerm{
+		Key: "nope",
+		Op:  resource.LabelOpExists,
+	}))
+
+	termTests.Set("yes", "")
+
+	assert.True(t, termTests.Matches(resource.LabelTerm{
+		Key: "yes",
+		Op:  resource.LabelOpExists,
+	}))
+
+	assert.False(t, termTests.Matches(resource.LabelTerm{
+		Key: "yes",
+		Op:  resource.LabelOpNotExists,
+	}))
 }

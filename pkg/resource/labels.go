@@ -100,7 +100,7 @@ func (labels Labels) Empty() bool {
 // Matches if labels match the LabelTerm.
 func (labels Labels) Matches(term LabelTerm) bool {
 	if labels.m == nil {
-		return false
+		return term.Op == LabelOpNotExists
 	}
 
 	switch term.Op {
