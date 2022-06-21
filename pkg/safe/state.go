@@ -12,9 +12,11 @@ import (
 	"github.com/cosi-project/runtime/pkg/state"
 )
 
-// StateGet is a type safe wrapper around state.Get.
-func StateGet[T resource.Resource](ctx context.Context, st state.State, ptr resource.Pointer, options ...state.GetOption) (T, error) { //nolint:ireturn
-	got, err := st.Get(ctx, ptr, options...)
+func typeMismatchErr(expected, got any) error {
+	return fmt.Errorf("type mismatch: expected %T, got %T", expected, got)
+}
+
+func typeAssertOrZero[T resource.Resource](got resource.Resource, err error) (T, error) { //nolint:ireturn
 	if err != nil {
 		var zero T
 
@@ -25,10 +27,17 @@ func StateGet[T resource.Resource](ctx context.Context, st state.State, ptr reso
 	if !ok {
 		var zero T
 
-		return zero, fmt.Errorf("type mismatch: expected %T, got %T", result, got)
+		return zero, typeMismatchErr(result, got)
 	}
 
 	return result, nil
+}
+
+// StateGet is a type safe wrapper around state.Get.
+func StateGet[T resource.Resource](ctx context.Context, st state.State, ptr resource.Pointer, options ...state.GetOption) (T, error) { //nolint:ireturn
+	got, err := st.Get(ctx, ptr, options...)
+
+	return typeAssertOrZero[T](got, err)
 }
 
 // StateGetResource is a type safe wrapper around state.Get which accepts typed resource.Resource and gets the metadata from it.
@@ -41,25 +50,13 @@ func StateUpdateWithConflicts[T resource.Resource](ctx context.Context, st state
 	got, err := st.UpdateWithConflicts(ctx, ptr, func(r resource.Resource) error {
 		arg, ok := r.(T)
 		if !ok {
-			return fmt.Errorf("type mismatch: expected %T, got %T", arg, r)
+			return typeMismatchErr(arg, r)
 		}
 
 		return updateFn(arg)
 	}, options...)
-	if err != nil {
-		var zero T
 
-		return zero, err
-	}
-
-	result, ok := got.(T)
-	if !ok {
-		var zero T
-
-		return zero, fmt.Errorf("type mismatch: expected %T, got %T", result, got)
-	}
-
-	return result, nil
+	return typeAssertOrZero[T](got, err)
 }
 
 // StateList is a type safe wrapper around state.List.
@@ -87,6 +84,92 @@ func StateList[T resource.Resource](ctx context.Context, st state.State, ptr res
 	return NewList[T](got), nil
 }
 
+// WrappedStateEvent holds a state.Event that can be cast to its original Resource type when accessed with Event().
+type WrappedStateEvent[T resource.Resource] struct {
+	event state.Event
+}
+
+func getTypedResourceOrZero[T resource.Resource](got resource.Resource) (T, error) { //nolint:ireturn
+	var zero T
+
+	if got == nil {
+		return zero, fmt.Errorf("resource is nil")
+	}
+
+	result, ok := got.(T)
+	if !ok {
+		var zero T
+
+		return zero, typeMismatchErr(result, got)
+	}
+
+	return result, nil
+}
+
+// Resource returns the typed resource of the wrapped event.
+func (wse *WrappedStateEvent[T]) Resource() (T, error) { //nolint:ireturn
+	return getTypedResourceOrZero[T](wse.event.Resource)
+}
+
+// Old returns the typed Old resource of the wrapped event.
+func (wse *WrappedStateEvent[T]) Old() (T, error) { //nolint:ireturn
+	return getTypedResourceOrZero[T](wse.event.Old)
+}
+
+// Type returns the EventType of the wrapped event.
+func (wse *WrappedStateEvent[T]) Type() state.EventType {
+	return wse.event.Type
+}
+
+func watch[T resource.Resource](ctx context.Context, eventCh chan<- WrappedStateEvent[T], untypedEventCh <-chan state.Event) {
+	for {
+		select {
+		case <-ctx.Done():
+			return
+		case event := <-untypedEventCh:
+			select {
+			case <-ctx.Done():
+			case eventCh <- WrappedStateEvent[T]{event: event}:
+			}
+		}
+	}
+}
+
+// StateWatch is a type safe wrapper around State.Watch.
+func StateWatch[T resource.Resource](ctx context.Context, st state.State, ptr resource.Pointer, eventCh chan<- WrappedStateEvent[T], opts ...state.WatchOption) error {
+	untypedEventCh := make(chan state.Event)
+
+	err := st.Watch(ctx, ptr, untypedEventCh, opts...)
+	if err != nil {
+		return err
+	}
+
+	go watch(ctx, eventCh, untypedEventCh)
+
+	return nil
+}
+
+// StateWatchFor is a type safe wrapper around State.WatchFor.
+func StateWatchFor[T resource.Resource](ctx context.Context, st state.State, ptr resource.Pointer, opts ...state.WatchForConditionFunc) (T, error) { //nolint:ireturn
+	got, err := st.WatchFor(ctx, ptr, opts...)
+
+	return typeAssertOrZero[T](got, err)
+}
+
+// StateWatchKind is a type safe wrapper around State.WatchKind.
+func StateWatchKind[T resource.Resource](ctx context.Context, st state.State, kind resource.Kind, eventCh chan<- WrappedStateEvent[T], opts ...state.WatchKindOption) error {
+	untypedEventCh := make(chan state.Event)
+
+	err := st.WatchKind(ctx, kind, untypedEventCh, opts...)
+	if err != nil {
+		return err
+	}
+
+	go watch(ctx, eventCh, untypedEventCh)
+
+	return nil
+}
+
 // List is a type safe wrapper around resource.List.
 type List[T any] struct {
 	list resource.List
@@ -98,12 +181,12 @@ func NewList[T any](list resource.List) List[T] {
 }
 
 // Get returns the item at the given index.
-func (l *List[T]) Get(index int) T { //nolint:ireturn
+func (l *List[T]) Get(index int) T { //nolint:ireturn,revive
 	return l.list.Items[index].(T) //nolint:forcetypeassert
 }
 
 // Len returns the number of items in the list.
-func (l *List[T]) Len() int {
+func (l *List[T]) Len() int { //nolint:revive
 	return len(l.list.Items)
 }
 
