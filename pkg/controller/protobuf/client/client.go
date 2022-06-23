@@ -349,7 +349,7 @@ func (ctrlAdapter *controllerAdapter) UpdateInputs(inputs []controller.Input) er
 	return err
 }
 
-func (ctrlAdapter *controllerAdapter) Get(ctx context.Context, resourcePointer resource.Pointer) (resource.Resource, error) { //nolint:ireturn
+func (ctrlAdapter *controllerAdapter) Get(ctx context.Context, resourcePointer resource.Pointer, opts ...state.GetOption) (resource.Resource, error) { //nolint:ireturn
 	resp, err := ctrlAdapter.adapter.client.Get(ctx, &v1alpha1.RuntimeGetRequest{
 		ControllerToken: ctrlAdapter.token,
 
