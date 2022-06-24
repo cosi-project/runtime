@@ -7,7 +7,13 @@ spec:
   specs:
     - source: https://raw.githubusercontent.com/smira/specification/c3a1515e3f5f63b9aa830fc272a8b8cfd655bb32/proto/v1alpha1/resource.proto
       subdirectory: v1alpha1/
+      genGateway: true
+      external: false
     - source: https://raw.githubusercontent.com/smira/specification/c3a1515e3f5f63b9aa830fc272a8b8cfd655bb32/proto/v1alpha1/state.proto
       subdirectory: v1alpha1/
+      genGateway: true
+      external: false
     - source: https://raw.githubusercontent.com/smira/specification/c3a1515e3f5f63b9aa830fc272a8b8cfd655bb32/proto/v1alpha1/runtime.proto
       subdirectory: v1alpha1/
+      genGateway: true
+      external: false
