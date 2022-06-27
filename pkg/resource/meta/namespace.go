@@ -5,7 +5,9 @@
 package meta
 
 import (
+	"github.com/cosi-project/runtime/api/v1alpha1"
 	"github.com/cosi-project/runtime/pkg/resource"
+	"github.com/cosi-project/runtime/pkg/resource/protobuf"
 	"github.com/cosi-project/runtime/pkg/resource/typed"
 )
 
@@ -43,4 +45,34 @@ type NamespaceSpec struct {
 // DeepCopy generates a deep copy of NamespaceSpec.
 func (n NamespaceSpec) DeepCopy() NamespaceSpec {
 	return n
+}
+
+// MarshalProto implements ProtoMarshaler.
+func (n NamespaceSpec) MarshalProto() ([]byte, error) {
+	protoSpec := v1alpha1.NamespaceSpec{
+		Description: n.Description,
+	}
+
+	return protobuf.ProtoMarshal(&protoSpec)
+}
+
+// UnmarshalProto implements protobuf.ResourceUnmarshaler.
+func (n *NamespaceSpec) UnmarshalProto(protoBytes []byte) error {
+	protoSpec := v1alpha1.NamespaceSpec{}
+
+	if err := protobuf.ProtoUnmarshal(protoBytes, &protoSpec); err != nil {
+		return err
+	}
+
+	*n = NamespaceSpec{
+		Description: protoSpec.Description,
+	}
+
+	return nil
+}
+
+func init() {
+	if err := protobuf.RegisterResource(NamespaceType, &Namespace{}); err != nil {
+		panic(err)
+	}
 }

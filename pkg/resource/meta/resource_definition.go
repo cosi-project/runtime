@@ -9,6 +9,7 @@ import (
 
 	"github.com/cosi-project/runtime/pkg/resource"
 	"github.com/cosi-project/runtime/pkg/resource/meta/spec"
+	"github.com/cosi-project/runtime/pkg/resource/protobuf"
 	"github.com/cosi-project/runtime/pkg/resource/typed"
 )
 
@@ -58,4 +59,10 @@ func (ResourceDefinitionRD) ResourceDefinition(_ resource.Metadata, _ spec.Resou
 // ResourceDefinitionProvider is implemented by resources which can be registered automatically.
 type ResourceDefinitionProvider interface {
 	ResourceDefinition() ResourceDefinitionSpec
+}
+
+func init() {
+	if err := protobuf.RegisterResource(ResourceDefinitionType, &ResourceDefinition{}); err != nil {
+		panic(err)
+	}
 }

@@ -2,7 +2,7 @@
 
 # THIS FILE WAS AUTOMATICALLY GENERATED, PLEASE DO NOT EDIT.
 #
-# Generated on 2022-06-24T16:34:05Z by kres 65530e7-dirty.
+# Generated on 2022-06-27T16:57:20Z by kres ba905fc.
 
 ARG TOOLCHAIN
 
@@ -21,9 +21,10 @@ RUN markdownlint --ignore "CHANGELOG.md" --ignore "**/node_modules/**" --ignore 
 
 # collects proto specs
 FROM scratch AS proto-specs
-ADD https://raw.githubusercontent.com/smira/specification/c3a1515e3f5f63b9aa830fc272a8b8cfd655bb32/proto/v1alpha1/resource.proto /api/v1alpha1/
-ADD https://raw.githubusercontent.com/smira/specification/c3a1515e3f5f63b9aa830fc272a8b8cfd655bb32/proto/v1alpha1/state.proto /api/v1alpha1/
-ADD https://raw.githubusercontent.com/smira/specification/c3a1515e3f5f63b9aa830fc272a8b8cfd655bb32/proto/v1alpha1/runtime.proto /api/v1alpha1/
+ADD https://raw.githubusercontent.com/smira/specification/fd31e32e8060fec72a4f9ee7f3b7d1924ea3e4d0/proto/v1alpha1/resource.proto /api/v1alpha1/
+ADD https://raw.githubusercontent.com/smira/specification/fd31e32e8060fec72a4f9ee7f3b7d1924ea3e4d0/proto/v1alpha1/state.proto /api/v1alpha1/
+ADD https://raw.githubusercontent.com/smira/specification/fd31e32e8060fec72a4f9ee7f3b7d1924ea3e4d0/proto/v1alpha1/runtime.proto /api/v1alpha1/
+ADD https://raw.githubusercontent.com/smira/specification/fd31e32e8060fec72a4f9ee7f3b7d1924ea3e4d0/proto/v1alpha1/meta.proto /api/v1alpha1/
 
 # base toolchain image
 FROM ${TOOLCHAIN} AS toolchain
@@ -73,10 +74,11 @@ RUN --mount=type=cache,target=/go/pkg go list -mod=readonly all >/dev/null
 # runs protobuf compiler
 FROM tools AS proto-compile
 COPY --from=proto-specs / /
-RUN protoc -I/api --grpc-gateway_out=paths=source_relative:/api --grpc-gateway_opt=generate_unbound_methods=true --go_out=paths=source_relative:/api --go-grpc_out=paths=source_relative:/api --go-vtproto_out=paths=source_relative:/api --go-vtproto_opt=features=marshal+unmarshal+size --experimental_allow_proto3_optional /api/v1alpha1/resource.proto /api/v1alpha1/state.proto /api/v1alpha1/runtime.proto
+RUN protoc -I/api --grpc-gateway_out=paths=source_relative:/api --grpc-gateway_opt=generate_unbound_methods=true --go_out=paths=source_relative:/api --go-grpc_out=paths=source_relative:/api --go-vtproto_out=paths=source_relative:/api --go-vtproto_opt=features=marshal+unmarshal+size --experimental_allow_proto3_optional /api/v1alpha1/resource.proto /api/v1alpha1/state.proto /api/v1alpha1/runtime.proto /api/v1alpha1/meta.proto
 RUN rm /api/v1alpha1/resource.proto
 RUN rm /api/v1alpha1/state.proto
 RUN rm /api/v1alpha1/runtime.proto
+RUN rm /api/v1alpha1/meta.proto
 RUN goimports -w -local github.com/cosi-project/runtime /api
 RUN gofumpt -w /api
 

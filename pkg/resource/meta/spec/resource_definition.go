@@ -13,7 +13,9 @@ import (
 
 	"github.com/gertd/go-pluralize"
 
+	"github.com/cosi-project/runtime/api/v1alpha1"
 	"github.com/cosi-project/runtime/pkg/resource"
+	"github.com/cosi-project/runtime/pkg/resource/protobuf"
 )
 
 // ResourceDefinitionSpec provides ResourceDefinition definition.
@@ -133,6 +135,74 @@ func (spec ResourceDefinitionSpec) DeepCopy() ResourceDefinitionSpec {
 	}
 
 	return cp
+}
+
+// MarshalProto implements ProtoMarshaler.
+func (spec ResourceDefinitionSpec) MarshalProto() ([]byte, error) {
+	protoSpec := v1alpha1.ResourceDefinitionSpec{
+		ResourceType:     spec.Type,
+		DisplayType:      spec.DisplayType,
+		DefaultNamespace: spec.DefaultNamespace,
+		Aliases:          spec.Aliases,
+		AllAliases:       spec.AllAliases,
+	}
+
+	protoSpec.PrintColumns = make([]*v1alpha1.ResourceDefinitionSpec_PrintColumn, len(spec.PrintColumns))
+
+	for i, column := range spec.PrintColumns {
+		protoSpec.PrintColumns[i] = &v1alpha1.ResourceDefinitionSpec_PrintColumn{
+			Name:     column.Name,
+			JsonPath: column.JSONPath,
+		}
+	}
+
+	switch spec.Sensitivity {
+	case NonSensitive:
+		protoSpec.Sensitivity = v1alpha1.ResourceDefinitionSpec_NON_SENSITIVE
+	case Sensitive:
+		protoSpec.Sensitivity = v1alpha1.ResourceDefinitionSpec_SENSITIVE
+	default:
+		return nil, fmt.Errorf("unsupported sensitivity %q", spec.Sensitivity)
+	}
+
+	return protobuf.ProtoMarshal(&protoSpec)
+}
+
+// UnmarshalProto implements protobuf.ResourceUnmarshaler.
+func (spec *ResourceDefinitionSpec) UnmarshalProto(protoBytes []byte) error {
+	protoSpec := v1alpha1.ResourceDefinitionSpec{}
+
+	if err := protobuf.ProtoUnmarshal(protoBytes, &protoSpec); err != nil {
+		return err
+	}
+
+	*spec = ResourceDefinitionSpec{
+		Type:             protoSpec.ResourceType,
+		DisplayType:      protoSpec.DisplayType,
+		DefaultNamespace: protoSpec.DefaultNamespace,
+		Aliases:          protoSpec.Aliases,
+		AllAliases:       protoSpec.AllAliases,
+	}
+
+	spec.PrintColumns = make([]PrintColumn, len(protoSpec.PrintColumns))
+
+	for i, column := range protoSpec.PrintColumns {
+		spec.PrintColumns[i] = PrintColumn{
+			Name:     column.Name,
+			JSONPath: column.JsonPath,
+		}
+	}
+
+	switch protoSpec.Sensitivity {
+	case v1alpha1.ResourceDefinitionSpec_NON_SENSITIVE:
+		spec.Sensitivity = NonSensitive
+	case v1alpha1.ResourceDefinitionSpec_SENSITIVE:
+		spec.Sensitivity = Sensitive
+	default:
+		return fmt.Errorf("unsupported sensitivity %q", protoSpec.Sensitivity)
+	}
+
+	return nil
 }
 
 var (

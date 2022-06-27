@@ -10,7 +10,9 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
+	"github.com/cosi-project/runtime/pkg/resource"
 	"github.com/cosi-project/runtime/pkg/resource/meta"
+	"github.com/cosi-project/runtime/pkg/resource/protobuf"
 )
 
 func TestRDSpec(t *testing.T) {
@@ -97,4 +99,33 @@ func TestRDSpecValidation(t *testing.T) {
 			assert.EqualError(t, tt.spec.Fill(), tt.expectedError)
 		})
 	}
+}
+
+func TestProtobufResourceDefinition(t *testing.T) {
+	rd, err := meta.NewResourceDefinition(meta.ResourceDefinitionSpec{
+		Type: "Tests.cosi.dev",
+		PrintColumns: []meta.PrintColumn{
+			{
+				Name:     "name",
+				JSONPath: "{.name}",
+			},
+		},
+		Aliases:     []string{"tst"},
+		Sensitivity: meta.Sensitive,
+	})
+	require.NoError(t, err)
+
+	protoR, err := protobuf.FromResource(rd)
+	require.NoError(t, err)
+
+	marshaled, err := protoR.Marshal()
+	require.NoError(t, err)
+
+	r, err := protobuf.Unmarshal(marshaled)
+	require.NoError(t, err)
+
+	back, err := protobuf.UnmarshalResource(r)
+	require.NoError(t, err)
+
+	assert.True(t, resource.Equal(rd, back))
 }
