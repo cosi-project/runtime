@@ -2,7 +2,7 @@
 
 # THIS FILE WAS AUTOMATICALLY GENERATED, PLEASE DO NOT EDIT.
 #
-# Generated on 2022-06-27T16:57:20Z by kres ba905fc.
+# Generated on 2022-06-28T16:24:58Z by kres ba905fc-dirty.
 
 ARG TOOLCHAIN
 
@@ -21,10 +21,10 @@ RUN markdownlint --ignore "CHANGELOG.md" --ignore "**/node_modules/**" --ignore 
 
 # collects proto specs
 FROM scratch AS proto-specs
-ADD https://raw.githubusercontent.com/smira/specification/fd31e32e8060fec72a4f9ee7f3b7d1924ea3e4d0/proto/v1alpha1/resource.proto /api/v1alpha1/
-ADD https://raw.githubusercontent.com/smira/specification/fd31e32e8060fec72a4f9ee7f3b7d1924ea3e4d0/proto/v1alpha1/state.proto /api/v1alpha1/
-ADD https://raw.githubusercontent.com/smira/specification/fd31e32e8060fec72a4f9ee7f3b7d1924ea3e4d0/proto/v1alpha1/runtime.proto /api/v1alpha1/
-ADD https://raw.githubusercontent.com/smira/specification/fd31e32e8060fec72a4f9ee7f3b7d1924ea3e4d0/proto/v1alpha1/meta.proto /api/v1alpha1/
+ADD https://raw.githubusercontent.com/cosi-project/specification/fd31e32e8060fec72a4f9ee7f3b7d1924ea3e4d0/proto/v1alpha1/resource.proto /api/v1alpha1/
+ADD https://raw.githubusercontent.com/cosi-project/specification/fd31e32e8060fec72a4f9ee7f3b7d1924ea3e4d0/proto/v1alpha1/state.proto /api/v1alpha1/
+ADD https://raw.githubusercontent.com/cosi-project/specification/fd31e32e8060fec72a4f9ee7f3b7d1924ea3e4d0/proto/v1alpha1/runtime.proto /api/v1alpha1/
+ADD https://raw.githubusercontent.com/cosi-project/specification/fd31e32e8060fec72a4f9ee7f3b7d1924ea3e4d0/proto/v1alpha1/meta.proto /api/v1alpha1/
 
 # base toolchain image
 FROM ${TOOLCHAIN} AS toolchain
