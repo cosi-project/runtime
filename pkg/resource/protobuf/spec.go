@@ -22,7 +22,7 @@ type Spec[T any] interface {
 // Example usage:
 // type WrappedSpec = ResourceSpec[ProtoSpec, *ProtoSpec].
 type ResourceSpec[T any, S Spec[T]] struct {
-	Value S
+	Value S `yaml:",inline"`
 }
 
 // DeepCopy creates a copy of the wrapped proto.Message.
