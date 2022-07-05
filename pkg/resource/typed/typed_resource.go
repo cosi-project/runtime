@@ -53,9 +53,12 @@ func (t *Resource[T, RD]) DeepCopy() resource.Resource { //nolint:ireturn
 
 // ResourceDefinition implements spec.ResourceDefinitionProvider interface.
 func (t *Resource[T, RD]) ResourceDefinition() spec.ResourceDefinitionSpec {
-	var zero RD
+	var (
+		zero  RD
+		zeroT T
+	)
 
-	return zero.ResourceDefinition(t.md, t.spec)
+	return zero.ResourceDefinition(resource.Metadata{}, zeroT)
 }
 
 // UnmarshalProto implements protobuf.Unmarshaler interface in a generic way.
