@@ -119,14 +119,23 @@ func FromResource(r resource.Resource) (*Resource, error) {
 		}, nil
 	}
 
-	protoMarshaler, ok := r.Spec().(ProtoMarshaler)
-	if !ok {
-		return nil, fmt.Errorf("resource %s doesn't support protobuf marshaling", r)
-	}
+	var protoBytes []byte
 
-	protoBytes, err := protoMarshaler.MarshalProto()
-	if err != nil {
-		return nil, err
+	protoMarshaler, ok := r.Spec().(ProtoMarshaler)
+	if ok {
+		var err error
+
+		protoBytes, err = protoMarshaler.MarshalProto()
+		if err != nil {
+			return nil, err
+		}
+	} else {
+		var err error
+
+		protoBytes, err = dynamicMarshal(r)
+		if err != nil {
+			return nil, err
+		}
 	}
 
 	yamlBytes, err := yaml.Marshal(r.Spec())

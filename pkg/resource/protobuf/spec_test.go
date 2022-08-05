@@ -68,7 +68,14 @@ func TestResourceEquality(t *testing.T) {
 	pR, err := protoR.Marshal()
 	require.NoError(t, err)
 
-	protoR, err = protobuf.Unmarshal(pR)
+	encoded, err := pR.MarshalVT()
+	require.NoError(t, err)
+
+	dst := &v1alpha1.Resource{}
+	err = proto.Unmarshal(encoded, dst)
+	require.NoError(t, err)
+
+	protoR, err = protobuf.Unmarshal(dst)
 	require.NoError(t, err)
 
 	r3, err := protobuf.UnmarshalResource(protoR)
@@ -79,8 +86,60 @@ func TestResourceEquality(t *testing.T) {
 	require.True(t, resource.Equal(r1, r3))
 }
 
+func TestDynamicResourceEquality(t *testing.T) {
+	t.Parallel()
+
+	r1 := typed.NewResource[ReflectSpec, ReflectSpecRD](
+		resource.NewMetadata("default", "reflectResource", "aaa", resource.VersionUndefined),
+		ReflectSpec{"test"})
+
+	// pass r1 through marshal/unmarshal stage, and make sure it's still equal to itself
+	protoR, err := protobuf.FromResource(r1)
+	require.NoError(t, err)
+
+	pR, err := protoR.Marshal()
+	require.NoError(t, err)
+
+	encoded, err := pR.MarshalVT()
+	require.NoError(t, err)
+
+	dst := &v1alpha1.Resource{}
+	err = proto.Unmarshal(encoded, dst)
+	require.NoError(t, err)
+
+	protoR, err = protobuf.Unmarshal(dst)
+	require.NoError(t, err)
+
+	r3, err := protobuf.UnmarshalResource(protoR)
+	require.NoError(t, err)
+
+	require.Equal(t, r1.Spec(), r3.Spec())
+}
+
+type reflectResource = typed.Resource[ReflectSpec, ReflectSpecRD]
+
+type ReflectSpec struct {
+	Var string `protobuf:"1"`
+}
+
+func (t ReflectSpec) DeepCopy() ReflectSpec {
+	return t
+}
+
+type ReflectSpecRD struct{}
+
+func (ReflectSpecRD) ResourceDefinition(md resource.Metadata, spec ReflectSpec) meta.ResourceDefinitionSpec {
+	return meta.ResourceDefinitionSpec{
+		DisplayType: "test definition",
+	}
+}
+
 func init() {
 	if err := protobuf.RegisterResource("testResource", &testResource{}); err != nil {
+		panic(err)
+	}
+
+	if err := protobuf.RegisterDynamic[ReflectSpec]("reflectResource", &reflectResource{}); err != nil {
 		panic(err)
 	}
 }

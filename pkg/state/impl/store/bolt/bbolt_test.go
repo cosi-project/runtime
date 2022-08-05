@@ -20,7 +20,7 @@ import (
 	"github.com/cosi-project/runtime/pkg/state/impl/store/bolt"
 )
 
-func TestBboltStore(t *testing.T) {
+func TestBboltStore(t *testing.T) { //nolint:tparallel
 	t.Parallel()
 
 	require.NoError(t, protobuf.RegisterResource(conformance.PathResourceType, &conformance.PathResource{}))

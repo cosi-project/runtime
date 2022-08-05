@@ -5,7 +5,6 @@
 package protobuf_test
 
 import (
-	"io/ioutil"
 	"net"
 	"os"
 	"testing"
@@ -46,7 +45,7 @@ func TestProtobufConformance(t *testing.T) {
 	suite.SetupRuntime = func() {
 		var err error
 
-		suite.sock, err = ioutil.TempFile("", "api*.sock")
+		suite.sock, err = os.CreateTemp("", "api*.sock")
 		require.NoError(t, err)
 
 		require.NoError(t, os.Remove(suite.sock.Name()))

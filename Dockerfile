@@ -2,16 +2,16 @@
 
 # THIS FILE WAS AUTOMATICALLY GENERATED, PLEASE DO NOT EDIT.
 #
-# Generated on 2022-06-28T16:24:58Z by kres ba905fc-dirty.
+# Generated on 2022-08-05T11:37:28Z by kres latest.
 
 ARG TOOLCHAIN
 
-FROM ghcr.io/siderolabs/ca-certificates:v1.0.0 AS image-ca-certificates
+FROM ghcr.io/siderolabs/ca-certificates:v1.1.0 AS image-ca-certificates
 
-FROM ghcr.io/siderolabs/fhs:v1.0.0 AS image-fhs
+FROM ghcr.io/siderolabs/fhs:v1.1.0 AS image-fhs
 
 # runs markdownlint
-FROM node:18.2.0-alpine AS lint-markdown
+FROM node:18.7.0-alpine AS lint-markdown
 WORKDIR /src
 RUN npm i -g markdownlint-cli@0.31.1
 RUN npm i sentences-per-line@0.2.1
@@ -36,7 +36,8 @@ ENV GO111MODULE on
 ENV CGO_ENABLED 0
 ENV GOPATH /go
 ARG GOLANGCILINT_VERSION
-RUN curl -sfL https://raw.githubusercontent.com/golangci/golangci-lint/${GOLANGCILINT_VERSION}/install.sh | bash -s -- -b /bin ${GOLANGCILINT_VERSION}
+RUN go install github.com/golangci/golangci-lint/cmd/golangci-lint@${GOLANGCILINT_VERSION} \
+	&& mv /go/bin/golangci-lint /bin/golangci-lint
 ARG GOFUMPT_VERSION
 RUN go install mvdan.cc/gofumpt@${GOFUMPT_VERSION} \
 	&& mv /go/bin/gofumpt /bin/gofumpt

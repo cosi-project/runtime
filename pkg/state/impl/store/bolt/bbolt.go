@@ -15,10 +15,11 @@ import (
 // BackingStore implements inmem.BackingStore using BoltDB.
 //
 // Layout of the database:
-//   -> top-level bucket: $namespace
-//	 	-> bucket: $resourceType
-//			-> key: $resourceID
-//			-> value: marshaled resource
+//
+//	  -> top-level bucket: $namespace
+//		 	-> bucket: $resourceType
+//				-> key: $resourceID
+//				-> value: marshaled resource
 type BackingStore struct {
 	db        *bbolt.DB
 	marshaler store.Marshaler

@@ -77,6 +77,7 @@ type jsonResSpec = protobuf.ResourceSpec[v1alpha1.Metadata, *v1alpha1.Metadata]
 type jsonResRD struct{}
 
 // ResourceDefinition ...
+//
 //nolint:unused
 func (jsonResRD) ResourceDefinition(md resource.Metadata, spec jsonResSpec) meta.ResourceDefinitionSpec {
 	return meta.ResourceDefinitionSpec{
