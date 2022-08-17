@@ -28,7 +28,7 @@ type ResourceSpec[T any, S Spec[T]] struct {
 // DeepCopy creates a copy of the wrapped proto.Message.
 func (spec ResourceSpec[T, S]) DeepCopy() ResourceSpec[T, S] {
 	return ResourceSpec[T, S]{
-		Value: proto.Clone(spec.Value).(S), //nolint:forcetypeassert
+		Value: cloneAs[T](spec.Value),
 	}
 }
 
@@ -78,4 +78,10 @@ func NewResourceSpec[T any, S Spec[T]](value S) ResourceSpec[T, S] {
 	return ResourceSpec[T, S]{
 		Value: value,
 	}
+}
+
+func cloneAs[T any, S Spec[T]](v S) S {
+	// remove once Go 1.19.1 is released
+	// fixed in https://go.dev/cl/421755
+	return proto.Clone(v).(S) //nolint:forcetypeassert
 }
