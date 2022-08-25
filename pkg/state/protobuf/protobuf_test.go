@@ -12,6 +12,7 @@ import (
 	"github.com/stretchr/testify/require"
 	"github.com/stretchr/testify/suite"
 	"google.golang.org/grpc"
+	"google.golang.org/grpc/credentials/insecure"
 
 	"github.com/cosi-project/runtime/api/v1alpha1"
 	"github.com/cosi-project/runtime/pkg/resource"
@@ -44,7 +45,7 @@ func TestProtobufConformance(t *testing.T) {
 
 	defer grpcServer.Stop()
 
-	grpcConn, err := grpc.Dial("unix://"+sock.Name(), grpc.WithInsecure()) //nolint:staticcheck
+	grpcConn, err := grpc.Dial("unix://"+sock.Name(), grpc.WithTransportCredentials(insecure.NewCredentials()))
 	require.NoError(t, err)
 
 	defer grpcConn.Close() //nolint:errcheck

@@ -133,7 +133,7 @@ func (st *State) Create(ctx context.Context, resource resource.Resource, opts ..
 }
 
 // Update a resource.
-func (st *State) Update(ctx context.Context, curVersion resource.Version, newResource resource.Resource, opts ...state.UpdateOption) error {
+func (st *State) Update(ctx context.Context, newResource resource.Resource, opts ...state.UpdateOption) error {
 	if err := st.loadStore(ctx); err != nil {
 		return err
 	}
@@ -144,7 +144,7 @@ func (st *State) Update(ctx context.Context, curVersion resource.Version, newRes
 		opt(&options)
 	}
 
-	return st.getCollection(newResource.Metadata().Type()).Update(ctx, curVersion, newResource, &options)
+	return st.getCollection(newResource.Metadata().Type()).Update(ctx, newResource, &options)
 }
 
 // Destroy a resource.

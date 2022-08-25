@@ -82,5 +82,5 @@ func (s sentenceSpec) MarshalProto() ([]byte, error) { return []byte(s.value), n
 // ValueGetSet is a basic building block for IntegerResource and StringResource implementations.
 type ValueGetSet[T any] struct{ value T }
 
-func (s *ValueGetSet[T]) SetValue(t T) { s.value = t }
-func (s ValueGetSet[T]) Value() T      { return s.value } //nolint:ireturn
+func (s *ValueGetSet[T]) SetValue(t T) { s.value = t }    //nolint:revive
+func (s ValueGetSet[T]) Value() T      { return s.value } //nolint:ireturn,revive

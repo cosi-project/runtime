@@ -82,18 +82,9 @@ func (md *Metadata) SetVersion(newVersion Version) {
 	md.ver = newVersion
 }
 
-// BumpVersion increments resource version.
-func (md *Metadata) BumpVersion() {
-	var v uint64
-
-	if md.ver.uint64 == nil {
-		v = uint64(1)
-	} else {
-		v = *md.ver.uint64 + 1
-	}
-
-	md.ver.uint64 = &v
-	md.updated = time.Now()
+// SetUpdated sets the resource update timestamp.
+func (md *Metadata) SetUpdated(t time.Time) {
+	md.updated = t
 }
 
 // Finalizers returns a reference to the finalizers.

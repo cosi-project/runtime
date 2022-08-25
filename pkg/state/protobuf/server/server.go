@@ -133,7 +133,28 @@ func (server *State) Create(ctx context.Context, req *v1alpha1.CreateRequest) (*
 		return nil, err
 	}
 
-	return &v1alpha1.CreateResponse{}, nil
+	marshaled, err := marshalResource(r)
+	if err != nil {
+		return nil, err
+	}
+
+	return &v1alpha1.CreateResponse{
+		Resource: marshaled,
+	}, nil
+}
+
+func marshalResource(r resource.Resource) (*v1alpha1.Resource, error) {
+	pb, err := protobuf.FromResource(r)
+	if err != nil {
+		return nil, err
+	}
+
+	marshaled, err := pb.Marshal()
+	if err != nil {
+		return nil, err
+	}
+
+	return marshaled, nil
 }
 
 // Update a resource.
@@ -152,11 +173,6 @@ func (server *State) Update(ctx context.Context, req *v1alpha1.UpdateRequest) (*
 		return nil, err
 	}
 
-	currentVersion, err := resource.ParseVersion(req.CurrentVersion)
-	if err != nil {
-		return nil, status.Error(codes.InvalidArgument, err.Error())
-	}
-
 	opts := []state.UpdateOption{state.WithUpdateOwner(req.GetOptions().GetOwner())}
 
 	if req.GetOptions().ExpectedPhase == nil {
@@ -172,7 +188,7 @@ func (server *State) Update(ctx context.Context, req *v1alpha1.UpdateRequest) (*
 		opts = append(opts, state.WithExpectedPhase(expectedPhase))
 	}
 
-	err = server.state.Update(ctx, currentVersion, r, opts...)
+	err = server.state.Update(ctx, r, opts...)
 
 	switch {
 	case state.IsNotFoundError(err):
@@ -187,7 +203,14 @@ func (server *State) Update(ctx context.Context, req *v1alpha1.UpdateRequest) (*
 		return nil, err
 	}
 
-	return &v1alpha1.UpdateResponse{}, nil
+	marshaled, err := marshalResource(r)
+	if err != nil {
+		return nil, err
+	}
+
+	return &v1alpha1.UpdateResponse{
+		Resource: marshaled,
+	}, nil
 }
 
 // Destroy a resource.

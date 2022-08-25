@@ -181,12 +181,12 @@ func NewList[T any](list resource.List) List[T] {
 }
 
 // Get returns the item at the given index.
-func (l *List[T]) Get(index int) T { //nolint:ireturn,revive
+func (l *List[T]) Get(index int) T { //nolint:ireturn
 	return l.list.Items[index].(T) //nolint:forcetypeassert
 }
 
 // Len returns the number of items in the list.
-func (l *List[T]) Len() int { //nolint:revive
+func (l *List[T]) Len() int {
 	return len(l.list.Items)
 }
 
@@ -202,7 +202,7 @@ func IteratorFromList[T any](list List[T]) ListIterator[T] {
 }
 
 // Next returns the next element of the iterator.
-func (it *ListIterator[T]) Next() bool { //nolint:revive
+func (it *ListIterator[T]) Next() bool {
 	if it.pos >= it.list.Len() {
 		return false
 	}
@@ -213,6 +213,6 @@ func (it *ListIterator[T]) Next() bool { //nolint:revive
 }
 
 // Value returns the current element of the iterator.
-func (it *ListIterator[T]) Value() T { //nolint:ireturn,revive
+func (it *ListIterator[T]) Value() T { //nolint:ireturn
 	return it.list.Get(it.pos - 1)
 }

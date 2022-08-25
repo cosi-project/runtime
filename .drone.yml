@@ -1,7 +1,7 @@
 ---
 # THIS FILE WAS AUTOMATICALLY GENERATED, PLEASE DO NOT EDIT.
 #
-# Generated on 2022-06-02T13:53:12Z by kres 65530e7.
+# Generated on 2022-08-25T16:48:30Z by kres latest.
 
 kind: pipeline
 type: kubernetes

@@ -512,12 +512,11 @@ func (ctrlAdapter *controllerAdapter) Create(ctx context.Context, r resource.Res
 		return err
 	}
 
-	_, err = ctrlAdapter.adapter.client.Create(ctx, &v1alpha1.RuntimeCreateRequest{
+	resp, err := ctrlAdapter.adapter.client.Create(ctx, &v1alpha1.RuntimeCreateRequest{
 		ControllerToken: ctrlAdapter.token,
 
 		Resource: marshaled,
 	})
-
 	if err != nil {
 		switch status.Code(err) { //nolint:exhaustive
 		case codes.NotFound:
@@ -529,10 +528,10 @@ func (ctrlAdapter *controllerAdapter) Create(ctx context.Context, r resource.Res
 		}
 	}
 
-	return nil
+	return updateResourceMetadata(resp.GetResource(), r)
 }
 
-func (ctrlAdapter *controllerAdapter) Update(ctx context.Context, curVersion resource.Version, newResource resource.Resource) error {
+func (ctrlAdapter *controllerAdapter) Update(ctx context.Context, newResource resource.Resource) error {
 	protoR, err := protobuf.FromResource(newResource)
 	if err != nil {
 		return err
@@ -543,13 +542,11 @@ func (ctrlAdapter *controllerAdapter) Update(ctx context.Context, curVersion res
 		return err
 	}
 
-	_, err = ctrlAdapter.adapter.client.Update(ctx, &v1alpha1.RuntimeUpdateRequest{
+	resp, err := ctrlAdapter.adapter.client.Update(ctx, &v1alpha1.RuntimeUpdateRequest{
 		ControllerToken: ctrlAdapter.token,
 
-		CurrentVersion: curVersion.String(),
-		NewResource:    marshaled,
+		NewResource: marshaled,
 	})
-
 	if err != nil {
 		switch status.Code(err) { //nolint:exhaustive
 		case codes.NotFound:
@@ -561,7 +558,7 @@ func (ctrlAdapter *controllerAdapter) Update(ctx context.Context, curVersion res
 		}
 	}
 
-	return nil
+	return updateResourceMetadata(resp.GetResource(), newResource)
 }
 
 func (ctrlAdapter *controllerAdapter) Modify(ctx context.Context, emptyResource resource.Resource, updateFunc func(resource.Resource) error) error {
@@ -587,8 +584,6 @@ func (ctrlAdapter *controllerAdapter) Modify(ctx context.Context, emptyResource 
 			return err
 		}
 
-		curVersion := current.Metadata().Version()
-
 		newResource := current.DeepCopy()
 
 		if err = updateFunc(newResource); err != nil {
@@ -599,9 +594,7 @@ func (ctrlAdapter *controllerAdapter) Modify(ctx context.Context, emptyResource 
 			return nil
 		}
 
-		newResource.Metadata().BumpVersion()
-
-		err = ctrlAdapter.Update(ctx, curVersion, newResource)
+		err = ctrlAdapter.Update(ctx, newResource)
 		if err == nil {
 			return nil
 		}
@@ -704,4 +697,17 @@ func (ctrlAdapter *controllerAdapter) RemoveFinalizer(ctx context.Context, resou
 	}
 
 	return nil
+}
+
+func updateResourceMetadata(source *v1alpha1.Resource, targetRes resource.Resource) error {
+	version, err := resource.ParseVersion(source.GetMetadata().GetVersion())
+	if err != nil {
+		return err
+	}
+
+	targetRes.Metadata().SetVersion(version)
+
+	targetRes.Metadata().SetUpdated(source.GetMetadata().GetUpdated().AsTime())
+
+	return targetRes.Metadata().SetOwner(source.GetMetadata().GetOwner())
 }

@@ -147,18 +147,15 @@ func (suite *StateSuite) TestCRDWithOwners() {
 	suite.Assert().Equal(resource.String(path2), resource.String(r))
 	suite.Assert().Equal(owner2, r.Metadata().Owner())
 
-	oldVersion := r.Metadata().Version()
-	r.Metadata().BumpVersion()
-
-	err = suite.State.Update(ctx, oldVersion, r)
+	err = suite.State.Update(ctx, r)
 	suite.Assert().Error(err)
 	suite.Assert().True(state.IsConflictError(err))
 
-	err = suite.State.Update(ctx, oldVersion, r, state.WithUpdateOwner(owner1))
+	err = suite.State.Update(ctx, r, state.WithUpdateOwner(owner1))
 	suite.Assert().Error(err)
 	suite.Assert().True(state.IsConflictError(err))
 
-	err = suite.State.Update(ctx, oldVersion, r, state.WithUpdateOwner(owner2))
+	err = suite.State.Update(ctx, r, state.WithUpdateOwner(owner2))
 	suite.Assert().NoError(err)
 
 	_, err = suite.State.Teardown(ctx, path1.Metadata())
@@ -181,11 +178,7 @@ func (suite *StateSuite) TestCRDWithOwners() {
 }
 
 // TestWatchKind verifies WatchKind API.
-//
-//nolint:gocyclo,cyclop
 func (suite *StateSuite) TestWatchKind() {
-	expectedEvents := map[state.Event]struct{}{}
-
 	ns := suite.getNamespace()
 	path1 := NewPathResource(ns, "var/db")
 	path2 := NewPathResource(ns, "var/tmp")
@@ -205,8 +198,6 @@ func (suite *StateSuite) TestWatchKind() {
 	case event := <-ch:
 		suite.Assert().Equal(state.Created, event.Type)
 		suite.Assert().Equal(resource.String(path2), resource.String(event.Resource))
-
-		expectedEvents[event] = struct{}{}
 	case <-time.After(time.Second):
 		suite.FailNow("timed out waiting for event")
 	}
@@ -220,8 +211,6 @@ func (suite *StateSuite) TestWatchKind() {
 		suite.Assert().Equal(state.Updated, event.Type)
 		suite.Assert().Equal(resource.String(path1), resource.String(event.Resource))
 		suite.Assert().Equal(resource.String(path1), resource.String(event.Old))
-
-		expectedEvents[event] = struct{}{}
 	case <-time.After(time.Second):
 		suite.FailNow("timed out waiting for event")
 	}
@@ -230,26 +219,23 @@ func (suite *StateSuite) TestWatchKind() {
 	case event := <-ch:
 		suite.Assert().Equal(state.Destroyed, event.Type)
 		suite.Assert().Equal(resource.String(path1), resource.String(event.Resource))
-
-		expectedEvents[event] = struct{}{}
 	case <-time.After(time.Second):
 		suite.FailNow("timed out waiting for event")
 	}
 
 	oldVersion := path2.Metadata().Version()
-	path2.Metadata().BumpVersion()
 
-	suite.Require().NoError(suite.State.Update(ctx, oldVersion, path2))
+	suite.Require().NoError(suite.State.Update(ctx, path2))
+
+	newVersion := path2.Metadata().Version()
 
 	select {
 	case event := <-ch:
 		suite.Assert().Equal(state.Updated, event.Type)
 		suite.Assert().Equal(resource.String(path2), resource.String(event.Resource))
-		suite.Assert().Equal(path2.Metadata().Version(), event.Resource.Metadata().Version())
+		suite.Assert().Equal(newVersion, event.Resource.Metadata().Version())
 		suite.Assert().Equal(resource.String(path2), resource.String(event.Old))
 		suite.Assert().Equal(oldVersion, event.Old.Metadata().Version())
-
-		expectedEvents[event] = struct{}{}
 	case <-time.After(time.Second):
 		suite.FailNow("timed out waiting for event")
 	}
@@ -272,18 +258,15 @@ func (suite *StateSuite) TestWatchKind() {
 		}
 	}
 
-	oldVersion = path2.Metadata().Version()
-	path2.Metadata().BumpVersion()
+	suite.Require().NoError(suite.State.Update(ctx, path2))
 
-	suite.Require().NoError(suite.State.Update(ctx, oldVersion, path2))
+	newVersion = path2.Metadata().Version()
 
 	select {
 	case event := <-ch:
 		suite.Assert().Equal(state.Updated, event.Type)
 		suite.Assert().Equal(resource.String(path2), resource.String(event.Resource))
-		suite.Assert().Equal(path2.Metadata().Version(), event.Resource.Metadata().Version())
-
-		expectedEvents[event] = struct{}{}
+		suite.Assert().Equal(newVersion, event.Resource.Metadata().Version())
 	case <-time.After(time.Second):
 		suite.FailNow("timed out waiting for event")
 	}
@@ -292,15 +275,55 @@ func (suite *StateSuite) TestWatchKind() {
 	case event := <-chWithBootstrap:
 		suite.Assert().Equal(state.Updated, event.Type)
 		suite.Assert().Equal(resource.String(path2), resource.String(event.Resource))
-		suite.Assert().Equal(path2.Metadata().Version(), event.Resource.Metadata().Version())
+		suite.Assert().Equal(newVersion, event.Resource.Metadata().Version())
 	case <-time.After(time.Second):
 		suite.FailNow("timed out waiting for event")
+	}
+}
+
+// TestWatchKindWithTailEvents verifies WatchKind API with tail events.
+func (suite *StateSuite) TestWatchKindWithTailEvents() {
+	ns := suite.getNamespace()
+	res := NewPathResource(ns, "res/watch-kind-with-tail-events")
+
+	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	defer cancel()
+
+	ch := make(chan state.Event)
+
+	suite.Require().NoError(suite.State.WatchKind(ctx, res.Metadata(), ch))
+
+	suite.Require().NoError(suite.State.Create(ctx, res))
+
+	suite.Require().NoError(suite.State.Update(ctx, res))
+	suite.Require().NoError(suite.State.Update(ctx, res))
+
+	_, err := suite.State.Teardown(ctx, res.Metadata())
+	suite.Require().NoError(err)
+
+	suite.Require().NoError(suite.State.Destroy(ctx, res.Metadata()))
+
+	expectedEvents := map[state.Event]struct{}{}
+
+loop:
+	for {
+		select {
+		case event := <-ch:
+			expectedEvents[event] = struct{}{}
+		case <-time.After(time.Second):
+			break loop
+		}
 	}
 
 	// get event history
 	chWithTail := make(chan state.Event)
 
-	suite.Require().NoError(suite.State.WatchKind(ctx, path1.Metadata(), chWithTail, state.WithKindTailEvents(1000)))
+	err = suite.State.WatchKind(ctx, res.Metadata(), chWithTail, state.WithKindTailEvents(1000))
+	if state.IsUnsupportedError(err) {
+		suite.T().Skip("watch with tail events is not supported by this backend")
+	}
+
+	suite.Require().NoError(err)
 
 	for {
 		if len(expectedEvents) == 0 {
@@ -537,10 +560,13 @@ func (suite *StateSuite) TestWatchFor() {
 
 	wg.Add(1)
 
+	// create a copy for watches to avoid race condition since the metadata gets updated by create/update operations
+	path1MdCopy := path1.Metadata().Copy()
+
 	go func() {
 		defer wg.Done()
 
-		r, err = suite.State.WatchFor(ctx, path1.Metadata(), state.WithEventTypes(state.Created))
+		r, err = suite.State.WatchFor(ctx, path1MdCopy, state.WithEventTypes(state.Created))
 	}()
 
 	suite.Require().NoError(suite.State.Create(ctx, path1))
@@ -548,10 +574,12 @@ func (suite *StateSuite) TestWatchFor() {
 	wg.Wait()
 
 	suite.Require().NoError(err)
+
 	suite.Assert().Equal(r.Metadata().String(), path1.Metadata().String())
 
 	r, err = suite.State.WatchFor(ctx, path1.Metadata(), state.WithFinalizerEmpty())
 	suite.Require().NoError(err)
+
 	suite.Assert().Equal(r.Metadata().String(), path1.Metadata().String())
 
 	wg.Add(1)
@@ -559,7 +587,7 @@ func (suite *StateSuite) TestWatchFor() {
 	go func() {
 		defer wg.Done()
 
-		r, err = suite.State.WatchFor(ctx, path1.Metadata(), state.WithPhases(resource.PhaseTearingDown))
+		r, err = suite.State.WatchFor(ctx, path1MdCopy, state.WithPhases(resource.PhaseTearingDown))
 	}()
 
 	ready, e := suite.State.Teardown(ctx, path1.Metadata())
@@ -576,7 +604,7 @@ func (suite *StateSuite) TestWatchFor() {
 	go func() {
 		defer wg.Done()
 
-		r, err = suite.State.WatchFor(ctx, path1.Metadata(), state.WithEventTypes(state.Destroyed))
+		r, err = suite.State.WatchFor(ctx, path1MdCopy, state.WithEventTypes(state.Destroyed))
 	}()
 
 	suite.Assert().NoError(suite.State.AddFinalizer(ctx, path1.Metadata(), "A"))
@@ -591,8 +619,6 @@ func (suite *StateSuite) TestWatchFor() {
 
 // TestWatch verifies Watch.
 func (suite *StateSuite) TestWatch() {
-	expectedEvents := map[state.Event]struct{}{}
-
 	ns := suite.getNamespace()
 	path1 := NewPathResource(ns, "tmp/two")
 
@@ -617,9 +643,6 @@ func (suite *StateSuite) TestWatch() {
 	case event := <-ch:
 		suite.Assert().Equal(state.Created, event.Type)
 		suite.Assert().Equal(resource.String(path1), resource.String(event.Resource))
-		suite.Assert().Equal(path1.Metadata().Version(), event.Resource.Metadata().Version())
-
-		expectedEvents[event] = struct{}{}
 	case <-time.After(time.Second):
 		suite.FailNow("timed out waiting for event")
 	}
@@ -635,8 +658,6 @@ func (suite *StateSuite) TestWatch() {
 		suite.Assert().Equal(resource.PhaseTearingDown, event.Resource.Metadata().Phase())
 		suite.Assert().Equal(resource.String(path1), resource.String(event.Old))
 		suite.Assert().Equal(resource.PhaseRunning, event.Old.Metadata().Phase())
-
-		expectedEvents[event] = struct{}{}
 	case <-time.After(time.Second):
 		suite.FailNow("timed out waiting for event")
 	}
@@ -647,8 +668,6 @@ func (suite *StateSuite) TestWatch() {
 	case event := <-ch:
 		suite.Assert().Equal(state.Updated, event.Type)
 		suite.Assert().Equal(resource.String(path1), resource.String(event.Resource))
-
-		expectedEvents[event] = struct{}{}
 	case <-time.After(time.Second):
 		suite.FailNow("timed out waiting for event")
 	}
@@ -659,8 +678,6 @@ func (suite *StateSuite) TestWatch() {
 	case event := <-ch:
 		suite.Assert().Equal(state.Updated, event.Type)
 		suite.Assert().Equal(resource.String(path1), resource.String(event.Resource))
-
-		expectedEvents[event] = struct{}{}
 	case <-time.After(time.Second):
 		suite.FailNow("timed out waiting for event")
 	}
@@ -671,16 +688,60 @@ func (suite *StateSuite) TestWatch() {
 	case event := <-ch:
 		suite.Assert().Equal(state.Destroyed, event.Type)
 		suite.Assert().Equal(resource.String(path1), resource.String(event.Resource))
-
-		expectedEvents[event] = struct{}{}
 	case <-time.After(time.Second):
 		suite.FailNow("timed out waiting for event")
+	}
+}
+
+// TestWatchWithTailEvents verifies Watch with tail events option.
+func (suite *StateSuite) TestWatchWithTailEvents() {
+	ns := suite.getNamespace()
+	path1 := NewPathResource(ns, "res/watch-with-tail-events")
+
+	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	defer cancel()
+
+	ch := make(chan state.Event)
+
+	suite.Require().NoError(suite.State.Watch(ctx, path1.Metadata(), ch))
+
+	select {
+	case <-ch: // swallow the initial "destroyed" event
+	case <-time.After(time.Second):
+		suite.FailNow("timed out waiting for event")
+	}
+
+	suite.Require().NoError(suite.State.Create(ctx, path1))
+
+	ready, e := suite.State.Teardown(ctx, path1.Metadata())
+	suite.Require().NoError(e)
+	suite.Assert().True(ready)
+
+	suite.Assert().NoError(suite.State.AddFinalizer(ctx, path1.Metadata(), "A"))
+	suite.Assert().NoError(suite.State.RemoveFinalizer(ctx, path1.Metadata(), "A"))
+	suite.Assert().NoError(suite.State.Destroy(ctx, path1.Metadata()))
+
+	expectedEvents := map[state.Event]struct{}{}
+
+loop:
+	for {
+		select {
+		case event := <-ch:
+			expectedEvents[event] = struct{}{}
+		case <-time.After(5 * time.Second):
+			break loop
+		}
 	}
 
 	// get event history
 	chWithTail := make(chan state.Event)
 
-	suite.Require().NoError(suite.State.Watch(ctx, path1.Metadata(), chWithTail, state.WithTailEvents(1000)))
+	err := suite.State.Watch(ctx, path1.Metadata(), chWithTail, state.WithTailEvents(1000))
+	if state.IsUnsupportedError(err) {
+		suite.T().Skip("watch with tail events is not supported by this backend")
+	}
+
+	suite.Require().NoError(e)
 
 	for {
 		if len(expectedEvents) == 0 {
@@ -745,29 +806,33 @@ func (suite *StateSuite) TestUpdate() {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	err := suite.State.Update(ctx, path1.Metadata().Version(), path1)
+	err := suite.State.Update(ctx, path1)
 	suite.Assert().Error(err)
 	suite.Assert().True(state.IsNotFoundError(err))
 
+	oldVersion := path1.Metadata().Version()
+
 	suite.Require().NoError(suite.State.Create(ctx, path1))
 
-	err = suite.State.Update(ctx, path1.Metadata().Version(), path1)
+	newVersion := path1.Metadata().Version()
+
+	suite.Assert().NotEqual(oldVersion, newVersion)
+
+	path1.Metadata().SetVersion(oldVersion)
+
+	err = suite.State.Update(ctx, path1)
 	suite.Assert().Error(err)
 	suite.Assert().True(state.IsConflictError(err))
 
-	md := path1.Metadata().Copy()
-	md.BumpVersion()
+	path1.Metadata().SetVersion(newVersion.Next())
 
-	suite.Assert().False(md.Version().Equal(path1.Metadata().Version()))
-
-	err = suite.State.Update(ctx, md.Version(), path1)
+	err = suite.State.Update(ctx, path1)
 	suite.Assert().Error(err)
 	suite.Assert().True(state.IsConflictError(err))
 
-	curVersion := path1.Metadata().Version()
-	path1.Metadata().BumpVersion()
+	path1.Metadata().SetVersion(newVersion)
 
-	suite.Assert().NoError(suite.State.Update(ctx, curVersion, path1))
+	suite.Assert().NoError(suite.State.Update(ctx, path1))
 
 	// torn down objects are not updateable
 	_, err = suite.State.Teardown(ctx, path1.Metadata())
@@ -776,16 +841,13 @@ func (suite *StateSuite) TestUpdate() {
 	path1, err = safe.StateGetResource(ctx, suite.State, path1)
 	suite.Require().NoError(err)
 
-	curVersion = path1.Metadata().Version()
-	path1.Metadata().BumpVersion()
-
-	err = suite.State.Update(ctx, curVersion, path1)
+	err = suite.State.Update(ctx, path1)
 	suite.Require().Error(err)
 
 	suite.Assert().True(state.IsPhaseConflictError(err))
 
 	// update with explicit phase
-	err = suite.State.Update(ctx, curVersion, path1, state.WithExpectedPhase(resource.PhaseTearingDown))
+	err = suite.State.Update(ctx, path1, state.WithExpectedPhase(resource.PhaseTearingDown))
 	suite.Require().NoError(err)
 }
 
@@ -829,14 +891,15 @@ func (suite *StateSuite) TestLabels() {
 	suite.Require().NoError(err)
 
 	suite.Require().Equal(2, list.Len())
-	suite.Assert().True(resource.Equal(path1, list.Get(0)))
-	suite.Assert().True(resource.Equal(path2, list.Get(1)))
+
+	suite.Assert().True(resourceEqualIgnoreVersion(path1, list.Get(0)))
+	suite.Assert().True(resourceEqualIgnoreVersion(path2, list.Get(1)))
 
 	list, err = safe.StateList[*PathResource](ctx, suite.State, path1.Metadata(), state.WithLabelQuery(resource.LabelExists("frozen"), resource.LabelEqual("app", "app2")))
 	suite.Require().NoError(err)
 
 	suite.Require().Equal(1, list.Len())
-	suite.Assert().True(resource.Equal(path2, list.Get(0)))
+	suite.Assert().True(resourceEqualIgnoreVersion(path2, list.Get(0)))
 
 	list, err = safe.StateList[*PathResource](ctx, suite.State, path1.Metadata(), state.WithLabelQuery(resource.LabelExists("frozen"), resource.LabelEqual("app", "app3")))
 	suite.Require().NoError(err)
@@ -847,5 +910,15 @@ func (suite *StateSuite) TestLabels() {
 	suite.Require().NoError(err)
 
 	suite.Require().Equal(1, list.Len())
-	suite.Assert().True(resource.Equal(path3, list.Get(0)))
+	suite.Assert().True(resourceEqualIgnoreVersion(path3, list.Get(0)))
+}
+
+func resourceEqualIgnoreVersion(res1, res2 resource.Resource) bool {
+	res1Copy := res1.DeepCopy()
+	res2Copy := res2.DeepCopy()
+
+	res1Copy.Metadata().SetVersion(resource.VersionUndefined)
+	res2Copy.Metadata().SetVersion(resource.VersionUndefined)
+
+	return resource.Equal(res1Copy, res2Copy)
 }

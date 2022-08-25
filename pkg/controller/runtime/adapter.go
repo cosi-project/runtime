@@ -224,13 +224,13 @@ func (adapter *adapter) Create(ctx context.Context, r resource.Resource) error {
 }
 
 // Update implements controller.Runtime interface.
-func (adapter *adapter) Update(ctx context.Context, curVersion resource.Version, newResource resource.Resource) error {
+func (adapter *adapter) Update(ctx context.Context, newResource resource.Resource) error {
 	if !adapter.isOutput(newResource.Metadata().Type()) {
 		return fmt.Errorf("resource %q/%q is not an output for controller %q, create attempted on %q",
 			newResource.Metadata().Namespace(), newResource.Metadata().Type(), adapter.name, newResource.Metadata().ID())
 	}
 
-	return adapter.runtime.state.Update(ctx, curVersion, newResource, state.WithUpdateOwner(adapter.name))
+	return adapter.runtime.state.Update(ctx, newResource, state.WithUpdateOwner(adapter.name))
 }
 
 // Modify implements controller.Runtime interface.

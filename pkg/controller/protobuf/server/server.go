@@ -369,6 +369,8 @@ func (runtime *Runtime) WatchFor(ctx context.Context, req *v1alpha1.RuntimeWatch
 }
 
 // Create a resource.
+//
+//nolint:dupl
 func (runtime *Runtime) Create(ctx context.Context, req *v1alpha1.RuntimeCreateRequest) (*v1alpha1.RuntimeCreateResponse, error) {
 	bridge, err := runtime.getBridge(ctx, req.ControllerToken)
 	if err != nil {
@@ -396,10 +398,19 @@ func (runtime *Runtime) Create(ctx context.Context, req *v1alpha1.RuntimeCreateR
 		return nil, err
 	}
 
-	return &v1alpha1.RuntimeCreateResponse{}, nil
+	marshaled, err := marshalResource(r)
+	if err != nil {
+		return nil, err
+	}
+
+	return &v1alpha1.RuntimeCreateResponse{
+		Resource: marshaled,
+	}, nil
 }
 
 // Update a resource.
+//
+//nolint:dupl
 func (runtime *Runtime) Update(ctx context.Context, req *v1alpha1.RuntimeUpdateRequest) (*v1alpha1.RuntimeUpdateResponse, error) {
 	bridge, err := runtime.getBridge(ctx, req.ControllerToken)
 	if err != nil {
@@ -416,12 +427,7 @@ func (runtime *Runtime) Update(ctx context.Context, req *v1alpha1.RuntimeUpdateR
 		return nil, err
 	}
 
-	currentVersion, err := resource.ParseVersion(req.CurrentVersion)
-	if err != nil {
-		return nil, status.Error(codes.InvalidArgument, err.Error())
-	}
-
-	err = bridge.adapter.Update(ctx, currentVersion, r)
+	err = bridge.adapter.Update(ctx, r)
 
 	switch {
 	case state.IsNotFoundError(err):
@@ -432,7 +438,14 @@ func (runtime *Runtime) Update(ctx context.Context, req *v1alpha1.RuntimeUpdateR
 		return nil, err
 	}
 
-	return &v1alpha1.RuntimeUpdateResponse{}, nil
+	marshaled, err := marshalResource(r)
+	if err != nil {
+		return nil, err
+	}
+
+	return &v1alpha1.RuntimeUpdateResponse{
+		Resource: marshaled,
+	}, nil
 }
 
 // Teardown a resource.
@@ -519,4 +532,18 @@ func (runtime *Runtime) RemoveFinalizer(ctx context.Context, req *v1alpha1.Runti
 	}
 
 	return &v1alpha1.RuntimeRemoveFinalizerResponse{}, nil
+}
+
+func marshalResource(r resource.Resource) (*v1alpha1.Resource, error) {
+	pb, err := protobuf.FromResource(r)
+	if err != nil {
+		return nil, err
+	}
+
+	marshaled, err := pb.Marshal()
+	if err != nil {
+		return nil, err
+	}
+
+	return marshaled, nil
 }

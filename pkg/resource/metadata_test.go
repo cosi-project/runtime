@@ -27,16 +27,16 @@ func TestMetadata(t *testing.T) {
 	assert.Equal(t, resource.VersionUndefined, md.Version())
 	assert.Equal(t, "undefined", md.Version().String())
 
-	md.BumpVersion()
+	md.SetVersion(md.Version().Next())
 	assert.Equal(t, "1", md.Version().String())
 
-	md.BumpVersion()
+	md.SetVersion(md.Version().Next())
 	assert.Equal(t, "2", md.Version().String())
 
 	assert.True(t, md.Equal(md)) //nolint:gocritic
 
 	other := resource.NewMetadata("default", "type", "bbb", resource.VersionUndefined)
-	other.BumpVersion()
+	other.SetVersion(other.Version().Next())
 
 	md.SetVersion(other.Version())
 	assert.Equal(t, "1", md.Version().String())
@@ -67,10 +67,10 @@ func TestMetadata(t *testing.T) {
 	assert.True(t, md.Finalizers().Add("B"))
 	assert.True(t, md.Equal(mdCopy))
 
-	md.BumpVersion()
+	md.SetVersion(md.Version().Next())
 	assert.False(t, md.Equal(mdCopy))
 
-	mdCopy.BumpVersion()
+	mdCopy.SetVersion(mdCopy.Version().Next())
 	assert.True(t, md.Equal(mdCopy))
 
 	md.SetPhase(resource.PhaseTearingDown)
@@ -91,7 +91,7 @@ func TestMetadataMarshalYAML(t *testing.T) {
 	t.Parallel()
 
 	md := resource.NewMetadata("default", "type", "aaa", resource.VersionUndefined)
-	md.BumpVersion()
+	md.SetVersion(md.Version().Next())
 
 	timestamps := fmt.Sprintf("created: %s\nupdated: %s\n", md.Created().Format(time.RFC3339), md.Updated().Format(time.RFC3339))
 
@@ -192,7 +192,7 @@ func TestNewMedataFromProto(t *testing.T) {
 	assert.NoError(t, err)
 
 	other := resource.NewMetadata("default", "type", "aaa", resource.VersionUndefined)
-	other.BumpVersion()
+	other.SetVersion(other.Version().Next())
 
 	assert.NoError(t, other.SetOwner("FooController"))
 	other.Finalizers().Add("resource1")

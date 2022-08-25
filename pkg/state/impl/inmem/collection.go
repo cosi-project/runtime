@@ -8,6 +8,7 @@ import (
 	"context"
 	"sort"
 	"sync"
+	"time"
 
 	"github.com/cosi-project/runtime/pkg/resource"
 	"github.com/cosi-project/runtime/pkg/state"
@@ -106,51 +107,62 @@ func (collection *ResourceCollection) inject(resource resource.Resource) {
 }
 
 // Create a resource.
-func (collection *ResourceCollection) Create(ctx context.Context, resource resource.Resource, owner string) error {
-	resource = resource.DeepCopy()
+func (collection *ResourceCollection) Create(ctx context.Context, res resource.Resource, owner string) error {
+	resCopy := res.DeepCopy()
 
-	if err := resource.Metadata().SetOwner(owner); err != nil {
+	if err := resCopy.Metadata().SetOwner(owner); err != nil {
 		return err
 	}
 
 	collection.mu.Lock()
 	defer collection.mu.Unlock()
 
-	if _, exists := collection.storage[resource.Metadata().ID()]; exists {
-		return ErrAlreadyExists(resource.Metadata())
+	if _, exists := collection.storage[resCopy.Metadata().ID()]; exists {
+		return ErrAlreadyExists(resCopy.Metadata())
 	}
 
+	version, err := resource.ParseVersion("1")
+	if err != nil {
+		return err
+	}
+
+	resCopy.Metadata().SetVersion(version)
+
 	if collection.store != nil {
-		if err := collection.store.Put(ctx, collection.typ, resource); err != nil {
+		if err := collection.store.Put(ctx, collection.typ, resCopy); err != nil {
 			return err
 		}
 	}
 
-	collection.inject(resource)
+	collection.inject(resCopy)
+
+	if err := res.Metadata().SetOwner(owner); err != nil {
+		return err
+	}
+
+	res.Metadata().SetVersion(version)
 
 	return nil
 }
 
 // Update a resource.
-func (collection *ResourceCollection) Update(ctx context.Context, curVersion resource.Version, newResource resource.Resource, options *state.UpdateOptions) error {
-	newResource = newResource.DeepCopy()
-	id := newResource.Metadata().ID()
+func (collection *ResourceCollection) Update(ctx context.Context, newResource resource.Resource, options *state.UpdateOptions) error {
+	newResourceCopy := newResource.DeepCopy()
+	id := newResourceCopy.Metadata().ID()
 
 	collection.mu.Lock()
 	defer collection.mu.Unlock()
 
 	curResource, exists := collection.storage[id]
 	if !exists {
-		return ErrNotFound(newResource.Metadata())
+		return ErrNotFound(newResourceCopy.Metadata())
 	}
 
 	if curResource.Metadata().Owner() != options.Owner {
 		return ErrOwnerConflict(curResource.Metadata(), curResource.Metadata().Owner())
 	}
 
-	if newResource.Metadata().Version().Equal(curVersion) {
-		return ErrUpdateSameVersion(curResource.Metadata(), curVersion)
-	}
+	curVersion := newResourceCopy.Metadata().Version()
 
 	if !curResource.Metadata().Version().Equal(curVersion) {
 		return ErrVersionConflict(curResource.Metadata(), curVersion, curResource.Metadata().Version())
@@ -160,19 +172,28 @@ func (collection *ResourceCollection) Update(ctx context.Context, curVersion res
 		return ErrPhaseConflict(curResource.Metadata(), *options.ExpectedPhase)
 	}
 
+	nextVersion := curVersion.Next()
+	updated := time.Now()
+
+	newResourceCopy.Metadata().SetVersion(nextVersion)
+	newResourceCopy.Metadata().SetUpdated(updated)
+
 	if collection.store != nil {
-		if err := collection.store.Put(ctx, collection.typ, newResource); err != nil {
+		if err := collection.store.Put(ctx, collection.typ, newResourceCopy); err != nil {
 			return err
 		}
 	}
 
-	collection.storage[id] = newResource
+	collection.storage[id] = newResourceCopy
 
 	collection.publish(state.Event{
 		Type:     state.Updated,
-		Resource: newResource,
+		Resource: newResourceCopy,
 		Old:      curResource,
 	})
+
+	newResource.Metadata().SetVersion(nextVersion)
+	newResource.Metadata().SetUpdated(updated)
 
 	return nil
 }

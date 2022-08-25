@@ -63,9 +63,9 @@ func (st *State) Create(ctx context.Context, res resource.Resource, opts ...stat
 //
 // If a resource doesn't exist, error is returned.
 // On update current version of resource `new` in the state should match
-// curVersion, otherwise conflict error is returned.
-func (st *State) Update(ctx context.Context, curVersion resource.Version, newResource resource.Resource, opts ...state.UpdateOption) error {
-	return st.getNamespace(newResource.Metadata().Namespace()).Update(ctx, curVersion, newResource, opts...)
+// the version on the backend, otherwise conflict error is returned.
+func (st *State) Update(ctx context.Context, newResource resource.Resource, opts ...state.UpdateOption) error {
+	return st.getNamespace(newResource.Metadata().Namespace()).Update(ctx, newResource, opts...)
 }
 
 // Destroy a resource.

@@ -146,14 +146,13 @@ func (adapter *Adapter) Create(ctx context.Context, r resource.Resource, opt ...
 		return err
 	}
 
-	_, err = adapter.client.Create(ctx, &v1alpha1.CreateRequest{
+	resp, err := adapter.client.Create(ctx, &v1alpha1.CreateRequest{
 		Resource: marshaled,
 
 		Options: &v1alpha1.CreateOptions{
 			Owner: opts.Owner,
 		},
 	})
-
 	if err != nil {
 		switch status.Code(err) { //nolint:exhaustive
 		case codes.NotFound:
@@ -167,15 +166,15 @@ func (adapter *Adapter) Create(ctx context.Context, r resource.Resource, opt ...
 		}
 	}
 
-	return nil
+	return updateResourceMetadata(resp.GetResource(), r)
 }
 
 // Update a resource.
 //
 // If a resource doesn't exist, error is returned.
 // On update current version of resource `new` in the state should match
-// curVersion, otherwise conflict error is returned.
-func (adapter *Adapter) Update(ctx context.Context, curVersion resource.Version, newResource resource.Resource, opt ...state.UpdateOption) error {
+// the version on the backend, otherwise conflict error is returned.
+func (adapter *Adapter) Update(ctx context.Context, newResource resource.Resource, opt ...state.UpdateOption) error {
 	opts := state.DefaultUpdateOptions()
 
 	for _, o := range opt {
@@ -198,15 +197,13 @@ func (adapter *Adapter) Update(ctx context.Context, curVersion resource.Version,
 		expectedPhase = pointer.To(opts.ExpectedPhase.String())
 	}
 
-	_, err = adapter.client.Update(ctx, &v1alpha1.UpdateRequest{
-		CurrentVersion: curVersion.String(),
-		NewResource:    marshaled,
+	resp, err := adapter.client.Update(ctx, &v1alpha1.UpdateRequest{
+		NewResource: marshaled,
 		Options: &v1alpha1.UpdateOptions{
 			Owner:         opts.Owner,
 			ExpectedPhase: expectedPhase,
 		},
 	})
-
 	if err != nil {
 		switch status.Code(err) { //nolint:exhaustive
 		case codes.NotFound:
@@ -222,7 +219,7 @@ func (adapter *Adapter) Update(ctx context.Context, curVersion resource.Version,
 		}
 	}
 
-	return nil
+	return updateResourceMetadata(resp.GetResource(), newResource)
 }
 
 // Destroy a resource.
@@ -395,4 +392,17 @@ func watchAdapter(ctx context.Context, cli v1alpha1.State_WatchClient, ch chan<-
 			return
 		}
 	}
+}
+
+func updateResourceMetadata(source *v1alpha1.Resource, targetRes resource.Resource) error {
+	version, err := resource.ParseVersion(source.GetMetadata().GetVersion())
+	if err != nil {
+		return err
+	}
+
+	targetRes.Metadata().SetVersion(version)
+
+	targetRes.Metadata().SetUpdated(source.GetMetadata().GetUpdated().AsTime())
+
+	return targetRes.Metadata().SetOwner(source.GetMetadata().GetOwner())
 }

@@ -31,7 +31,6 @@ func NewPathResource(ns resource.Namespace, path string) *PathResource {
 	r := &PathResource{
 		md: resource.NewMetadata(ns, PathResourceType, path, resource.VersionUndefined),
 	}
-	r.md.BumpVersion()
 
 	return r
 }

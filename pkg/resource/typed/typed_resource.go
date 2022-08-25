@@ -83,7 +83,6 @@ func (t *Resource[T, RD]) UnmarshalProto(md *resource.Metadata, protoBytes []byt
 // NewResource initializes and returns a new instance of Resource with typed spec field.
 func NewResource[T DeepCopyable[T], RD ResourceDefinition[T]](md resource.Metadata, spec T) *Resource[T, RD] {
 	result := Resource[T, RD]{md: md, spec: spec}
-	result.md.BumpVersion()
 
 	return &result
 }

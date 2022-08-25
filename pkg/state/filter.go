@@ -110,8 +110,8 @@ func (filter *stateFilter) Create(ctx context.Context, res resource.Resource, op
 //
 // If a resource doesn't exist, error is returned.
 // On update current version of resource `new` in the state should match
-// curVersion, otherwise conflict error is returned.
-func (filter *stateFilter) Update(ctx context.Context, curVersion resource.Version, newResource resource.Resource, opts ...UpdateOption) error {
+// the version on the backend, otherwise conflict error is returned.
+func (filter *stateFilter) Update(ctx context.Context, newResource resource.Resource, opts ...UpdateOption) error {
 	if err := filter.rule(ctx, Access{
 		ResourceNamespace: newResource.Metadata().Namespace(),
 		ResourceType:      newResource.Metadata().Type(),
@@ -122,7 +122,7 @@ func (filter *stateFilter) Update(ctx context.Context, curVersion resource.Versi
 		return err
 	}
 
-	return filter.state.Update(ctx, curVersion, newResource, opts...)
+	return filter.state.Update(ctx, newResource, opts...)
 }
 
 // Destroy a resource.

@@ -22,7 +22,6 @@ func NewResource[T any, S Spec[T], SS SpecPtr[T, S]](md resource.Metadata, value
 		md:    md,
 		value: s,
 	}
-	r.md.BumpVersion()
 
 	return r
 }

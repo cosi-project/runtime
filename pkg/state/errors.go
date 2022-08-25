@@ -11,6 +11,18 @@ import (
 	"github.com/cosi-project/runtime/pkg/resource"
 )
 
+// ErrUnsupported should be implemented by unsupported operation errors.
+type ErrUnsupported interface {
+	UnsupportedError()
+}
+
+// IsUnsupportedError checks if err is unsupported operation.
+func IsUnsupportedError(err error) bool {
+	var i ErrUnsupported
+
+	return errors.As(err, &i)
+}
+
 // ErrNotFound should be implemented by "not found" errors.
 type ErrNotFound interface {
 	NotFoundError()

@@ -52,9 +52,8 @@ func TestTypedResource(t *testing.T) {
 	res := NewTest(md, spec)
 
 	// check that stored metadata is actually valid
-	expectedVersion, err := resource.ParseVersion("1")
+	expectedVersion := resource.VersionUndefined
 
-	asrt.NoError(err)
 	asrt.Equal(res.Metadata().ID(), "aaa")
 	asrt.Equal(res.Metadata().Version(), expectedVersion)
 
