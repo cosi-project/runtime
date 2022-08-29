@@ -209,7 +209,7 @@ steps:
     path: /root/.ssh
   when:
     branch:
-    - master
+    - main
     event:
       exclude:
       - pull_request

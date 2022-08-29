@@ -2,9 +2,9 @@ name: ci
 
 on:
   push:
-    branches: [ master ]
+    branches: [ main ]
   pull_request:
-    branches: [ master ]
+    branches: [ main ]
   workflow_dispatch:
 
 jobs:
@@ -23,7 +23,7 @@ jobs:
       -
         name: Login to GitHub Container Registry
         uses: docker/login-action@v2.0.0
-        if: github.ref == 'refs/heads/master'
+        if: github.ref == 'refs/heads/main'
         with:
           registry: ghcr.io
           username: ${{ github.repository_owner }}
@@ -53,13 +53,13 @@ jobs:
         run: make image-runtime
       -
         name: push-image-runtime
-        if: github.ref == 'refs/heads/master'
+        if: github.ref == 'refs/heads/main'
         env:
           PUSH: "true"
         run: make image-runtime
       -
         name: push-image-runtime-latest
-        if: github.ref == 'refs/heads/master'
+        if: github.ref == 'refs/heads/main'
         env:
           PUSH: "true"
         run: make image-runtime TAG=latest
