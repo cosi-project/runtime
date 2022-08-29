@@ -9,6 +9,7 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/suite"
+	"go.uber.org/goleak"
 
 	"github.com/cosi-project/runtime/pkg/resource"
 	"github.com/cosi-project/runtime/pkg/state"
@@ -24,6 +25,8 @@ func TestInterfaces(t *testing.T) {
 
 func TestLocalConformance(t *testing.T) {
 	t.Parallel()
+
+	defer goleak.VerifyNone(t, goleak.IgnoreCurrent())
 
 	suite.Run(t, &conformance.StateSuite{
 		State:      state.WrapCore(inmem.NewState("default")),
