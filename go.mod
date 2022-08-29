@@ -13,7 +13,7 @@ require (
 	github.com/grpc-ecosystem/grpc-gateway/v2 v2.11.2
 	github.com/hashicorp/go-memdb v1.3.3
 	github.com/siderolabs/go-pointer v1.0.0
-	github.com/siderolabs/protoenc v0.1.3
+	github.com/siderolabs/protoenc v0.1.5
 	github.com/stretchr/testify v1.8.0
 	github.com/talos-systems/go-retry v0.3.1
 	go.etcd.io/bbolt v1.3.6
