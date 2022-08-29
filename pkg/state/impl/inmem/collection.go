@@ -383,8 +383,6 @@ func (collection *ResourceCollection) WatchAll(ctx context.Context, ch chan<- st
 			// while there's no data to consume (pos == e.writePos), wait for Condition variable signal,
 			// then recheck the condition to be true.
 			for pos == collection.writePos {
-				collection.c.Wait()
-
 				select {
 				case <-ctx.Done():
 					collection.mu.Unlock()
@@ -392,6 +390,8 @@ func (collection *ResourceCollection) WatchAll(ctx context.Context, ch chan<- st
 					return
 				default:
 				}
+
+				collection.c.Wait()
 			}
 
 			if collection.writePos-pos >= int64(collection.capacity) {

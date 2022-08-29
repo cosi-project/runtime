@@ -11,6 +11,7 @@ import (
 
 	"github.com/stretchr/testify/require"
 	"github.com/stretchr/testify/suite"
+	"go.uber.org/goleak"
 	"google.golang.org/grpc"
 
 	"github.com/cosi-project/runtime/api/v1alpha1"
@@ -25,6 +26,8 @@ import (
 )
 
 func TestProtobufConformance(t *testing.T) {
+	defer goleak.VerifyNone(t, goleak.IgnoreCurrent())
+
 	sock, err := os.CreateTemp("", "api*.sock")
 	require.NoError(t, err)
 

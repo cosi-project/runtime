@@ -224,6 +224,7 @@ func (server *State) Destroy(ctx context.Context, req *v1alpha1.DestroyRequest) 
 //
 //nolint:gocognit,gocyclo,cyclop
 func (server *State) Watch(req *v1alpha1.WatchRequest, srv v1alpha1.State_WatchServer) error {
+	ctx := srv.Context()
 	ch := make(chan state.Event)
 
 	var err error
@@ -250,7 +251,7 @@ func (server *State) Watch(req *v1alpha1.WatchRequest, srv v1alpha1.State_WatchS
 			opts = append(opts, state.WatchWithLabelQuery(labelOpts...))
 		}
 
-		err = server.state.WatchKind(srv.Context(), resource.NewMetadata(req.Namespace, req.Type, "", resource.VersionUndefined), ch, opts...)
+		err = server.state.WatchKind(ctx, resource.NewMetadata(req.Namespace, req.Type, "", resource.VersionUndefined), ch, opts...)
 	} else {
 		var opts []state.WatchOption
 
@@ -266,7 +267,7 @@ func (server *State) Watch(req *v1alpha1.WatchRequest, srv v1alpha1.State_WatchS
 			return status.Error(codes.Unimplemented, "label query is not implemented for resource watch")
 		}
 
-		err = server.state.Watch(srv.Context(), resource.NewMetadata(req.Namespace, req.Type, req.GetId(), resource.VersionUndefined), ch, opts...)
+		err = server.state.Watch(ctx, resource.NewMetadata(req.Namespace, req.Type, req.GetId(), resource.VersionUndefined), ch, opts...)
 	}
 
 	if err != nil {
@@ -278,7 +279,15 @@ func (server *State) Watch(req *v1alpha1.WatchRequest, srv v1alpha1.State_WatchS
 		return err
 	}
 
-	for event := range ch {
+	for {
+		var event state.Event
+
+		select {
+		case event = <-ch:
+		case <-ctx.Done():
+			return nil
+		}
+
 		protoR, err := protobuf.FromResource(event.Resource)
 		if err != nil {
 			return err
@@ -326,6 +335,4 @@ func (server *State) Watch(req *v1alpha1.WatchRequest, srv v1alpha1.State_WatchS
 			return err
 		}
 	}
-
-	return nil
 }
