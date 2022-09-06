@@ -28,6 +28,8 @@ import (
 	"github.com/cosi-project/runtime/pkg/state"
 )
 
+var _ controller.Engine = (*Adapter)(nil)
+
 // Adapter implement controller.Engine from the gRPC State client.
 type Adapter struct {
 	client RuntimeClient

@@ -20,6 +20,8 @@ import (
 	"github.com/cosi-project/runtime/pkg/state"
 )
 
+var _ controller.Engine = (*Runtime)(nil)
+
 // Runtime implements controller runtime.
 type Runtime struct { //nolint:govet
 	depDB *dependency.Database

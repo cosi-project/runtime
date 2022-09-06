@@ -14,6 +14,8 @@ import (
 	"github.com/cosi-project/runtime/pkg/state/impl/inmem"
 )
 
+var _ inmem.BackingStore = (*NamespacedBackingStore)(nil)
+
 // NamespacedBackingStore implements inmem.BackingStore for a given namespace.
 type NamespacedBackingStore struct {
 	store     *BackingStore

@@ -7,11 +7,9 @@ package runtime_test
 import (
 	"testing"
 
-	"github.com/stretchr/testify/assert"
 	suiterunner "github.com/stretchr/testify/suite"
 	"go.uber.org/goleak"
 
-	"github.com/cosi-project/runtime/pkg/controller"
 	"github.com/cosi-project/runtime/pkg/controller/conformance"
 	"github.com/cosi-project/runtime/pkg/controller/runtime"
 	"github.com/cosi-project/runtime/pkg/logging"
@@ -38,10 +36,4 @@ func TestRuntimeConformance(t *testing.T) {
 	}
 
 	suiterunner.Run(t, suite)
-}
-
-func TestInterface(t *testing.T) {
-	t.Parallel()
-
-	assert.Implements(t, (*controller.Engine)(nil), &runtime.Runtime{})
 }

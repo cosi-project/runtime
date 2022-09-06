@@ -11,19 +11,13 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"google.golang.org/protobuf/proto"
-	timestamppb "google.golang.org/protobuf/types/known/timestamppb"
+	"google.golang.org/protobuf/types/known/timestamppb"
 	"gopkg.in/yaml.v3"
 
 	"github.com/cosi-project/runtime/api/v1alpha1"
 	"github.com/cosi-project/runtime/pkg/resource"
 	"github.com/cosi-project/runtime/pkg/resource/protobuf"
 )
-
-func TestInterfaces(t *testing.T) {
-	t.Parallel()
-
-	assert.Implements(t, (*resource.Resource)(nil), new(protobuf.Resource))
-}
 
 func TestMarshalUnmarshal(t *testing.T) {
 	t.Parallel()

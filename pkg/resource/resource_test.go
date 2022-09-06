@@ -12,13 +12,6 @@ import (
 	"github.com/cosi-project/runtime/pkg/resource"
 )
 
-func TestInterfaces(t *testing.T) {
-	t.Parallel()
-
-	assert.Implements(t, (*resource.Reference)(nil), resource.Metadata{})
-	assert.Implements(t, (*resource.Resource)(nil), new(resource.Tombstone))
-}
-
 func TestIsTombstone(t *testing.T) {
 	t.Parallel()
 

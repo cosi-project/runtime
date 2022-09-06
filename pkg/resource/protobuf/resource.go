@@ -14,6 +14,8 @@ import (
 	"github.com/cosi-project/runtime/pkg/resource"
 )
 
+var _ resource.Resource = (*Resource)(nil)
+
 // Resource which can be marshaled and unmarshaled from protobuf.
 type Resource struct {
 	spec protoSpec

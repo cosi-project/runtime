@@ -6,6 +6,8 @@ package resource
 
 import "fmt"
 
+var _ Resource = (*Tombstone)(nil)
+
 // Tombstone is a resource without a Spec.
 //
 // Tombstones are used to present state of a deleted resource.

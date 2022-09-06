@@ -14,12 +14,6 @@ import (
 	"github.com/cosi-project/runtime/pkg/resource"
 )
 
-func TestAnyInterfaces(t *testing.T) {
-	t.Parallel()
-
-	assert.Implements(t, (*resource.Resource)(nil), new(resource.Any))
-}
-
 type protoSpec struct{}
 
 func (s *protoSpec) GetYaml() []byte {

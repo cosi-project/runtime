@@ -21,6 +21,8 @@ type (
 	Namespace = string
 )
 
+var _ Resource = (*Any)(nil)
+
 // Resource is an abstract resource managed by the state.
 //
 // Resource is uniquely identified by the tuple (Namespace, Type, ID).

@@ -5,17 +5,11 @@
 package controller_test
 
 import (
-	"testing"
-
-	"github.com/stretchr/testify/assert"
-
 	"github.com/cosi-project/runtime/pkg/controller"
 	"github.com/cosi-project/runtime/pkg/state"
 	"github.com/cosi-project/runtime/pkg/state/impl/inmem"
 )
 
-func TestInterface(t *testing.T) {
-	t.Parallel()
-
-	assert.Implements(t, (*controller.Reader)(nil), state.WrapCore(&inmem.State{}))
-}
+// We can move this check to [inmem.State] but it will result in allocation, since Go cannot currently
+// prove that [state.WrapCore] is side-effect free.
+var _ controller.Reader = state.WrapCore(&inmem.State{})

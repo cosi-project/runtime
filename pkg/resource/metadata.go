@@ -13,6 +13,8 @@ import (
 	"gopkg.in/yaml.v3"
 )
 
+var _ Reference = Metadata{}
+
 // Metadata implements resource meta.
 type Metadata struct {
 	created time.Time

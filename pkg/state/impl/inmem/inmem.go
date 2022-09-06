@@ -14,6 +14,8 @@ import (
 	"github.com/cosi-project/runtime/pkg/state"
 )
 
+var _ state.CoreState = &State{}
+
 // State implements state.CoreState.
 type State struct {
 	collections sync.Map

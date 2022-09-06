@@ -16,6 +16,8 @@ import (
 // StateBuilder builds state by namespace.
 type StateBuilder func(resource.Namespace) state.CoreState
 
+var _ state.CoreState = (*State)(nil)
+
 // State implements delegating State for each namespace.
 type State struct {
 	builder StateBuilder

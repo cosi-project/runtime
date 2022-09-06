@@ -20,6 +20,8 @@ import (
 	"github.com/cosi-project/runtime/pkg/state"
 )
 
+var _ state.CoreState = (*Adapter)(nil)
+
 // Adapter implement state.CoreState from the gRPC State client.
 type Adapter struct {
 	client v1alpha1.StateClient

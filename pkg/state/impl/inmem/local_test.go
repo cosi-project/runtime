@@ -7,7 +7,6 @@ package inmem_test
 import (
 	"testing"
 
-	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/suite"
 	"go.uber.org/goleak"
 
@@ -16,12 +15,6 @@ import (
 	"github.com/cosi-project/runtime/pkg/state/conformance"
 	"github.com/cosi-project/runtime/pkg/state/impl/inmem"
 )
-
-func TestInterfaces(t *testing.T) {
-	t.Parallel()
-
-	assert.Implements(t, (*state.CoreState)(nil), new(inmem.State))
-}
 
 func TestLocalConformance(t *testing.T) {
 	t.Parallel()
