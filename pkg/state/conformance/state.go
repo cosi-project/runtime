@@ -6,7 +6,6 @@ package conformance
 
 import (
 	"context"
-	"fmt"
 	"math/rand"
 	"sort"
 	"sync"
@@ -27,27 +26,6 @@ type StateSuite struct {
 	State state.State
 
 	Namespaces []resource.Namespace
-}
-
-// TearDownTest goes through extra create/destroy events to unblock watchers.
-//
-// This is required to unblock inner watch loops in 'inmem' implementation, where waiting
-// on condition variable can't be aborted by context cancellation.
-func (suite *StateSuite) TearDownTest() {
-	ctx := context.Background()
-
-	namespaces := []resource.Namespace{"default"}
-
-	if len(suite.Namespaces) > 0 {
-		namespaces = suite.Namespaces
-	}
-
-	for _, ns := range namespaces {
-		pp := NewPathResource(ns, fmt.Sprintf("cleaner%d", rand.Int63()))
-
-		suite.Require().NoError(suite.State.Create(ctx, pp))
-		suite.Require().NoError(suite.State.Destroy(ctx, pp.Metadata()))
-	}
 }
 
 func (suite *StateSuite) getNamespace() resource.Namespace {

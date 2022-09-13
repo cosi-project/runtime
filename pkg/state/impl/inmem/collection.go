@@ -236,7 +236,7 @@ func (collection *ResourceCollection) Destroy(ctx context.Context, ptr resource.
 
 // Watch for specific resource changes.
 //
-//nolint:gocognit,cyclop
+//nolint:gocognit,cyclop,gocyclo
 func (collection *ResourceCollection) Watch(ctx context.Context, id resource.ID, ch chan<- state.Event, opts ...state.WatchOption) error {
 	var options state.WatchOptions
 
@@ -277,6 +277,15 @@ func (collection *ResourceCollection) Watch(ctx context.Context, id resource.ID,
 	}
 
 	go func() {
+		<-ctx.Done()
+
+		// Lock here ensures that we can only broadcast when "listening" goroutines are waiting on .Wait()
+		collection.mu.Lock()
+		collection.c.Broadcast()
+		collection.mu.Unlock()
+	}()
+
+	go func() {
 		if options.TailEvents <= 0 {
 			select {
 			case <-ctx.Done():
@@ -287,6 +296,14 @@ func (collection *ResourceCollection) Watch(ctx context.Context, id resource.ID,
 
 		for {
 			collection.mu.Lock()
+
+			// Check if context was canceled while we were waiting for lock
+			if ctx.Err() != nil {
+				collection.mu.Unlock()
+
+				return
+			}
+
 			// while there's no data to consume (pos == e.writePos), wait for Condition variable signal,
 			// then recheck the condition to be true.
 			for pos == collection.writePos {
@@ -385,6 +402,15 @@ func (collection *ResourceCollection) WatchAll(ctx context.Context, ch chan<- st
 	}
 
 	go func() {
+		<-ctx.Done()
+
+		// Lock here ensures that we can only broadcast when "listening" goroutines are waiting on .Wait()
+		collection.mu.Lock()
+		collection.c.Broadcast()
+		collection.mu.Unlock()
+	}()
+
+	go func() {
 		// send initial contents if they were captured
 		for _, res := range bootstrapList {
 			select {
@@ -401,6 +427,14 @@ func (collection *ResourceCollection) WatchAll(ctx context.Context, ch chan<- st
 
 		for {
 			collection.mu.Lock()
+
+			// Check if context was canceled while we were waiting for lock
+			if ctx.Err() != nil {
+				collection.mu.Unlock()
+
+				return
+			}
+
 			// while there's no data to consume (pos == e.writePos), wait for Condition variable signal,
 			// then recheck the condition to be true.
 			for pos == collection.writePos {
