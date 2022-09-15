@@ -17,7 +17,7 @@ type ProtobufMarshaler struct{}
 
 // MarshalResource implements Marshaler interface.
 func (ProtobufMarshaler) MarshalResource(r resource.Resource) ([]byte, error) {
-	protoR, err := protobuf.FromResource(r)
+	protoR, err := protobuf.FromResource(r, protobuf.WithoutYAML())
 	if err != nil {
 		return nil, err
 	}

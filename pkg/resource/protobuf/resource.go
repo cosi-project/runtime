@@ -108,8 +108,29 @@ type ProtoUnmarshaler interface {
 	UnmarshalProto([]byte) error
 }
 
+// FromResourceOptions is a set of options for FromResource.
+type FromResourceOptions struct {
+	NoYAML bool
+}
+
+// FromResourceOption is an option for FromResource.
+type FromResourceOption func(*FromResourceOptions)
+
+// WithoutYAML disables YAML spec.
+func WithoutYAML() FromResourceOption {
+	return func(o *FromResourceOptions) {
+		o.NoYAML = true
+	}
+}
+
 // FromResource converts a resource which supports spec protobuf marshaling to protobuf.Resource.
-func FromResource(r resource.Resource) (*Resource, error) {
+func FromResource(r resource.Resource, opts ...FromResourceOption) (*Resource, error) {
+	var options FromResourceOptions
+
+	for _, opt := range opts {
+		opt(&options)
+	}
+
 	if protoR, ok := r.(*Resource); ok {
 		return protoR, nil
 	}
@@ -140,9 +161,15 @@ func FromResource(r resource.Resource) (*Resource, error) {
 		}
 	}
 
-	yamlBytes, err := yaml.Marshal(r.Spec())
-	if err != nil {
-		return nil, err
+	var yamlBytes []byte
+
+	if !options.NoYAML {
+		var err error
+
+		yamlBytes, err = yaml.Marshal(r.Spec())
+		if err != nil {
+			return nil, err
+		}
 	}
 
 	return &Resource{
