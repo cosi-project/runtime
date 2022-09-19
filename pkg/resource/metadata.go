@@ -17,16 +17,17 @@ var _ Reference = Metadata{}
 
 // Metadata implements resource meta.
 type Metadata struct {
-	created time.Time
-	updated time.Time
-	ns      Namespace
-	typ     Type
-	id      ID
-	ver     Version
-	owner   Owner
-	labels  Labels
-	fins    Finalizers
-	phase   Phase
+	created     time.Time
+	updated     time.Time
+	ns          Namespace
+	typ         Type
+	id          ID
+	ver         Version
+	owner       Owner
+	labels      Labels
+	annotations Annotations
+	fins        Finalizers
+	phase       Phase
 }
 
 // NewMetadata builds new metadata.
@@ -99,6 +100,11 @@ func (md *Metadata) Labels() *Labels {
 	return &md.labels
 }
 
+// Annotations returns a reference to the annotations.
+func (md *Metadata) Annotations() *Annotations {
+	return &md.annotations
+}
+
 // Phase returns current resource phase.
 func (md Metadata) Phase() Phase {
 	return md.phase
@@ -134,12 +140,21 @@ func (md Metadata) String() string {
 
 // Equal tests two metadata objects for equality.
 func (md Metadata) Equal(other Metadata) bool {
-	equal := md.ns == other.ns && md.typ == other.typ && md.id == other.id && md.phase == other.phase && md.owner == other.owner && md.ver.Equal(other.ver)
+	equal := md.ns == other.ns &&
+		md.typ == other.typ &&
+		md.id == other.id &&
+		md.phase == other.phase &&
+		md.owner == other.owner &&
+		md.ver.Equal(other.ver)
 	if !equal {
 		return false
 	}
 
 	if !md.labels.Equal(other.labels) {
+		return false
+	}
+
+	if !md.annotations.Equal(other.annotations) {
 		return false
 	}
 
@@ -190,38 +205,8 @@ func (md *Metadata) MarshalYAML() (interface{}, error) {
 		}
 	}
 
-	var labels []*yaml.Node
-
-	if !md.labels.Empty() {
-		labels = []*yaml.Node{
-			{
-				Kind:  yaml.ScalarNode,
-				Value: "labels",
-			},
-			{
-				Kind:    yaml.MappingNode,
-				Content: make([]*yaml.Node, 0, len(md.labels.m)),
-			},
-		}
-
-		keys := make([]string, 0, len(md.labels.m))
-
-		for k := range md.labels.m {
-			keys = append(keys, k)
-		}
-
-		sort.Strings(keys)
-
-		for _, k := range keys {
-			labels[1].Content = append(labels[1].Content, &yaml.Node{
-				Kind:  yaml.ScalarNode,
-				Value: k,
-			}, &yaml.Node{
-				Kind:  yaml.ScalarNode,
-				Value: md.labels.m[k],
-			})
-		}
-	}
+	labels := md.labels.ToYAML("labels")
+	annotations := md.annotations.ToYAML("annotations")
 
 	return &yaml.Node{
 		Kind: yaml.MappingNode,
@@ -292,12 +277,12 @@ func (md *Metadata) MarshalYAML() (interface{}, error) {
 					Value: md.updated.Format(time.RFC3339),
 				},
 			},
-			append(labels, finalizers...)...),
+			append(append(labels, annotations...), finalizers...)...),
 	}, nil
 }
 
 // MetadataProto is an interface for protobuf serialization of Metadata.
-type MetadataProto interface {
+type MetadataProto interface { //nolint:interfacebloat
 	GetNamespace() string
 	GetType() string
 	GetId() string
@@ -307,6 +292,7 @@ type MetadataProto interface {
 	GetFinalizers() []string
 	GetCreated() *timestamp.Timestamp
 	GetUpdated() *timestamp.Timestamp
+	GetAnnotations() map[string]string
 	GetLabels() map[string]string
 }
 
@@ -333,6 +319,10 @@ func NewMetadataFromProto(proto MetadataProto) (Metadata, error) {
 
 	for _, fin := range proto.GetFinalizers() {
 		md.Finalizers().Add(fin)
+	}
+
+	for k, v := range proto.GetAnnotations() {
+		md.Annotations().Set(k, v)
 	}
 
 	for k, v := range proto.GetLabels() {

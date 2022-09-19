@@ -20,6 +20,9 @@ func TestProtobufMarshaler(t *testing.T) {
 	require.NoError(t, protobuf.RegisterResource(conformance.PathResourceType, &conformance.PathResource{}))
 
 	path := conformance.NewPathResource("default", "var/run")
+	path.Metadata().Labels().Set("app", "foo")
+	path.Metadata().Annotations().Set("ttl", "1h")
+	path.Metadata().Finalizers().Add("controller1")
 
 	marshaler := store.ProtobufMarshaler{}
 

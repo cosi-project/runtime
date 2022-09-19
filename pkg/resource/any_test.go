@@ -48,6 +48,8 @@ metadata:
     labels:
         app: foo
         stage: initial
+    annotations:
+        ttl: 1h
     finalizers:
         - resource1
         - resource2

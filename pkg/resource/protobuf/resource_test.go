@@ -36,6 +36,9 @@ func TestMarshalUnmarshal(t *testing.T) {
 			Created:    timestamppb.New(created),
 			Updated:    timestamppb.New(updated),
 			Finalizers: []string{"a1", "a2"},
+			Annotations: map[string]string{
+				"ttl": "1h",
+			},
 			Labels: map[string]string{
 				"app":   "foo",
 				"stage": "initial",
@@ -80,6 +83,8 @@ func TestMarshalUnmarshal(t *testing.T) {
     labels:
         app: foo
         stage: initial
+    annotations:
+        ttl: 1h
     finalizers:
         - a1
         - a2

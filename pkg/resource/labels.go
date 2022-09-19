@@ -4,116 +4,44 @@
 
 package resource
 
-import "fmt"
+import (
+	"fmt"
+
+	"github.com/cosi-project/runtime/pkg/resource/internal/kv"
+)
 
 // Labels is a set free-form of key-value pairs.
 //
 // Order of keys is not guaranteed.
+//
+// Labels support copy-on-write semantics, so metadata copies share common labels as long as possible.
+// Labels support querying with LabelTerm.
 type Labels struct {
-	m map[string]string
+	kv.KV
 }
 
-// Delete the label.
-//
-// Deleting the label copies the map, so metadata copies share common labels as long as possible.
-func (labels *Labels) Delete(key string) {
-	if _, ok := labels.m[key]; !ok {
-		// no change
-		return
-	}
-
-	labelsCopy := make(map[string]string, len(labels.m))
-
-	for k, v := range labels.m {
-		labelsCopy[k] = v
-	}
-
-	labels.m = labelsCopy
-
-	delete(labels.m, key)
-}
-
-// Set the label.
-//
-// Setting the label copies the map, so metadata copies share common labels as long as possible.
-func (labels *Labels) Set(key, value string) {
-	if labels.m == nil {
-		labels.m = make(map[string]string)
-	} else {
-		v, ok := labels.m[key]
-		if ok && v == value {
-			// no change
-			return
-		}
-
-		labelsCopy := make(map[string]string, len(labels.m))
-
-		for k, v := range labels.m {
-			labelsCopy[k] = v
-		}
-
-		labels.m = labelsCopy
-	}
-
-	labels.m[key] = value
-}
-
-// Get the label.
-func (labels *Labels) Get(key string) (string, bool) {
-	value, ok := labels.m[key]
-
-	return value, ok
-}
-
-// Raw returns the labels map.
-//
-// Label map should not be modified outside of the call.
-func (labels *Labels) Raw() map[string]string {
-	return labels.m
-}
-
-// Equal checks label for equality.
+// Equal checks labels for equality.
 func (labels Labels) Equal(other Labels) bool {
-	// shortcut for common case of having no labels
-	if labels.m == nil && other.m == nil {
-		return true
-	}
-
-	if len(labels.m) != len(other.m) {
-		return false
-	}
-
-	for k, v := range labels.m {
-		if v != other.m[k] {
-			return false
-		}
-	}
-
-	return true
-}
-
-// Empty if there are no labels.
-func (labels Labels) Empty() bool {
-	return len(labels.m) == 0
+	return labels.KV.Equal(other.KV)
 }
 
 // Matches if labels match the LabelTerm.
 func (labels Labels) Matches(term LabelTerm) bool {
-	if labels.m == nil {
+	if labels.KV.Empty() {
 		return term.Op == LabelOpNotExists
 	}
 
 	switch term.Op {
 	case LabelOpNotExists:
-		_, ok := labels.m[term.Key]
+		_, ok := labels.Get(term.Key)
 
 		return !ok
 	case LabelOpExists:
-		_, ok := labels.m[term.Key]
+		_, ok := labels.Get(term.Key)
 
 		return ok
 	case LabelOpEqual:
-		value, ok := labels.m[term.Key]
+		value, ok := labels.Get(term.Key)
 
 		if !ok {
 			return false

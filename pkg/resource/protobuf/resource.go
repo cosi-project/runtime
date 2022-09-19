@@ -70,16 +70,17 @@ func (r *Resource) DeepCopy() resource.Resource { //nolint:ireturn
 func (r *Resource) Marshal() (*v1alpha1.Resource, error) {
 	return &v1alpha1.Resource{
 		Metadata: &v1alpha1.Metadata{
-			Namespace:  r.md.Namespace(),
-			Type:       r.md.Type(),
-			Id:         r.md.ID(),
-			Version:    r.md.Version().String(),
-			Owner:      r.md.Owner(),
-			Phase:      r.md.Phase().String(),
-			Created:    timestamppb.New(r.md.Created()),
-			Updated:    timestamppb.New(r.md.Updated()),
-			Finalizers: *r.md.Finalizers(),
-			Labels:     r.md.Labels().Raw(),
+			Namespace:   r.md.Namespace(),
+			Type:        r.md.Type(),
+			Id:          r.md.ID(),
+			Version:     r.md.Version().String(),
+			Owner:       r.md.Owner(),
+			Phase:       r.md.Phase().String(),
+			Created:     timestamppb.New(r.md.Created()),
+			Updated:     timestamppb.New(r.md.Updated()),
+			Finalizers:  *r.md.Finalizers(),
+			Annotations: r.md.Annotations().Raw(),
+			Labels:      r.md.Labels().Raw(),
 		},
 		Spec: &v1alpha1.Spec{
 			ProtoSpec: r.spec.protobuf,

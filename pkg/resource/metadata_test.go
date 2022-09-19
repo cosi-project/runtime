@@ -85,6 +85,16 @@ func TestMetadata(t *testing.T) {
 
 	md.Labels().Set("a", "b")
 	assert.True(t, md.Equal(mdCopy))
+
+	mdCopy = md.Copy()
+
+	assert.True(t, md.Equal(mdCopy))
+
+	mdCopy.Annotations().Set("a", "b")
+	assert.False(t, md.Equal(mdCopy))
+
+	md.Annotations().Set("a", "b")
+	assert.True(t, md.Equal(mdCopy))
 }
 
 func TestMetadataMarshalYAML(t *testing.T) {
@@ -140,6 +150,28 @@ finalizers:
     - '"resource1'
     - resource2
 `, string(out))
+
+	md.Annotations().Set("dependencies", "abcdef")
+	md.Annotations().Set("ttl", "1h")
+
+	out, err = yaml.Marshal(&md)
+	assert.NoError(t, err)
+	assert.Equal(t, `namespace: default
+type: type
+id: aaa
+version: 1
+owner: FooController
+phase: running
+`+timestamps+`labels:
+    app: foo
+    stage: initial
+annotations:
+    dependencies: abcdef
+    ttl: 1h
+finalizers:
+    - '"resource1'
+    - resource2
+`, string(out))
 }
 
 var ts, _ = time.Parse(time.RFC3339, "2021-06-23T19:22:29Z")
@@ -183,6 +215,10 @@ func (p *protoMd) GetUpdated() *timestamp.Timestamp {
 	return timestamppb.New(ts)
 }
 
+func (p *protoMd) GetAnnotations() map[string]string {
+	return map[string]string{"ttl": "1h"}
+}
+
 func (p *protoMd) GetLabels() map[string]string {
 	return map[string]string{"stage": "initial", "app": "foo"}
 }
@@ -197,6 +233,8 @@ func TestNewMedataFromProto(t *testing.T) {
 	assert.NoError(t, other.SetOwner("FooController"))
 	other.Finalizers().Add("resource1")
 	other.Finalizers().Add("resource2")
+
+	other.Annotations().Set("ttl", "1h")
 
 	other.Labels().Set("stage", "initial")
 	other.Labels().Set("app", "foo")

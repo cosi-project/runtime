@@ -2,18 +2,18 @@
 
 # THIS FILE WAS AUTOMATICALLY GENERATED, PLEASE DO NOT EDIT.
 #
-# Generated on 2022-08-26T08:13:01Z by kres latest.
+# Generated on 2022-09-19T12:00:34Z by kres 2e9342e.
 
 ARG TOOLCHAIN
 
-FROM ghcr.io/siderolabs/ca-certificates:v1.1.0 AS image-ca-certificates
+FROM ghcr.io/siderolabs/ca-certificates:v1.2.0 AS image-ca-certificates
 
-FROM ghcr.io/siderolabs/fhs:v1.1.0 AS image-fhs
+FROM ghcr.io/siderolabs/fhs:v1.2.0 AS image-fhs
 
 # runs markdownlint
-FROM node:18.7.0-alpine AS lint-markdown
+FROM docker.io/node:18.9.0-alpine3.16 AS lint-markdown
 WORKDIR /src
-RUN npm i -g markdownlint-cli@0.31.1
+RUN npm i -g markdownlint-cli@0.32.2
 RUN npm i sentences-per-line@0.2.1
 COPY .markdownlint.json .
 COPY ./README.md ./README.md
@@ -21,17 +21,17 @@ RUN markdownlint --ignore "CHANGELOG.md" --ignore "**/node_modules/**" --ignore 
 
 # collects proto specs
 FROM scratch AS proto-specs
-ADD https://raw.githubusercontent.com/cosi-project/specification/80fd72f766d949f0ecb9753e739fc625d83af5c8/proto/v1alpha1/resource.proto /api/v1alpha1/
-ADD https://raw.githubusercontent.com/cosi-project/specification/80fd72f766d949f0ecb9753e739fc625d83af5c8/proto/v1alpha1/state.proto /api/v1alpha1/
-ADD https://raw.githubusercontent.com/cosi-project/specification/80fd72f766d949f0ecb9753e739fc625d83af5c8/proto/v1alpha1/runtime.proto /api/v1alpha1/
-ADD https://raw.githubusercontent.com/cosi-project/specification/80fd72f766d949f0ecb9753e739fc625d83af5c8/proto/v1alpha1/meta.proto /api/v1alpha1/
+ADD https://raw.githubusercontent.com/cosi-project/specification/c0f4e7ba6f9a4c7b857b7d110bff3dc5d523cacf/proto/v1alpha1/resource.proto /api/v1alpha1/
+ADD https://raw.githubusercontent.com/cosi-project/specification/c0f4e7ba6f9a4c7b857b7d110bff3dc5d523cacf/proto/v1alpha1/state.proto /api/v1alpha1/
+ADD https://raw.githubusercontent.com/cosi-project/specification/c0f4e7ba6f9a4c7b857b7d110bff3dc5d523cacf/proto/v1alpha1/runtime.proto /api/v1alpha1/
+ADD https://raw.githubusercontent.com/cosi-project/specification/c0f4e7ba6f9a4c7b857b7d110bff3dc5d523cacf/proto/v1alpha1/meta.proto /api/v1alpha1/
 
 # base toolchain image
 FROM ${TOOLCHAIN} AS toolchain
 RUN apk --update --no-cache add bash curl build-base protoc protobuf-dev
 
 # build tools
-FROM toolchain AS tools
+FROM --platform=${BUILDPLATFORM} toolchain AS tools
 ENV GO111MODULE on
 ENV CGO_ENABLED 0
 ENV GOPATH /go
