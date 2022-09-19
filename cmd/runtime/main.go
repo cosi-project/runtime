@@ -48,17 +48,8 @@ func run() error {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	go func() {
-		defer cancel()
-
-		sigCh := make(chan os.Signal, 1)
-		signal.Notify(sigCh, syscall.SIGTERM, os.Interrupt)
-
-		select {
-		case <-sigCh:
-		case <-ctx.Done():
-		}
-	}()
+	ctx, cancel = signal.NotifyContext(ctx, syscall.SIGTERM, os.Interrupt)
+	defer cancel()
 
 	var (
 		network = "unix"
