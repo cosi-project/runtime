@@ -20,6 +20,7 @@ import (
 	"github.com/cosi-project/runtime/pkg/state/impl/namespaced"
 	"github.com/cosi-project/runtime/pkg/state/impl/store"
 	"github.com/cosi-project/runtime/pkg/state/impl/store/bolt"
+	"github.com/cosi-project/runtime/pkg/state/impl/store/encryption"
 )
 
 func TestBboltConformance(t *testing.T) {
@@ -27,9 +28,16 @@ func TestBboltConformance(t *testing.T) {
 
 	tmpDir := t.TempDir()
 
-	marshaler := store.ProtobufMarshaler{}
+	marshaler := encryption.NewMarshaler(
+		store.ProtobufMarshaler{},
+		encryption.NewCipher(
+			encryption.KeyProviderFunc(func() ([]byte, error) {
+				return []byte("this key len is exactly 32 bytes"), nil
+			}),
+		),
+	)
 
-	store, err := bolt.NewBackingStore(
+	backingStore, err := bolt.NewBackingStore(
 		func() (*bbolt.DB, error) {
 			return bbolt.Open(filepath.Join(tmpDir, "test.db"), 0o600, nil)
 		},
@@ -38,14 +46,14 @@ func TestBboltConformance(t *testing.T) {
 	require.NoError(t, err)
 
 	t.Cleanup(func() {
-		assert.NoError(t, store.Close())
+		assert.NoError(t, backingStore.Close())
 	})
 
 	suite.Run(t, &conformance.StateSuite{
 		State: state.WrapCore(namespaced.NewState(
 			func(ns resource.Namespace) state.CoreState {
 				return inmem.NewStateWithOptions(
-					inmem.WithBackingStore(store.WithNamespace(ns)),
+					inmem.WithBackingStore(backingStore.WithNamespace(ns)),
 				)(ns)
 			},
 		)),
