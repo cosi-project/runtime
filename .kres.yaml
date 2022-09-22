@@ -21,3 +21,7 @@ spec:
       subdirectory: v1alpha1/
       genGateway: true
       external: false
+    - source: api/key_storage/key_storage.proto
+      subdirectory: key_storage/
+      genGateway: false
+      external: false

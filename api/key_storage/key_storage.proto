@@ -1,0 +1,30 @@
+syntax = "proto3";
+
+package cosi.internal.key_storage;
+
+option go_package = "github.com/cosi-project/runtime/api/key_storage";
+
+// Storage is a main storage for keys in memory and in db.
+message Storage {
+  StorageVersion storage_version = 1;
+  map<string, KeySlot> key_slots = 2;
+  bytes keys_hmac_hash = 3;
+}
+
+// KeySlot is a single key slot in KeyStorage.
+message KeySlot {
+  Algorithm algorithm = 1;
+  bytes encrypted_key = 2;
+}
+
+// StorageVersion is a version of KeyStorage.
+enum StorageVersion {
+  STORAGE_VERSION_UNSPECIFIED = 0;
+  STORAGE_VERSION_1 = 1;
+}
+
+// Algorithm is an algorithm used for encryption.
+enum Algorithm {
+  UNKNOWN = 0;
+  PGP_AES_GCM_256 = 1; // PGP encrypted AES-256-GCM key
+}

@@ -2,7 +2,7 @@
 
 # THIS FILE WAS AUTOMATICALLY GENERATED, PLEASE DO NOT EDIT.
 #
-# Generated on 2022-09-19T12:00:34Z by kres 2e9342e.
+# Generated on 2022-09-22T11:59:07Z by kres latest.
 
 ARG TOOLCHAIN
 
@@ -25,6 +25,7 @@ ADD https://raw.githubusercontent.com/cosi-project/specification/c0f4e7ba6f9a4c7
 ADD https://raw.githubusercontent.com/cosi-project/specification/c0f4e7ba6f9a4c7b857b7d110bff3dc5d523cacf/proto/v1alpha1/state.proto /api/v1alpha1/
 ADD https://raw.githubusercontent.com/cosi-project/specification/c0f4e7ba6f9a4c7b857b7d110bff3dc5d523cacf/proto/v1alpha1/runtime.proto /api/v1alpha1/
 ADD https://raw.githubusercontent.com/cosi-project/specification/c0f4e7ba6f9a4c7b857b7d110bff3dc5d523cacf/proto/v1alpha1/meta.proto /api/v1alpha1/
+ADD api/key_storage/key_storage.proto /api/key_storage/
 
 # base toolchain image
 FROM ${TOOLCHAIN} AS toolchain
@@ -76,10 +77,12 @@ RUN --mount=type=cache,target=/go/pkg go list -mod=readonly all >/dev/null
 FROM tools AS proto-compile
 COPY --from=proto-specs / /
 RUN protoc -I/api --grpc-gateway_out=paths=source_relative:/api --grpc-gateway_opt=generate_unbound_methods=true --go_out=paths=source_relative:/api --go-grpc_out=paths=source_relative:/api --go-vtproto_out=paths=source_relative:/api --go-vtproto_opt=features=marshal+unmarshal+size --experimental_allow_proto3_optional /api/v1alpha1/resource.proto /api/v1alpha1/state.proto /api/v1alpha1/runtime.proto /api/v1alpha1/meta.proto
+RUN protoc -I/api --go_out=paths=source_relative:/api --go-grpc_out=paths=source_relative:/api --go-vtproto_out=paths=source_relative:/api --go-vtproto_opt=features=marshal+unmarshal+size --experimental_allow_proto3_optional /api/key_storage/key_storage.proto
 RUN rm /api/v1alpha1/resource.proto
 RUN rm /api/v1alpha1/state.proto
 RUN rm /api/v1alpha1/runtime.proto
 RUN rm /api/v1alpha1/meta.proto
+RUN rm /api/key_storage/key_storage.proto
 RUN goimports -w -local github.com/cosi-project/runtime /api
 RUN gofumpt -w /api
 
