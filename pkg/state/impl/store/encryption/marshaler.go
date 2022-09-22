@@ -11,7 +11,9 @@ import (
 	"crypto/rand"
 	"fmt"
 	"io"
-	"sync"
+
+	"github.com/siderolabs/gen/pair"
+	"github.com/siderolabs/gen/xsync"
 
 	"github.com/cosi-project/runtime/pkg/resource"
 	"github.com/cosi-project/runtime/pkg/state/impl/store"
@@ -56,7 +58,7 @@ func (m *Marshaler) UnmarshalResource(b []byte) (resource.Resource, error) { //n
 // Cipher provides encryption and decryption.
 type Cipher struct {
 	keyProvider KeyProvider
-	once        Once[cipherData]
+	once        xsync.Once[pair.Pair[cipher.AEAD, error]]
 }
 
 // NewCipher creates new Cipher.
@@ -64,40 +66,35 @@ func NewCipher(provider KeyProvider) *Cipher {
 	return &Cipher{keyProvider: provider}
 }
 
-type cipherData struct {
-	aead cipher.AEAD
-	err  error
-}
-
 func (c *Cipher) init() (cipher.AEAD, error) {
-	res := c.once.Do(func() cipherData {
+	res := c.once.Do(func() pair.Pair[cipher.AEAD, error] {
 		key, err := c.keyProvider.ProvideKey()
 		if err != nil {
-			return cipherData{err: fmt.Errorf("failed to get key: %w", err)}
+			return pair.MakePair[cipher.AEAD, error](nil, fmt.Errorf("failed to provide key: %w", err))
 		}
 
 		if len(key) != 32 {
-			return cipherData{err: fmt.Errorf("key length is not 32 bytes")}
+			return pair.MakePair[cipher.AEAD, error](nil, fmt.Errorf("key length is not 32 bytes"))
 		}
 
 		block, err := aes.NewCipher(key)
 		if err != nil {
-			return cipherData{err: fmt.Errorf("failed to create cipher: %w", err)}
+			return pair.MakePair[cipher.AEAD, error](nil, fmt.Errorf("failed to create cipher: %w", err))
 		}
 
 		aead, err := cipher.NewGCM(block)
 		if err != nil {
-			return cipherData{err: fmt.Errorf("failed to create GCM: %w", err)}
+			return pair.MakePair[cipher.AEAD, error](nil, fmt.Errorf("failed to create GCM: %w", err))
 		}
 
-		return cipherData{aead: aead}
+		return pair.MakePair[cipher.AEAD, error](aead, nil)
 	})
-	if res.err != nil {
-		return nil, res.err
+	if res.F2 != nil {
+		return nil, res.F2
 	}
 
 	// According to https://github.com/golang/go/issues/25882 cipher.AEAD is safe to share between goroutines.
-	return res.aead, nil
+	return res.F1, nil
 }
 
 // Encrypt encrypts data.
@@ -158,19 +155,4 @@ type KeyProviderFunc func() ([]byte, error)
 // ProvideKey implements KeyProvider interface.
 func (f KeyProviderFunc) ProvideKey() ([]byte, error) {
 	return f()
-}
-
-// Once is small wrapper around [sync.Once]. It stores the result inside.
-type Once[T any] struct {
-	val  T
-	once sync.Once
-}
-
-// Do runs the function only once.
-func (o *Once[T]) Do(fn func() T) T {
-	o.once.Do(func() {
-		o.val = fn()
-	})
-
-	return o.val
 }

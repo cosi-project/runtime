@@ -12,6 +12,7 @@ require (
 	github.com/golang/protobuf v1.5.2
 	github.com/grpc-ecosystem/grpc-gateway/v2 v2.11.3
 	github.com/hashicorp/go-memdb v1.3.3
+	github.com/siderolabs/gen v0.2.0
 	github.com/siderolabs/go-pointer v1.0.0
 	github.com/siderolabs/protoenc v0.2.0
 	github.com/stretchr/testify v1.8.0
