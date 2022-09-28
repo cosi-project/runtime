@@ -9,6 +9,7 @@ import (
 	"math/rand"
 	"testing"
 
+	"github.com/siderolabs/gen/xerrors"
 	"github.com/stretchr/testify/require"
 
 	"github.com/cosi-project/runtime/pkg/keystorage"
@@ -37,8 +38,8 @@ func TestKeyStorage_Initialize(t *testing.T) {
 	}
 
 	tests := map[string]struct {
-		expectedErr string
-		args        args
+		testErr func(*testing.T, error)
+		args    args
 	}{
 		"empty master key": {
 			args: args{
@@ -46,7 +47,7 @@ func TestKeyStorage_Initialize(t *testing.T) {
 				slotID:        slotID,
 				slotPublicKey: "slot-public-key",
 			},
-			expectedErr: "master key can only be 32 bytes long",
+			testErr: regexpTest("master key can only be 32 bytes long"),
 		},
 		"empty slot id": {
 			args: args{
@@ -54,7 +55,7 @@ func TestKeyStorage_Initialize(t *testing.T) {
 				slotID:        "",
 				slotPublicKey: "slot-public-key",
 			},
-			expectedErr: "slot id cannot be empty",
+			testErr: regexpTest("slot id cannot be empty"),
 		},
 		"empty slot public key": {
 			args: args{
@@ -62,7 +63,7 @@ func TestKeyStorage_Initialize(t *testing.T) {
 				slotID:        slotID,
 				slotPublicKey: "",
 			},
-			expectedErr: "slot public key cannot be empty",
+			testErr: regexpTest("slot public key cannot be empty"),
 		},
 		"small public key": {
 			args: args{
@@ -70,7 +71,7 @@ func TestKeyStorage_Initialize(t *testing.T) {
 				slotID:        slotID,
 				slotPublicKey: publicKey[:32],
 			},
-			expectedErr: "failed to encrypt slot 'slot-id'.*",
+			testErr: tagTest[keystorage.KeyEncryptionFailureTag](),
 		},
 		"proper key": {
 			args: args{
@@ -89,10 +90,8 @@ func TestKeyStorage_Initialize(t *testing.T) {
 
 			var ks keystorage.KeyStorage
 
-			if err := ks.Initialize(tt.args.masterKey, tt.args.slotID, tt.args.slotPublicKey); err != nil || tt.expectedErr != "" {
-				require.NotZero(t, tt.expectedErr, "expected matcher for error '%v'", err)
-				require.Error(t, err)
-				require.Regexp(t, tt.expectedErr, err.Error())
+			if err := ks.Initialize(tt.args.masterKey, tt.args.slotID, tt.args.slotPublicKey); err != nil || tt.testErr != nil {
+				tt.testErr(t, err)
 			}
 		})
 	}
@@ -104,7 +103,10 @@ func TestKeyStorage_Inititialize_Complete(t *testing.T) {
 	var ks keystorage.KeyStorage
 
 	require.NoError(t, ks.Initialize([]byte(masterKey), slotID, publicKey))
-	require.EqualError(t, ks.Initialize([]byte(masterKey), slotID, publicKey), "key storage is already initialized")
+
+	err := ks.Initialize([]byte(masterKey), slotID, publicKey)
+
+	require.True(t, xerrors.TagIs[keystorage.AlreadyInitializedTag](err))
 }
 
 func TestMarshalUnmarshal(t *testing.T) {
@@ -138,13 +140,13 @@ func TestKeyStorage_DeleteMasterKeySlot(t *testing.T) {
 
 	// execution order is important here
 	tests := []struct {
-		name        string
-		expectedErr string
-		args        args
+		name    string
+		testErr func(*testing.T, error)
+		args    args
 	}{
 		{
-			name:        "non-existing slot",
-			expectedErr: "slot 'slot-id-3' not found$",
+			name:    "non-existing slot",
+			testErr: tagTest[keystorage.SlotNotFoundTag](),
 			args: args{
 				slotID:         "slot-id-3",
 				slotPrivateKey: privateKey,
@@ -163,7 +165,7 @@ func TestKeyStorage_DeleteMasterKeySlot(t *testing.T) {
 				slotID:         "slot-id",
 				slotPrivateKey: privateKey,
 			},
-			expectedErr: "cannot delete the last key slot$",
+			testErr: tagTest[keystorage.LastKeyTag](),
 		},
 	}
 
@@ -172,12 +174,12 @@ func TestKeyStorage_DeleteMasterKeySlot(t *testing.T) {
 	require.NoError(t, ks.Initialize([]byte(masterKey), slotID, publicKey))
 	require.NoError(t, ks.AddKeySlot("slot-id-2", privateKey, slotID, privateKey))
 
+	require.True(t, xerrors.TagIs[keystorage.SlotAlreadyExists](ks.AddKeySlot("slot-id-2", privateKey, slotID, privateKey)))
+
 	for _, tt := range tests {
 		if !t.Run(tt.name, func(t *testing.T) {
-			if err := ks.DeleteKeySlot(tt.args.slotID, tt.args.slotPrivateKey); err != nil || tt.expectedErr != "" {
-				require.NotZero(t, tt.expectedErr, "expected matcher for error '%v'", err)
-				require.Error(t, err)
-				require.Regexp(t, tt.expectedErr, err.Error())
+			if err := ks.DeleteKeySlot(tt.args.slotID, tt.args.slotPrivateKey); err != nil || tt.testErr != nil {
+				tt.testErr(t, err)
 			}
 		}) {
 			t.FailNow()
@@ -202,7 +204,7 @@ func TestMarshalUnmarshalIncorrectHmac(t *testing.T) {
 	require.NoError(t, newStore.UnmarshalBinary(binary))
 
 	_, err = newStore.GetMasterKey(slotID, privateKey)
-	require.EqualError(t, err, "key storage HMAC mismatch, please verify key storage integrity")
+	require.True(t, xerrors.TagIs[keystorage.HMACMismatchTag](err))
 }
 
 func TestKeyStorage_Get(t *testing.T) {
@@ -213,7 +215,7 @@ func TestKeyStorage_Get(t *testing.T) {
 		var ks keystorage.KeyStorage
 
 		_, err := ks.GetMasterKey(slotID, privateKey)
-		require.EqualError(t, err, "key storage is not initialized, please call Initialize() first")
+		require.True(t, xerrors.TagIs[keystorage.NotInitializedTag](err))
 	})
 	t.Run("slot not found", func(t *testing.T) {
 		t.Parallel()
@@ -223,7 +225,7 @@ func TestKeyStorage_Get(t *testing.T) {
 		require.NoError(t, ks.Initialize([]byte(masterKey), slotID, publicKey))
 
 		_, err := ks.GetMasterKey("slot-id-2", privateKey)
-		require.EqualError(t, err, "slot 'slot-id-2' not found")
+		require.True(t, xerrors.TagIs[keystorage.SlotNotFoundTag](err))
 	})
 }
 
@@ -237,8 +239,8 @@ func TestKeyStorage_Set(t *testing.T) {
 	}
 
 	tests := map[string]struct {
-		args        args
-		expectedErr string
+		testErr func(*testing.T, error)
+		args    args
 	}{
 		"empty slot id": {
 			args: args{
@@ -246,7 +248,7 @@ func TestKeyStorage_Set(t *testing.T) {
 				slotPublicKey: "slot-public-key",
 				newSlotID:     "new-slot-id",
 			},
-			expectedErr: "slot id cannot be empty",
+			testErr: regexpTest("slot id cannot be empty"),
 		},
 		"empty new slot id": {
 			args: args{
@@ -254,7 +256,7 @@ func TestKeyStorage_Set(t *testing.T) {
 				slotPublicKey: "slot-public-key",
 				newSlotID:     "",
 			},
-			expectedErr: "slot id cannot be empty",
+			testErr: regexpTest("slot id cannot be empty"),
 		},
 		"empty slot public key": {
 			args: args{
@@ -262,7 +264,7 @@ func TestKeyStorage_Set(t *testing.T) {
 				slotPublicKey: "",
 				newSlotID:     "new-slot-id",
 			},
-			expectedErr: "slot public key cannot be empty",
+			testErr: regexpTest("slot public key cannot be empty"),
 		},
 		"small public key": {
 			args: args{
@@ -270,7 +272,7 @@ func TestKeyStorage_Set(t *testing.T) {
 				slotPublicKey: publicKey[:32],
 				newSlotID:     "new-slot-id",
 			},
-			expectedErr: "failed to decrypt slot 'slot-id'.*",
+			testErr: tagTest[keystorage.KeyDecryptionFailureTag](),
 		},
 		"proper key": {
 			args: args{
@@ -291,10 +293,9 @@ func TestKeyStorage_Set(t *testing.T) {
 
 			require.NoError(t, ks.Initialize([]byte(masterKey), slotID, publicKey))
 
-			if err := ks.AddKeySlot(tt.args.newSlotID, tt.args.slotPublicKey, tt.args.slotID, tt.args.slotPublicKey); err != nil || tt.expectedErr != "" {
-				require.NotZero(t, tt.expectedErr, "expected matcher for error '%v'", err)
-				require.Error(t, err)
-				require.Regexp(t, tt.expectedErr, err.Error())
+			err := ks.AddKeySlot(tt.args.newSlotID, tt.args.slotPublicKey, tt.args.slotID, tt.args.slotPublicKey)
+			if err != nil || tt.testErr != nil {
+				tt.testErr(t, err)
 			}
 		})
 	}
@@ -313,4 +314,19 @@ func setSlice[T any](s []T, i int, v ...T) {
 	}
 
 	copy(s[i:i+len(v)], v)
+}
+
+func regexpTest(re string) func(t *testing.T, err error) {
+	return func(t *testing.T, err error) {
+		require.Error(t, err)
+		require.NotZero(t, re)
+		require.Regexp(t, re, err.Error())
+	}
+}
+
+func tagTest[T xerrors.Tag]() func(t *testing.T, err error) {
+	return func(t *testing.T, err error) {
+		require.Error(t, err)
+		require.True(t, xerrors.TagIs[T](err))
+	}
 }

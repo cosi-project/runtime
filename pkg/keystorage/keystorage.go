@@ -9,6 +9,7 @@ import (
 	"crypto/hmac"
 	"crypto/sha256"
 	"crypto/subtle"
+	"errors"
 	"fmt"
 	"io"
 	"sort"
@@ -16,6 +17,7 @@ import (
 
 	"github.com/ProtonMail/gopenpgp/v2/helper"
 	"github.com/siderolabs/gen/maps"
+	"github.com/siderolabs/gen/xerrors"
 
 	"github.com/cosi-project/runtime/api/key_storage"
 )
@@ -56,12 +58,12 @@ func (ks *KeyStorage) Initialize(masterKey []byte, slotID, slotPublicKey string)
 	defer ks.mx.Unlock()
 
 	if !isZero(&ks.underlying) {
-		return fmt.Errorf("key storage is already initialized")
+		return xerrors.NewTaggedf[AlreadyInitializedTag]("key storage is already initialized")
 	}
 
 	encryptedSlot, err := helper.EncryptBinaryMessageArmored(slotPublicKey, masterKey)
 	if err != nil {
-		return fmt.Errorf("failed to encrypt slot '%s': %w", slotID, err)
+		return xerrors.NewTaggedf[KeyEncryptionFailureTag]("failed to encrypt slot '%s': %w", slotID, err)
 	}
 
 	ks.underlying.StorageVersion = key_storage.StorageVersion_STORAGE_VERSION_1
@@ -91,7 +93,7 @@ func (ks *KeyStorage) AddKeySlot(newSlotID, newSlotPublicKey, oldSlotID, oldSlot
 	defer ks.mx.Unlock()
 
 	if newSlot := ks.underlying.GetKeySlots()[newSlotID]; newSlot != nil {
-		return fmt.Errorf("new slot '%s' already exists", newSlotID)
+		return xerrors.NewTaggedf[SlotAlreadyExists]("new slot '%s' already exists", newSlotID)
 	}
 
 	masterKey, err := ks.getKey(oldSlotID, oldSlotPrivateKey)
@@ -101,7 +103,7 @@ func (ks *KeyStorage) AddKeySlot(newSlotID, newSlotPublicKey, oldSlotID, oldSlot
 
 	encryptedSlot, err := helper.EncryptBinaryMessageArmored(newSlotPublicKey, masterKey)
 	if err != nil {
-		return fmt.Errorf("failed to encrypt slot '%s': %w", newSlotID, err)
+		return xerrors.NewTaggedf[KeyEncryptionFailureTag]("failed to encrypt slot '%s': %w", newSlotID, err)
 	}
 
 	ks.underlying.GetKeySlots()[newSlotID] = &key_storage.KeySlot{
@@ -130,9 +132,9 @@ func (ks *KeyStorage) DeleteKeySlot(slotID, slotPrivateKey string) error {
 	slots := ks.underlying.GetKeySlots()
 	switch len(slots) {
 	case 0:
-		return fmt.Errorf("key storage is not initialized")
+		return xerrors.NewTagged[NotInitializedTag](errors.New("key storage is not initialized"))
 	case 1:
-		return fmt.Errorf("cannot delete the last key slot")
+		return xerrors.NewTagged[LastKeyTag](errors.New("cannot delete the last key slot"))
 	}
 
 	masterKey, err := ks.getKey(slotID, slotPrivateKey)
@@ -154,23 +156,23 @@ func (ks *KeyStorage) getKey(slotID string, slotPrivateKey string) ([]byte, erro
 	case slotPrivateKey == "":
 		return nil, fmt.Errorf("slot private key cannot be empty")
 	case isZero(&ks.underlying):
-		return nil, fmt.Errorf("key storage is not initialized, please call Initialize() first")
+		return nil, xerrors.NewTagged[NotInitializedTag](errors.New("key storage is not initialized, please call Initialize() first"))
 	case ks.underlying.GetStorageVersion() != key_storage.StorageVersion_STORAGE_VERSION_1:
-		return nil, fmt.Errorf("key storage version mismatch")
+		return nil, xerrors.NewTagged[VersionMismatchTag](errors.New("key storage version mismatch"))
 	}
 
 	slot, ok := ks.underlying.GetKeySlots()[slotID]
 	if !ok {
-		return nil, fmt.Errorf("slot '%s' not found", slotID)
+		return nil, xerrors.NewTaggedf[SlotNotFoundTag]("slot '%s' not found", slotID)
 	}
 
 	if slot.Algorithm != key_storage.Algorithm_PGP_AES_GCM_256 {
-		return nil, fmt.Errorf("slot '%s' algorithm mismatch", slotID)
+		return nil, xerrors.NewTaggedf[AlgorithmMismatchTag]("slot '%s' algorithm mismatch", slotID)
 	}
 
 	masterKey, err := helper.DecryptBinaryMessageArmored(slotPrivateKey, nil, string(slot.EncryptedKey))
 	if err != nil {
-		return nil, fmt.Errorf("failed to decrypt slot '%s': %w", slotID, err)
+		return nil, xerrors.NewTaggedf[KeyDecryptionFailureTag]("failed to decrypt slot '%s': %w", slotID, err)
 	}
 
 	if err := ks.verifyKeySlots(masterKey); err != nil {
@@ -203,7 +205,7 @@ func (ks *KeyStorage) UnmarshalBinary(data []byte) error {
 	}
 
 	if ks.underlying.GetStorageVersion() != key_storage.StorageVersion_STORAGE_VERSION_1 {
-		return fmt.Errorf("key storage version mismatch")
+		return xerrors.NewTaggedf[VersionMismatchTag]("key storage version mismatch")
 	}
 
 	return nil
@@ -211,7 +213,7 @@ func (ks *KeyStorage) UnmarshalBinary(data []byte) error {
 
 func (ks *KeyStorage) verifyKeySlots(masterKey []byte) error {
 	if subtle.ConstantTimeCompare(ks.hashSlots(masterKey), ks.underlying.GetKeysHmacHash()) == 0 {
-		return fmt.Errorf("key storage HMAC mismatch, please verify key storage integrity")
+		return xerrors.NewTaggedf[HMACMismatchTag]("key storage HMAC mismatch, please verify key storage integrity")
 	}
 
 	return nil
@@ -236,3 +238,26 @@ func isZero(underlying *key_storage.Storage) bool {
 		len(underlying.GetKeySlots()) == 0 &&
 		len(underlying.GetKeysHmacHash()) == 0
 }
+
+type (
+	// NotInitializedTag is the error tag returned when the key storage is not initialized.
+	NotInitializedTag struct{}
+	// AlreadyInitializedTag is the error tag returned when the key storage is already initialized.
+	AlreadyInitializedTag struct{}
+	// SlotAlreadyExists is the error tag returned when a key slot already exists.
+	SlotAlreadyExists struct{}
+	// SlotNotFoundTag is the error tag returned when a key slot is not found.
+	SlotNotFoundTag struct{}
+	// VersionMismatchTag is used to indicate that the key storage version mismatch error returned.
+	VersionMismatchTag struct{}
+	// HMACMismatchTag is used to indicate that the mismatch HMAC key storage error returned.
+	HMACMismatchTag struct{}
+	// AlgorithmMismatchTag is used to indicate that the algorithm mismatch error returned.
+	AlgorithmMismatchTag struct{}
+	// KeyDecryptionFailureTag is used to indicate that the master key decryption error returned.
+	KeyDecryptionFailureTag struct{}
+	// KeyEncryptionFailureTag is used to indicate that the master key encryption error returned.
+	KeyEncryptionFailureTag struct{}
+	// LastKeyTag is used to indicate that the last key slot error returned.
+	LastKeyTag struct{}
+)
