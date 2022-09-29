@@ -13,6 +13,7 @@ require (
 	github.com/golang/protobuf v1.5.2
 	github.com/grpc-ecosystem/grpc-gateway/v2 v2.11.3
 	github.com/hashicorp/go-memdb v1.3.3
+	github.com/hashicorp/go-multierror v1.1.1
 	github.com/siderolabs/gen v0.3.0
 	github.com/siderolabs/go-pointer v1.0.0
 	github.com/siderolabs/protoenc v0.2.0
@@ -32,6 +33,7 @@ require (
 	github.com/ProtonMail/go-mime v0.0.0-20220302105931-303f85f7fe0f // indirect
 	github.com/cloudflare/circl v1.1.0 // indirect
 	github.com/davecgh/go-spew v1.1.1 // indirect
+	github.com/hashicorp/errwrap v1.0.0 // indirect
 	github.com/hashicorp/go-immutable-radix v1.3.0 // indirect
 	github.com/hashicorp/go-uuid v1.0.1 // indirect
 	github.com/hashicorp/golang-lru v0.5.4 // indirect
