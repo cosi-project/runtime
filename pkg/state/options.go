@@ -7,15 +7,30 @@ package state
 import "github.com/cosi-project/runtime/pkg/resource"
 
 // GetOptions for the CoreState.Get function.
-type GetOptions struct{}
+type GetOptions struct {
+	UnmarshalOptions UnmarshalOptions
+}
 
 // GetOption builds GetOptions.
 type GetOption func(*GetOptions)
 
+// WithGetUnmarshalOptions sets unmarshal options for Get API.
+func WithGetUnmarshalOptions(opt ...UnmarshalOption) GetOption {
+	return func(opts *GetOptions) {
+		for _, o := range opt {
+			o(&opts.UnmarshalOptions)
+		}
+	}
+}
+
 // ListOptions for the CoreState.List function.
 type ListOptions struct {
-	LabelQuery resource.LabelQuery
+	LabelQuery       resource.LabelQuery
+	UnmarshalOptions UnmarshalOptions
 }
+
+// ListOption builds ListOptions.
+type ListOption func(*ListOptions)
 
 // WithLabelQuery appends a label query to the list options.
 func WithLabelQuery(opt ...resource.LabelQueryOption) ListOption {
@@ -26,8 +41,14 @@ func WithLabelQuery(opt ...resource.LabelQueryOption) ListOption {
 	}
 }
 
-// ListOption builds ListOptions.
-type ListOption func(*ListOptions)
+// WithListUnmarshalOptions sets unmarshal options for List API.
+func WithListUnmarshalOptions(opt ...UnmarshalOption) ListOption {
+	return func(opts *ListOptions) {
+		for _, o := range opt {
+			o(&opts.UnmarshalOptions)
+		}
+	}
+}
 
 // CreateOptions for the CoreState.Create function.
 type CreateOptions struct {
@@ -119,7 +140,8 @@ func WithDestroyOwner(owner string) DestroyOption {
 
 // WatchOptions for the CoreState.Watch function.
 type WatchOptions struct {
-	TailEvents int
+	TailEvents       int
+	UnmarshalOptions UnmarshalOptions
 }
 
 // WatchOption builds WatchOptions.
@@ -132,9 +154,19 @@ func WithTailEvents(n int) WatchOption {
 	}
 }
 
+// WithWatchUnmarshalOptions sets unmarshal options for Watch API.
+func WithWatchUnmarshalOptions(opt ...UnmarshalOption) WatchOption {
+	return func(opts *WatchOptions) {
+		for _, o := range opt {
+			o(&opts.UnmarshalOptions)
+		}
+	}
+}
+
 // WatchKindOptions for the CoreState.WatchKind function.
 type WatchKindOptions struct {
 	LabelQuery        resource.LabelQuery
+	UnmarshalOptions  UnmarshalOptions
 	BootstrapContents bool
 	TailEvents        int
 }
@@ -156,11 +188,37 @@ func WithKindTailEvents(n int) WatchKindOption {
 	}
 }
 
+// WithWatchKindUnmarshalOptions sets unmarshal options for WatchKind API.
+func WithWatchKindUnmarshalOptions(opt ...UnmarshalOption) WatchKindOption {
+	return func(opts *WatchKindOptions) {
+		for _, o := range opt {
+			o(&opts.UnmarshalOptions)
+		}
+	}
+}
+
 // WatchWithLabelQuery appends a label query to the list options.
 func WatchWithLabelQuery(opt ...resource.LabelQueryOption) WatchKindOption {
 	return func(opts *WatchKindOptions) {
 		for _, o := range opt {
 			o(&opts.LabelQuery)
 		}
+	}
+}
+
+// UnmarshalOptions control resources marshaling/unmarshaling.
+type UnmarshalOptions struct {
+	SkipProtobufUnmarshal bool
+}
+
+// UnmarshalOption builds MarshalOptions.
+type UnmarshalOption func(*UnmarshalOptions)
+
+// WithSkipProtobufUnmarshal skips full unmarshaling returning a generic wrapper.
+//
+// This options preservers original YAML representation.
+func WithSkipProtobufUnmarshal() UnmarshalOption {
+	return func(opts *UnmarshalOptions) {
+		opts.SkipProtobufUnmarshal = true
 	}
 }

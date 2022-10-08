@@ -172,10 +172,10 @@ func TestDestroy(t *testing.T) {
 		rtestutils.AssertNoResource[*B](ctx, t, st, "transformed-1")
 		rtestutils.AssertResources(ctx, t, st, []resource.ID{"transformed-2", "transformed-3"}, func(r *B, assert *assert.Assertions) {})
 
-		_, err := st.Teardown(ctx, NewA("3", ASpec{}).Metadata())
+		ready, err := st.Teardown(ctx, NewA("3", ASpec{}).Metadata())
 		require.NoError(t, err)
 
-		rtestutils.AssertResources(ctx, t, st, []resource.ID{"transformed-2", "transformed-3"}, func(r *B, assert *assert.Assertions) {})
+		assert.True(t, ready)
 
 		require.NoError(t, st.Destroy(ctx, NewA("3", ASpec{}).Metadata()))
 

@@ -64,6 +64,10 @@ func (adapter *Adapter) Get(ctx context.Context, resourcePointer resource.Pointe
 		return nil, err
 	}
 
+	if opts.UnmarshalOptions.SkipProtobufUnmarshal {
+		return unmarshaled, nil
+	}
+
 	return protobuf.UnmarshalResource(unmarshaled)
 }
 
@@ -117,6 +121,12 @@ func (adapter *Adapter) List(ctx context.Context, resourceKind resource.Kind, op
 		unmarshaled, err := protobuf.Unmarshal(resp.Resource)
 		if err != nil {
 			return list, err
+		}
+
+		if opts.UnmarshalOptions.SkipProtobufUnmarshal {
+			list.Items = append(list.Items, unmarshaled)
+
+			continue
 		}
 
 		r, err := protobuf.UnmarshalResource(unmarshaled)
@@ -291,7 +301,7 @@ func (adapter *Adapter) Watch(ctx context.Context, resourcePointer resource.Poin
 		return err
 	}
 
-	go watchAdapter(ctx, cli, ch)
+	go watchAdapter(ctx, cli, ch, opts.UnmarshalOptions.SkipProtobufUnmarshal)
 
 	return nil
 }
@@ -334,12 +344,12 @@ func (adapter *Adapter) WatchKind(ctx context.Context, resourceKind resource.Kin
 		return err
 	}
 
-	go watchAdapter(ctx, cli, ch)
+	go watchAdapter(ctx, cli, ch, opts.UnmarshalOptions.SkipProtobufUnmarshal)
 
 	return nil
 }
 
-func watchAdapter(ctx context.Context, cli v1alpha1.State_WatchClient, ch chan<- state.Event) {
+func watchAdapter(ctx context.Context, cli v1alpha1.State_WatchClient, ch chan<- state.Event, skipProtobufUnmarshal bool) {
 	for {
 		msg, err := cli.Recv()
 
@@ -368,10 +378,14 @@ func watchAdapter(ctx context.Context, cli v1alpha1.State_WatchClient, ch chan<-
 			return
 		}
 
-		event.Resource, err = protobuf.UnmarshalResource(unmarshaled)
-		if err != nil {
-			// no way to signal error here?
-			return
+		if skipProtobufUnmarshal {
+			event.Resource = unmarshaled
+		} else {
+			event.Resource, err = protobuf.UnmarshalResource(unmarshaled)
+			if err != nil {
+				// no way to signal error here?
+				return
+			}
 		}
 
 		if msg.Event.Old != nil {
@@ -381,10 +395,14 @@ func watchAdapter(ctx context.Context, cli v1alpha1.State_WatchClient, ch chan<-
 				return
 			}
 
-			event.Old, err = protobuf.UnmarshalResource(unmarshaled)
-			if err != nil {
-				// no way to signal error here?
-				return
+			if skipProtobufUnmarshal {
+				event.Old = unmarshaled
+			} else {
+				event.Old, err = protobuf.UnmarshalResource(unmarshaled)
+				if err != nil {
+					// no way to signal error here?
+					return
+				}
 			}
 		}
 
