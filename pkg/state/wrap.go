@@ -47,12 +47,12 @@ func (state coreWrapper) UpdateWithConflicts(ctx context.Context, resourcePointe
 		}
 
 		if resource.Equal(current, newResource) {
-			return current, nil
+			return newResource, nil
 		}
 
 		err = state.Update(ctx, newResource, opts...)
 		if err == nil {
-			return current, nil
+			return newResource, nil
 		}
 
 		if IsConflictError(err) && !IsOwnerConflictError(err) && !IsPhaseConflictError(err) {

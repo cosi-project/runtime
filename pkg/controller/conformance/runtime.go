@@ -246,12 +246,13 @@ func (suite *RuntimeSuite) TestIntToStrToSentenceControllers() {
 		resource.Resource
 	}
 
-	_, err := safe.StateUpdateWithConflicts[integerResource](suite.ctx, suite.State, one.Metadata(), func(r integerResource) error {
+	eleven, err := safe.StateUpdateWithConflicts[integerResource](suite.ctx, suite.State, one.Metadata(), func(r integerResource) error {
 		r.SetValue(11)
 
 		return nil
 	})
 	suite.Assert().NoError(err)
+	suite.Assert().Equal(11, eleven.Value())
 
 	suite.Assert().NoError(retry.Constant(10*time.Second, retry.WithUnits(10*time.Millisecond)).
 		Retry(suite.assertStrObjects("sentences", SentenceResourceType, []string{"one", "two", "three"}, []string{"11 sentence", "2 sentence", "3 sentence"})))

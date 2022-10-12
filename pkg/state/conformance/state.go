@@ -123,6 +123,31 @@ func (suite *StateSuite) TestCRD() {
 	suite.Require().NoError(suite.State.Create(ctx, path1))
 }
 
+// TestUpdateWithConflicts verifies updates with conflicts.
+func (suite *StateSuite) TestUpdateWithConflicts() {
+	path1 := NewPathResource(suite.getNamespace(), "var/run/update")
+
+	ctx := context.Background()
+
+	suite.Require().NoError(suite.State.Create(ctx, path1))
+
+	updated, err := suite.State.UpdateWithConflicts(ctx, path1.Metadata(), func(r resource.Resource) error {
+		r.Metadata().Labels().Set("foo", "bar")
+
+		return nil
+	})
+	suite.Require().NoError(err)
+
+	// returned resource should have the label set
+	v, ok := updated.Metadata().Labels().Get("foo")
+	suite.Assert().True(ok)
+	suite.Assert().Equal("bar", v)
+
+	// original resource should have no label set
+	_, ok = path1.Metadata().Labels().Get("foo")
+	suite.Assert().False(ok)
+}
+
 // TestCRDWithOwners verifies create, read, update, delete with owners.
 func (suite *StateSuite) TestCRDWithOwners() {
 	path1 := NewPathResource(suite.getNamespace(), "owner1/var/run")
