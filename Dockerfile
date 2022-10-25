@@ -2,7 +2,7 @@
 
 # THIS FILE WAS AUTOMATICALLY GENERATED, PLEASE DO NOT EDIT.
 #
-# Generated on 2022-09-22T11:59:07Z by kres latest.
+# Generated on 2022-10-25T18:27:57Z by kres ef0ba25.
 
 ARG TOOLCHAIN
 
@@ -11,7 +11,7 @@ FROM ghcr.io/siderolabs/ca-certificates:v1.2.0 AS image-ca-certificates
 FROM ghcr.io/siderolabs/fhs:v1.2.0 AS image-fhs
 
 # runs markdownlint
-FROM docker.io/node:18.9.0-alpine3.16 AS lint-markdown
+FROM docker.io/node:18.10.0-alpine3.16 AS lint-markdown
 WORKDIR /src
 RUN npm i -g markdownlint-cli@0.32.2
 RUN npm i sentences-per-line@0.2.1
@@ -34,7 +34,8 @@ RUN apk --update --no-cache add bash curl build-base protoc protobuf-dev
 # build tools
 FROM --platform=${BUILDPLATFORM} toolchain AS tools
 ENV GO111MODULE on
-ENV CGO_ENABLED 0
+ARG CGO_ENABLED
+ENV CGO_ENABLED ${CGO_ENABLED}
 ENV GOPATH /go
 ARG GOLANGCILINT_VERSION
 RUN go install github.com/golangci/golangci-lint/cmd/golangci-lint@${GOLANGCILINT_VERSION} \
@@ -42,6 +43,8 @@ RUN go install github.com/golangci/golangci-lint/cmd/golangci-lint@${GOLANGCILIN
 ARG GOFUMPT_VERSION
 RUN go install mvdan.cc/gofumpt@${GOFUMPT_VERSION} \
 	&& mv /go/bin/gofumpt /bin/gofumpt
+RUN go install golang.org/x/vuln/cmd/govulncheck@latest \
+	&& mv /go/bin/govulncheck /bin/govulncheck
 ARG GOIMPORTS_VERSION
 RUN go install golang.org/x/tools/cmd/goimports@${GOIMPORTS_VERSION} \
 	&& mv /go/bin/goimports /bin/goimports
@@ -100,6 +103,10 @@ COPY .golangci.yml .
 ENV GOGC 50
 RUN --mount=type=cache,target=/root/.cache/go-build --mount=type=cache,target=/root/.cache/golangci-lint --mount=type=cache,target=/go/pkg golangci-lint run --config .golangci.yml
 
+# runs govulncheck
+FROM base AS lint-govulncheck
+RUN --mount=type=cache,target=/root/.cache/go-build --mount=type=cache,target=/go/pkg govulncheck ./...
+
 # runs unit-tests with race detector
 FROM base AS unit-tests-race
 ARG TESTPKGS
@@ -121,7 +128,9 @@ COPY --from=unit-tests-run /src/coverage.txt /coverage.txt
 FROM base AS runtime-linux-amd64-build
 COPY --from=generate / /
 WORKDIR /src/cmd/runtime
-RUN --mount=type=cache,target=/root/.cache/go-build --mount=type=cache,target=/go/pkg go build -ldflags "-s -w" -o /runtime-linux-amd64
+ARG GO_BUILDFLAGS
+ARG GO_LDFLAGS
+RUN --mount=type=cache,target=/root/.cache/go-build --mount=type=cache,target=/go/pkg go build ${GO_BUILDFLAGS} -ldflags "${GO_LDFLAGS}" -o /runtime-linux-amd64
 
 FROM scratch AS runtime-linux-amd64
 COPY --from=runtime-linux-amd64-build /runtime-linux-amd64 /runtime-linux-amd64
