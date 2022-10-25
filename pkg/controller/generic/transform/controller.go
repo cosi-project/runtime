@@ -196,7 +196,7 @@ func (ctrl *Controller[Input, Output]) processInputs(
 	runState *runState,
 	inputMetadata resource.Metadata,
 ) error {
-	inputItems, err := safe.ReaderList[Input](ctx, r, inputMetadata)
+	inputItems, err := safe.ReaderList[Input](ctx, r, inputMetadata, ctrl.options.inputListOptions...)
 	if err != nil {
 		return fmt.Errorf("error listing input resources: %w", err)
 	}

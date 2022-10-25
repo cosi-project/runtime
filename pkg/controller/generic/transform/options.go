@@ -4,16 +4,29 @@
 
 package transform
 
-import "github.com/cosi-project/runtime/pkg/controller"
+import (
+	"github.com/cosi-project/runtime/pkg/controller"
+	"github.com/cosi-project/runtime/pkg/state"
+)
 
 // ControllerOptions configures TransformController.
 type ControllerOptions struct {
-	extraInputs     []controller.Input
-	inputFinalizers bool
+	inputListOptions []state.ListOption
+	extraInputs      []controller.Input
+	inputFinalizers  bool
 }
 
 // ControllerOption is an option for TransformController.
 type ControllerOption func(*ControllerOptions)
+
+// WithInputListOptions adds an filter on input resource list.
+//
+// E.g. query only resources with specific labels.
+func WithInputListOptions(opts ...state.ListOption) ControllerOption {
+	return func(o *ControllerOptions) {
+		o.inputListOptions = append(o.inputListOptions, opts...)
+	}
+}
 
 // WithExtraInputs adds extra inputs to the controller.
 func WithExtraInputs(inputs ...controller.Input) ControllerOption {
