@@ -2,7 +2,7 @@
 
 # THIS FILE WAS AUTOMATICALLY GENERATED, PLEASE DO NOT EDIT.
 #
-# Generated on 2022-10-25T18:27:57Z by kres ef0ba25.
+# Generated on 2022-11-03T10:24:21Z by kres 03328da.
 
 ARG TOOLCHAIN
 
@@ -11,7 +11,7 @@ FROM ghcr.io/siderolabs/ca-certificates:v1.2.0 AS image-ca-certificates
 FROM ghcr.io/siderolabs/fhs:v1.2.0 AS image-fhs
 
 # runs markdownlint
-FROM docker.io/node:18.10.0-alpine3.16 AS lint-markdown
+FROM docker.io/node:19.0.0-alpine3.16 AS lint-markdown
 WORKDIR /src
 RUN npm i -g markdownlint-cli@0.32.2
 RUN npm i sentences-per-line@0.2.1

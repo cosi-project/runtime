@@ -256,6 +256,11 @@ func TestDestroyInputFinalizers(t *testing.T) {
 
 		rtestutils.AssertNoResource[*B](ctx, t, st, "transformed-3")
 
+		// controller should remove finalizer on inputs
+		rtestutils.AssertResources(ctx, t, st, []resource.ID{"3"}, func(r *A, assert *assert.Assertions) {
+			assert.True(r.Metadata().Finalizers().Add("TransformABController"))
+		})
+
 		require.NoError(t, st.Destroy(ctx, NewA("3", ASpec{}).Metadata()))
 
 		// now same flow, but this time add our own finalizer on the output
@@ -279,6 +284,11 @@ func TestDestroyInputFinalizers(t *testing.T) {
 		teardownCh <- struct{}{}
 
 		rtestutils.AssertNoResource[*B](ctx, t, st, "transformed-2")
+
+		// controller should remove finalizer on inputs
+		rtestutils.AssertResources(ctx, t, st, []resource.ID{"2"}, func(r *A, assert *assert.Assertions) {
+			assert.True(r.Metadata().Finalizers().Add("TransformABController"))
+		})
 
 		require.NoError(t, st.Destroy(ctx, NewA("2", ASpec{}).Metadata()))
 	})

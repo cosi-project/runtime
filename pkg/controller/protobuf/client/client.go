@@ -15,7 +15,7 @@ import (
 	"time"
 
 	"github.com/cenkalti/backoff/v4"
-	"github.com/talos-systems/go-retry/retry"
+	"github.com/siderolabs/go-retry/retry"
 	"go.uber.org/zap"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
