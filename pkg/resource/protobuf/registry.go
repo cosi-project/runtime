@@ -6,7 +6,6 @@ package protobuf
 
 import (
 	"fmt"
-	"reflect"
 	"sync"
 
 	"github.com/siderolabs/protoenc"
@@ -16,7 +15,7 @@ import (
 
 // resourceRegistry implements mapping between Resources and their protobuf equivalents.
 type resourceRegistry struct {
-	registry map[resource.Type]ResourceUnmarshaler
+	registry map[resource.Type]func() resource.Resource
 	decoders map[resource.Type]func(*resource.Metadata, []byte) (resource.Resource, error)
 	encoders map[resource.Type]func(resource.Resource) ([]byte, error)
 	mu       sync.Mutex
@@ -33,14 +32,21 @@ func initRegistry() {
 	}
 
 	registry = &resourceRegistry{
-		registry: map[resource.Type]ResourceUnmarshaler{},
-		encoders: map[resource.Type]func(resource.Resource) ([]byte, error){},
+		registry: map[resource.Type]func() resource.Resource{},
 		decoders: map[resource.Type]func(*resource.Metadata, []byte) (resource.Resource, error){},
+		encoders: map[resource.Type]func(resource.Resource) ([]byte, error){},
 	}
 }
 
+// Res is type parameter constraint for RegisterResource.
+type Res[T any] interface {
+	*T
+	ResourceUnmarshaler
+	resource.Resource
+}
+
 // RegisterResource creates a mapping between resource type and its protobuf unmarshaller.
-func RegisterResource(resourceType resource.Type, r ResourceUnmarshaler) error {
+func RegisterResource[T any, R Res[T]](resourceType resource.Type, _ R) error {
 	initOnce.Do(initRegistry)
 
 	registry.mu.Lock()
@@ -54,7 +60,11 @@ func RegisterResource(resourceType resource.Type, r ResourceUnmarshaler) error {
 		return fmt.Errorf("resource type %q is already registered", resourceType)
 	}
 
-	registry.registry[resourceType] = r
+	registry.registry[resourceType] = func() resource.Resource {
+		var instance T
+
+		return R(&instance)
+	}
 
 	return nil
 }
@@ -66,14 +76,12 @@ func CreateResource(resourceType resource.Type) (resource.Resource, error) { //n
 	registry.mu.Lock()
 	defer registry.mu.Unlock()
 
-	unmarshaler, ok := registry.registry[resourceType]
+	fn, ok := registry.registry[resourceType]
 	if !ok {
 		return nil, fmt.Errorf("no resource is registered for the resource type %s", resourceType)
 	}
 
-	resourceInstance := reflect.New(reflect.ValueOf(unmarshaler).Type().Elem()).Interface()
-
-	return resourceInstance.(resource.Resource), nil //nolint:forcetypeassert
+	return fn(), nil
 }
 
 // UnmarshalResource converts proto.Resource to real resource if possible.

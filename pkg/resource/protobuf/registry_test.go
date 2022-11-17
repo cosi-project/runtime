@@ -15,6 +15,41 @@ import (
 	"github.com/cosi-project/runtime/pkg/state/conformance"
 )
 
+func BenchmarkCreateResource(b *testing.B) {
+	_ = protobuf.RegisterResource(conformance.PathResourceType, &conformance.PathResource{}) //nolint:errcheck
+
+	protoR := &v1alpha1.Resource{
+		Metadata: &v1alpha1.Metadata{
+			Namespace: "ns",
+			Type:      conformance.PathResourceType,
+			Id:        "a/b",
+			Version:   "3",
+			Phase:     "running",
+		},
+		Spec: &v1alpha1.Spec{
+			YamlSpec:  "nil",
+			ProtoSpec: nil,
+		},
+	}
+
+	r, err := protobuf.Unmarshal(protoR)
+	require.NoError(b, err)
+
+	b.ResetTimer()
+
+	for i := 0; i < b.N; i++ {
+		rr, err := protobuf.UnmarshalResource(r)
+
+		if _, ok := rr.(*conformance.PathResource); !ok {
+			b.Fatalf("unexpected resource type %T", rr)
+		}
+
+		if err != nil {
+			b.Fatal(err)
+		}
+	}
+}
+
 func TestRegistry(t *testing.T) {
 	t.Parallel()
 
