@@ -281,6 +281,126 @@ func (md *Metadata) MarshalYAML() (interface{}, error) {
 	}, nil
 }
 
+// UnmarshalYAML implements yaml.Unmarshaler interface.
+func (md *Metadata) UnmarshalYAML(value *yaml.Node) (err error) {
+	// This is the only place where I think that using panics is a good idea for error handling
+	defer func() {
+		if r := recover(); r != nil {
+			*md = Metadata{}
+
+			if e, ok := r.(*tryError); ok {
+				err = e.err
+			} else {
+				panic(r)
+			}
+		}
+	}()
+
+	if value.Kind != yaml.MappingNode {
+		panicFormatf("%d:%d expected mapping node, got %d", value.Line, value.Column, value.Kind)
+	}
+
+	for i := 0; i < len(value.Content); i += 2 {
+		key := value.Content[i]
+		val := value.Content[i+1]
+
+		if key.Kind != yaml.ScalarNode {
+			panicFormatf("%d:%d expected scalar node, got %d", key.Line, key.Column, key.Kind)
+		}
+
+		switch key.Value {
+		case "namespace":
+			md.ns = getScalarValue(val)
+		case "type":
+			md.typ = getScalarValue(val)
+		case "id":
+			md.id = getScalarValue(val)
+		case "version":
+			md.ver = scalarParser(val, ParseVersion)
+		case "owner":
+			md.owner = getScalarValue(val)
+		case "phase":
+			md.phase = scalarParser(val, ParsePhase)
+		case "created":
+			md.created = scalarParser(val, func(s string) (time.Time, error) { return time.Parse(time.RFC3339, s) })
+		case "updated":
+			md.updated = scalarParser(val, func(s string) (time.Time, error) { return time.Parse(time.RFC3339, s) })
+		case "finalizers":
+			md.fins = getFinalizers(val)
+		case "labels":
+			md.labels = mappingParser[Labels](val)
+		case "annotations":
+			md.annotations = mappingParser[Annotations](val)
+		}
+	}
+
+	return nil
+}
+
+type settable[T any] interface {
+	*T
+	Set(string, string)
+}
+
+func mappingParser[T any, S settable[T]](val *yaml.Node) T {
+	if val.Kind != yaml.MappingNode {
+		panicFormatf("%d:%d expected mapping node, got %d", val.Line, val.Column, val.Kind)
+	}
+
+	if len(val.Content)%2 != 0 {
+		panicFormatf("%d:%d expected even number of nodes, got %d", val.Line, val.Column, len(val.Content))
+	}
+
+	var instance T
+	ptrTo := S(&instance)
+
+	for i := 0; i < len(val.Content); i += 2 {
+		key := val.Content[i]
+		value := val.Content[i+1]
+
+		ptrTo.Set(getScalarValue(key), getScalarValue(value))
+	}
+
+	return instance
+}
+
+func getScalarValue(val *yaml.Node) string {
+	if val.Kind != yaml.ScalarNode {
+		panicFormatf("%d:%d expected scalar node, got %d", val.Line, val.Column, val.Kind)
+	}
+
+	return val.Value
+}
+
+func scalarParser[T any](val *yaml.Node, parser func(string) (T, error)) T {
+	v, err := parser(getScalarValue(val))
+	if err != nil {
+		panicFormatf("%d:%d failed to parse %T %w", val.Line, val.Column, v, err)
+	}
+
+	return v
+}
+
+func getFinalizers(val *yaml.Node) Finalizers {
+	if val.Kind != yaml.SequenceNode {
+		panicFormatf("%d:%d expected sequence node, got %d", val.Line, val.Column, val.Kind)
+	}
+
+	fins := make(Finalizers, 0, len(val.Content))
+
+	for _, fin := range val.Content {
+		fins = append(fins, getScalarValue(fin))
+	}
+
+	return fins
+}
+
+func panicFormatf(format string, a ...interface{}) {
+	panic(&tryError{err: fmt.Errorf(format, a...)})
+}
+
+type tryError struct{ err error }
+
 // MetadataProto is an interface for protobuf serialization of Metadata.
 type MetadataProto interface { //nolint:interfacebloat
 	GetNamespace() string

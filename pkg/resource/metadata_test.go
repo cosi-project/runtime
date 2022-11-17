@@ -115,6 +115,11 @@ owner:
 phase: running
 `+timestamps, string(out))
 
+	var in resource.Metadata
+
+	assert.NoError(t, yaml.Unmarshal(out, &in))
+	assert.True(t, md.Equal(in))
+
 	md.Finalizers().Add("\"resource1")
 	md.Finalizers().Add("resource2")
 	assert.NoError(t, md.SetOwner("FooController"))
@@ -131,6 +136,8 @@ phase: running
     - '"resource1'
     - resource2
 `, string(out))
+	assert.NoError(t, yaml.Unmarshal(out, &in))
+	assert.True(t, md.Equal(in))
 
 	md.Labels().Set("stage", "initial")
 	md.Labels().Set("app", "foo")
@@ -150,6 +157,9 @@ finalizers:
     - '"resource1'
     - resource2
 `, string(out))
+
+	assert.NoError(t, yaml.Unmarshal(out, &in))
+	assert.True(t, md.Equal(in))
 
 	md.Annotations().Set("dependencies", "abcdef")
 	md.Annotations().Set("ttl", "1h")
@@ -172,6 +182,9 @@ finalizers:
     - '"resource1'
     - resource2
 `, string(out))
+
+	assert.NoError(t, yaml.Unmarshal(out, &in))
+	assert.True(t, md.Equal(in))
 }
 
 var ts, _ = time.Parse(time.RFC3339, "2021-06-23T19:22:29Z")
