@@ -85,6 +85,11 @@ func (md *Metadata) SetVersion(newVersion Version) {
 	md.ver = newVersion
 }
 
+// SetCreated sets the resource create timestamp.
+func (md *Metadata) SetCreated(t time.Time) {
+	md.created = t
+}
+
 // SetUpdated sets the resource update timestamp.
 func (md *Metadata) SetUpdated(t time.Time) {
 	md.updated = t

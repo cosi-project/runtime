@@ -7,6 +7,7 @@ import (
 	"context"
 	"fmt"
 	"testing"
+	"time"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -106,4 +107,16 @@ func TestBackingStore(t *testing.T) {
 	r, err = st.Get(ctx, path2.Metadata())
 	require.NoError(t, err)
 	assert.Equal(t, resource.String(path2), resource.String(r))
+
+	// ensure that resources always preserve creation time
+	cpy := r.DeepCopy()
+	cpy.Metadata().SetCreated(time.Time{})
+
+	require.NoError(t, st.Update(ctx, cpy))
+
+	got, err := st.Get(ctx, cpy.Metadata())
+	require.NoError(t, err)
+	require.NotZero(t, got.Metadata().Created())
+
+	assert.Equal(t, r.Metadata().Created(), got.Metadata().Created())
 }

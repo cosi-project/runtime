@@ -127,6 +127,7 @@ func (collection *ResourceCollection) Create(ctx context.Context, res resource.R
 	}
 
 	resCopy.Metadata().SetVersion(version)
+	resCopy.Metadata().SetCreated(time.Now())
 
 	if collection.store != nil {
 		if err := collection.store.Put(ctx, collection.typ, resCopy); err != nil {
@@ -140,7 +141,9 @@ func (collection *ResourceCollection) Create(ctx context.Context, res resource.R
 		return err
 	}
 
-	res.Metadata().SetVersion(version)
+	// This should be safe, because we don't allow to share metadata between goroutines even for read-only
+	// purposes.
+	*res.Metadata() = *resCopy.Metadata()
 
 	return nil
 }
@@ -177,6 +180,7 @@ func (collection *ResourceCollection) Update(ctx context.Context, newResource re
 
 	newResourceCopy.Metadata().SetVersion(nextVersion)
 	newResourceCopy.Metadata().SetUpdated(updated)
+	newResourceCopy.Metadata().SetCreated(curResource.Metadata().Created())
 
 	if collection.store != nil {
 		if err := collection.store.Put(ctx, collection.typ, newResourceCopy); err != nil {
@@ -192,8 +196,9 @@ func (collection *ResourceCollection) Update(ctx context.Context, newResource re
 		Old:      curResource,
 	})
 
-	newResource.Metadata().SetVersion(nextVersion)
-	newResource.Metadata().SetUpdated(updated)
+	// This should be safe, because we don't allow to share metadata between goroutines even for read-only
+	// purposes.
+	*newResource.Metadata() = *newResourceCopy.Metadata()
 
 	return nil
 }
