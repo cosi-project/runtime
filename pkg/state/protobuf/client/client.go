@@ -10,6 +10,7 @@ import (
 	"errors"
 	"io"
 
+	"github.com/siderolabs/gen/channel"
 	"github.com/siderolabs/go-pointer"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
@@ -290,6 +291,7 @@ func (adapter *Adapter) Watch(ctx context.Context, resourcePointer resource.Poin
 		Options: &v1alpha1.WatchOptions{
 			TailEvents: int32(opts.TailEvents),
 		},
+		ApiVersion: 1,
 	})
 	if err != nil {
 		return err
@@ -333,6 +335,7 @@ func (adapter *Adapter) WatchKind(ctx context.Context, resourceKind resource.Kin
 			TailEvents:        int32(opts.TailEvents),
 			LabelQuery:        labelQuery,
 		},
+		ApiVersion: 1,
 	})
 	if err != nil {
 		return err
@@ -349,7 +352,17 @@ func (adapter *Adapter) WatchKind(ctx context.Context, resourceKind resource.Kin
 	return nil
 }
 
+//nolint:gocognit
 func watchAdapter(ctx context.Context, cli v1alpha1.State_WatchClient, ch chan<- state.Event, skipProtobufUnmarshal bool) {
+	sendError := func(err error) {
+		channel.SendWithContext(ctx, ch,
+			state.Event{
+				Type:  state.Errored,
+				Error: err,
+			},
+		)
+	}
+
 	for {
 		msg, err := cli.Recv()
 
@@ -357,7 +370,8 @@ func watchAdapter(ctx context.Context, cli v1alpha1.State_WatchClient, ch chan<-
 		case errors.Is(err, io.EOF):
 			return
 		case err != nil:
-			// no way to signal error here?
+			sendError(err)
+
 			return
 		}
 
@@ -370,28 +384,37 @@ func watchAdapter(ctx context.Context, cli v1alpha1.State_WatchClient, ch chan<-
 			event.Type = state.Updated
 		case v1alpha1.EventType_DESTROYED:
 			event.Type = state.Destroyed
+		case v1alpha1.EventType_BOOTSTRAPPED:
+			event.Type = state.Bootstrapped
+		case v1alpha1.EventType_ERRORED:
+			event.Type = state.Errored
 		}
 
-		unmarshaled, err := protobuf.Unmarshal(msg.Event.Resource)
-		if err != nil {
-			// no way to signal error here?
-			return
-		}
-
-		if skipProtobufUnmarshal {
-			event.Resource = unmarshaled
-		} else {
-			event.Resource, err = protobuf.UnmarshalResource(unmarshaled)
+		if msg.Event.Resource != nil {
+			unmarshaled, err := protobuf.Unmarshal(msg.Event.Resource)
 			if err != nil {
-				// no way to signal error here?
+				sendError(err)
+
 				return
+			}
+
+			if skipProtobufUnmarshal {
+				event.Resource = unmarshaled
+			} else {
+				event.Resource, err = protobuf.UnmarshalResource(unmarshaled)
+				if err != nil {
+					sendError(err)
+
+					return
+				}
 			}
 		}
 
 		if msg.Event.Old != nil {
-			unmarshaled, err = protobuf.Unmarshal(msg.Event.Old)
+			unmarshaled, err := protobuf.Unmarshal(msg.Event.Old)
 			if err != nil {
-				// no way to signal error here?
+				sendError(err)
+
 				return
 			}
 
@@ -400,15 +423,18 @@ func watchAdapter(ctx context.Context, cli v1alpha1.State_WatchClient, ch chan<-
 			} else {
 				event.Old, err = protobuf.UnmarshalResource(unmarshaled)
 				if err != nil {
-					// no way to signal error here?
+					sendError(err)
+
 					return
 				}
 			}
 		}
 
-		select {
-		case ch <- event:
-		case <-ctx.Done():
+		if msg.Event.Error != nil {
+			event.Error = errors.New(*msg.Event.Error)
+		}
+
+		if !channel.SendWithContext(ctx, ch, event) {
 			return
 		}
 	}

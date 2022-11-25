@@ -6,9 +6,12 @@ package inmem
 
 import (
 	"context"
+	"fmt"
 	"sort"
 	"sync"
 	"time"
+
+	"github.com/siderolabs/gen/channel"
 
 	"github.com/cosi-project/runtime/pkg/resource"
 	"github.com/cosi-project/runtime/pkg/state"
@@ -241,7 +244,7 @@ func (collection *ResourceCollection) Destroy(ctx context.Context, ptr resource.
 
 // Watch for specific resource changes.
 //
-//nolint:gocognit,cyclop,gocyclo
+//nolint:gocognit
 func (collection *ResourceCollection) Watch(ctx context.Context, id resource.ID, ch chan<- state.Event, opts ...state.WatchOption) error {
 	var options state.WatchOptions
 
@@ -292,10 +295,8 @@ func (collection *ResourceCollection) Watch(ctx context.Context, id resource.ID,
 
 	go func() {
 		if options.TailEvents <= 0 {
-			select {
-			case <-ctx.Done():
+			if !channel.SendWithContext(ctx, ch, initialEvent) {
 				return
-			case ch <- initialEvent:
 			}
 		}
 
@@ -349,9 +350,7 @@ func (collection *ResourceCollection) Watch(ctx context.Context, id resource.ID,
 			}
 
 			// deliver event
-			select {
-			case ch <- event:
-			case <-ctx.Done():
+			if !channel.SendWithContext(ctx, ch, event) {
 				return
 			}
 		}
@@ -418,17 +417,23 @@ func (collection *ResourceCollection) WatchAll(ctx context.Context, ch chan<- st
 	go func() {
 		// send initial contents if they were captured
 		for _, res := range bootstrapList {
-			select {
-			case ch <- state.Event{
-				Type:     state.Created,
-				Resource: res,
-			}:
-			case <-ctx.Done():
+			if !channel.SendWithContext(ctx, ch,
+				state.Event{
+					Type:     state.Created,
+					Resource: res,
+				},
+			) {
 				return
 			}
 		}
 
 		bootstrapList = nil
+
+		if options.BootstrapContents {
+			if !channel.SendWithContext(ctx, ch, state.Event{Type: state.Bootstrapped}) {
+				return
+			}
+		}
 
 		for {
 			collection.mu.Lock()
@@ -455,9 +460,14 @@ func (collection *ResourceCollection) WatchAll(ctx context.Context, ch chan<- st
 			}
 
 			if collection.writePos-pos >= int64(collection.capacity) {
-				// buffer overrun, there's no way to signal error in this case,
-				// so for now just return
 				collection.mu.Unlock()
+
+				channel.SendWithContext(ctx, ch,
+					state.Event{
+						Type:  state.Errored,
+						Error: fmt.Errorf("buffer overrun"),
+					},
+				)
 
 				return
 			}
@@ -491,12 +501,12 @@ func (collection *ResourceCollection) WatchAll(ctx context.Context, ch chan<- st
 					// skip the event
 					continue
 				}
+			case state.Errored, state.Bootstrapped:
+				panic("should never be reached")
 			}
 
 			// deliver event
-			select {
-			case ch <- event:
-			case <-ctx.Done():
+			if !channel.SendWithContext(ctx, ch, event) {
 				return
 			}
 		}

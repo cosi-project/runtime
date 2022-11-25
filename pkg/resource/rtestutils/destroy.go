@@ -65,6 +65,10 @@ func Destroy[R ResourceWithRD](ctx context.Context, t *testing.T, st state.State
 
 				t.Logf("cleaned up %s ID %q", rds.Type, r.Metadata().ID())
 			}
+		case state.Bootstrapped:
+			// ignore
+		case state.Errored:
+			require.NoError(event.Error())
 		}
 	}
 }

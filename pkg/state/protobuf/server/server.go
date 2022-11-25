@@ -8,6 +8,7 @@ package server
 import (
 	"context"
 
+	"github.com/siderolabs/go-pointer"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 
@@ -311,14 +312,27 @@ func (server *State) Watch(req *v1alpha1.WatchRequest, srv v1alpha1.State_WatchS
 			return nil
 		}
 
-		protoR, err := protobuf.FromResource(event.Resource)
-		if err != nil {
-			return err
+		if req.ApiVersion < 1 {
+			// skip events which are not supported by the client
+			if event.Type == state.Bootstrapped || event.Type == state.Errored {
+				continue
+			}
 		}
 
-		marshaled, err := protoR.Marshal()
-		if err != nil {
-			return err
+		var marshaled *v1alpha1.Resource
+
+		if event.Resource != nil {
+			var protoR *protobuf.Resource
+
+			protoR, err = protobuf.FromResource(event.Resource)
+			if err != nil {
+				return err
+			}
+
+			marshaled, err = protoR.Marshal()
+			if err != nil {
+				return err
+			}
 		}
 
 		var oldMarshaled *v1alpha1.Resource
@@ -337,6 +351,12 @@ func (server *State) Watch(req *v1alpha1.WatchRequest, srv v1alpha1.State_WatchS
 			}
 		}
 
+		var protoError *string
+
+		if event.Error != nil {
+			protoError = pointer.To(event.Error.Error())
+		}
+
 		var eventType v1alpha1.EventType
 
 		switch event.Type {
@@ -346,6 +366,10 @@ func (server *State) Watch(req *v1alpha1.WatchRequest, srv v1alpha1.State_WatchS
 			eventType = v1alpha1.EventType_UPDATED
 		case state.Destroyed:
 			eventType = v1alpha1.EventType_DESTROYED
+		case state.Bootstrapped:
+			eventType = v1alpha1.EventType_BOOTSTRAPPED
+		case state.Errored:
+			eventType = v1alpha1.EventType_ERRORED
 		}
 
 		if err = srv.Send(&v1alpha1.WatchResponse{
@@ -353,6 +377,7 @@ func (server *State) Watch(req *v1alpha1.WatchRequest, srv v1alpha1.State_WatchS
 				EventType: eventType,
 				Resource:  marshaled,
 				Old:       oldMarshaled,
+				Error:     protoError,
 			},
 		}); err != nil {
 			return err

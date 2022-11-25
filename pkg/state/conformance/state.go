@@ -283,6 +283,13 @@ func (suite *StateSuite) TestWatchKind() {
 		}
 	}
 
+	select {
+	case event := <-chWithBootstrap:
+		suite.Assert().Equal(state.Bootstrapped, event.Type)
+	case <-time.After(time.Second):
+		suite.FailNow("timed out waiting for event")
+	}
+
 	suite.Require().NoError(suite.State.Update(ctx, path2))
 
 	newVersion = path2.Metadata().Version()
@@ -428,6 +435,15 @@ func (suite *StateSuite) TestWatchKindWithLabels() {
 		suite.Assert().Equal(resource.String(path1), resource.String(event.Resource))
 	case <-time.After(time.Second):
 		suite.FailNow("timed out waiting for event")
+	}
+
+	for _, ch := range []chan state.Event{chLabel1, chCommonApp} {
+		select {
+		case event := <-ch:
+			suite.Assert().Equal(state.Bootstrapped, event.Type)
+		case <-time.After(time.Second):
+			suite.FailNow("timed out waiting for event")
+		}
 	}
 
 	select {

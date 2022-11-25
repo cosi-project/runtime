@@ -41,6 +41,11 @@ func (condition *WatchForCondition) Matches(event Event) (bool, error) {
 		}
 	}
 
+	// allow following checks rely on the resource being present
+	if event.Resource == nil {
+		return false, nil
+	}
+
 	if condition.Condition != nil {
 		matched, err := condition.Condition(event.Resource)
 		if err != nil {

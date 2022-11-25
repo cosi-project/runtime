@@ -116,6 +116,11 @@ func (wse *WrappedStateEvent[T]) Old() (T, error) { //nolint:ireturn
 	return getTypedResourceOrZero[T](wse.event.Old)
 }
 
+// Error returns the error of wrapped event.
+func (wse *WrappedStateEvent[T]) Error() error {
+	return wse.event.Error
+}
+
 // Type returns the EventType of the wrapped event.
 func (wse *WrappedStateEvent[T]) Type() state.EventType {
 	return wse.event.Type

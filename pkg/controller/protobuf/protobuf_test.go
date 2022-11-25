@@ -12,6 +12,7 @@ import (
 	"github.com/stretchr/testify/require"
 	suiterunner "github.com/stretchr/testify/suite"
 	"google.golang.org/grpc"
+	"google.golang.org/grpc/credentials/insecure"
 
 	"github.com/cosi-project/runtime/api/v1alpha1"
 	"github.com/cosi-project/runtime/pkg/controller/conformance"
@@ -72,7 +73,7 @@ func TestProtobufConformance(t *testing.T) {
 			suite.grpcServer.Serve(l) //nolint:errcheck
 		}()
 
-		suite.grpcConn, err = grpc.Dial("unix://"+suite.sock.Name(), grpc.WithInsecure()) //nolint:staticcheck
+		suite.grpcConn, err = grpc.Dial("unix://"+suite.sock.Name(), grpc.WithTransportCredentials(insecure.NewCredentials()))
 		require.NoError(t, err)
 
 		stateClient := v1alpha1.NewStateClient(suite.grpcConn)

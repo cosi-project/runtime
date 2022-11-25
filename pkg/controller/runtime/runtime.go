@@ -29,16 +29,18 @@ type Runtime struct { //nolint:govet
 	state  state.State
 	logger *zap.Logger
 
-	watchCh   chan state.Event
-	watchedMu sync.Mutex
-	watched   map[watchKey]struct{}
+	watchCh     chan state.Event
+	watchErrors chan error
+	watchedMu   sync.Mutex
+	watched     map[watchKey]struct{}
 
 	controllersMu      sync.RWMutex
 	controllersCond    *sync.Cond
 	controllersRunning int
 	controllers        map[string]*adapter
 
-	runCtx context.Context //nolint:containedctx
+	runCtx       context.Context //nolint:containedctx
+	runCtxCancel context.CancelFunc
 }
 
 type watchKey struct {
@@ -53,6 +55,7 @@ func NewRuntime(st state.State, logger *zap.Logger) (*Runtime, error) {
 		logger:      logger,
 		controllers: make(map[string]*adapter),
 		watchCh:     make(chan state.Event),
+		watchErrors: make(chan error, 1),
 		watched:     make(map[watchKey]struct{}),
 	}
 
@@ -131,9 +134,11 @@ func (runtime *Runtime) Run(ctx context.Context) error {
 			return fmt.Errorf("runtime has already been started")
 		}
 
-		runtime.runCtx = ctx
+		runtime.runCtx, runtime.runCtxCancel = context.WithCancel(ctx)
 
 		if err := runtime.setupWatches(); err != nil {
+			runtime.runCtxCancel()
+
 			return err
 		}
 
@@ -163,9 +168,17 @@ func (runtime *Runtime) Run(ctx context.Context) error {
 		return err
 	}
 
-	<-runtime.runCtx.Done()
+	var watchErr error
+
+	select {
+	case <-runtime.runCtx.Done():
+	case watchErr = <-runtime.watchErrors:
+		watchErr = fmt.Errorf("controller runtime watch error: %w", watchErr)
+	}
 
 	runtime.controllersMu.Lock()
+
+	runtime.runCtxCancel()
 
 	for runtime.controllersRunning > 0 {
 		runtime.controllersCond.Wait()
@@ -173,7 +186,7 @@ func (runtime *Runtime) Run(ctx context.Context) error {
 
 	runtime.controllersMu.Unlock()
 
-	return nil
+	return watchErr
 }
 
 // GetDependencyGraph returns dependency graph between resources and controllers.
@@ -229,6 +242,13 @@ func (runtime *Runtime) processWatched() {
 		case <-runtime.runCtx.Done():
 			return
 		case e = <-runtime.watchCh:
+		}
+
+		if e.Type == state.Errored {
+			// watch failed, we need to abort
+			runtime.watchErrors <- e.Error
+
+			return
 		}
 
 		md := e.Resource.Metadata()

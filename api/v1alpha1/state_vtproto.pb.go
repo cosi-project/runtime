@@ -48,6 +48,13 @@ func (m *Event) MarshalToSizedBufferVT(dAtA []byte) (int, error) {
 		i -= len(m.unknownFields)
 		copy(dAtA[i:], m.unknownFields)
 	}
+	if m.Error != nil {
+		i -= len(*m.Error)
+		copy(dAtA[i:], *m.Error)
+		i = encodeVarint(dAtA, i, uint64(len(*m.Error)))
+		i--
+		dAtA[i] = 0x22
+	}
 	if m.Old != nil {
 		size, err := m.Old.MarshalToSizedBufferVT(dAtA[:i])
 		if err != nil {
@@ -805,6 +812,11 @@ func (m *WatchRequest) MarshalToSizedBufferVT(dAtA []byte) (int, error) {
 		i -= len(m.unknownFields)
 		copy(dAtA[i:], m.unknownFields)
 	}
+	if m.ApiVersion != 0 {
+		i = encodeVarint(dAtA, i, uint64(m.ApiVersion))
+		i--
+		dAtA[i] = 0x28
+	}
 	if m.Options != nil {
 		size, err := m.Options.MarshalToSizedBufferVT(dAtA[:i])
 		if err != nil {
@@ -955,6 +967,10 @@ func (m *Event) SizeVT() (n int) {
 	}
 	if m.Old != nil {
 		l = m.Old.SizeVT()
+		n += 1 + l + sov(uint64(l))
+	}
+	if m.Error != nil {
+		l = len(*m.Error)
 		n += 1 + l + sov(uint64(l))
 	}
 	if m.unknownFields != nil {
@@ -1261,6 +1277,9 @@ func (m *WatchRequest) SizeVT() (n int) {
 		l = m.Options.SizeVT()
 		n += 1 + l + sov(uint64(l))
 	}
+	if m.ApiVersion != 0 {
+		n += 1 + sov(uint64(m.ApiVersion))
+	}
 	if m.unknownFields != nil {
 		n += len(m.unknownFields)
 	}
@@ -1424,6 +1443,39 @@ func (m *Event) UnmarshalVT(dAtA []byte) error {
 			if err := m.Old.UnmarshalVT(dAtA[iNdEx:postIndex]); err != nil {
 				return err
 			}
+			iNdEx = postIndex
+		case 4:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field Error", wireType)
+			}
+			var stringLen uint64
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflow
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				stringLen |= uint64(b&0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			intStringLen := int(stringLen)
+			if intStringLen < 0 {
+				return ErrInvalidLength
+			}
+			postIndex := iNdEx + intStringLen
+			if postIndex < 0 {
+				return ErrInvalidLength
+			}
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			s := string(dAtA[iNdEx:postIndex])
+			m.Error = &s
 			iNdEx = postIndex
 		default:
 			iNdEx = preIndex
@@ -3191,6 +3243,25 @@ func (m *WatchRequest) UnmarshalVT(dAtA []byte) error {
 				return err
 			}
 			iNdEx = postIndex
+		case 5:
+			if wireType != 0 {
+				return fmt.Errorf("proto: wrong wireType = %d for field ApiVersion", wireType)
+			}
+			m.ApiVersion = 0
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflow
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				m.ApiVersion |= int32(b&0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
 		default:
 			iNdEx = preIndex
 			skippy, err := skip(dAtA[iNdEx:])

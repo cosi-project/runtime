@@ -67,7 +67,10 @@ func AssertResources[R ResourceWithRD](ctx context.Context, t *testing.T, st sta
 		select {
 		case <-ctx.Done():
 			require.FailNow("timeout", "assertions:\n%s", &aggregator)
-		case <-watchCh:
+		case ev := <-watchCh:
+			if ev.Type == state.Errored {
+				require.NoError(ev.Error)
+			}
 		}
 	}
 }
@@ -94,6 +97,10 @@ func AssertNoResource[R ResourceWithRD](ctx context.Context, t *testing.T, st st
 		case ev := <-watchCh:
 			if ev.Type == state.Destroyed {
 				return
+			}
+
+			if ev.Type == state.Errored {
+				require.NoError(ev.Error)
 			}
 		}
 	}

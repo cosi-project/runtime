@@ -22,6 +22,10 @@ const (
 	Updated
 	// Resource was destroyed.
 	Destroyed
+	// Initial set of items for WatchKind(WithBootstrapContents) was sent.
+	Bootstrapped
+	// Error happened in the watch.
+	Errored
 )
 
 func (eventType EventType) String() string {
@@ -32,6 +36,7 @@ func (eventType EventType) String() string {
 type Event struct {
 	Resource resource.Resource
 	Old      resource.Resource
+	Error    error
 	Type     EventType
 }
 
