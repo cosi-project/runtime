@@ -341,6 +341,10 @@ func (ctrlAdapter *controllerAdapter) QueueReconcile() {
 	}
 }
 
+func (ctrlAdapter *controllerAdapter) ResetRestartBackoff() {
+	ctrlAdapter.backoff.Reset()
+}
+
 func (ctrlAdapter *controllerAdapter) UpdateInputs(inputs []controller.Input) error {
 	_, err := ctrlAdapter.adapter.client.UpdateInputs(ctrlAdapter.ctx, &v1alpha1.UpdateInputsRequest{
 		ControllerToken: ctrlAdapter.token,

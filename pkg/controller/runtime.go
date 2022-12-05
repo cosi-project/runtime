@@ -18,6 +18,7 @@ type ReconcileEvent struct{}
 type Runtime interface {
 	EventCh() <-chan ReconcileEvent
 	QueueReconcile()
+	ResetRestartBackoff()
 
 	UpdateInputs([]Input) error
 

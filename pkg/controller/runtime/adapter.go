@@ -56,6 +56,11 @@ func (adapter *adapter) QueueReconcile() {
 	adapter.triggerReconcile()
 }
 
+// ResetRestartBaooff implements controller.Runtime interface.
+func (adapter *adapter) ResetRestartBackoff() {
+	adapter.backoff.Reset()
+}
+
 // UpdateDependencies implements controller.Runtime interface.
 func (adapter *adapter) UpdateInputs(deps []controller.Input) error {
 	sort.Slice(deps, func(i, j int) bool {

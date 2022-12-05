@@ -186,6 +186,8 @@ func (ctrl *Controller[Input, Output]) Run(ctx context.Context, r controller.Run
 		if err := state.multiErr.ErrorOrNil(); err != nil {
 			return err
 		}
+
+		r.ResetRestartBackoff()
 	}
 }
 
