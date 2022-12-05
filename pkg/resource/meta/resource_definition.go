@@ -46,6 +46,7 @@ type ResourceDefinitionRD struct{}
 func (ResourceDefinitionRD) ResourceDefinition(_ resource.Metadata, _ spec.ResourceDefinitionSpec) ResourceDefinitionSpec {
 	return ResourceDefinitionSpec{
 		Type:             ResourceDefinitionType,
+		Aliases:          []resource.Type{"api-resources"},
 		DefaultNamespace: NamespaceName,
 		PrintColumns: []PrintColumn{
 			{
