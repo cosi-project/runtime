@@ -5,10 +5,13 @@
 package protobuf_test
 
 import (
+	"fmt"
 	"testing"
+	"time"
 
 	"github.com/stretchr/testify/require"
 	"google.golang.org/protobuf/proto"
+	"gopkg.in/yaml.v3"
 
 	"github.com/cosi-project/runtime/api/v1alpha1"
 	"github.com/cosi-project/runtime/pkg/resource"
@@ -41,7 +44,7 @@ type testResource = typed.Resource[testSpec, testRD]
 type testRD struct{} //nolint:unused
 
 //nolint:unused
-func (testRD) ResourceDefinition(md resource.Metadata, spec testSpec) meta.ResourceDefinitionSpec {
+func (testRD) ResourceDefinition(resource.Metadata, testSpec) meta.ResourceDefinitionSpec {
 	return meta.ResourceDefinitionSpec{
 		Type: "testResource",
 	}
@@ -128,9 +131,105 @@ func (t ReflectSpec) DeepCopy() ReflectSpec {
 
 type ReflectSpecRD struct{}
 
-func (ReflectSpecRD) ResourceDefinition(md resource.Metadata, spec ReflectSpec) meta.ResourceDefinitionSpec {
+func (ReflectSpecRD) ResourceDefinition(resource.Metadata, ReflectSpec) meta.ResourceDefinitionSpec {
 	return meta.ResourceDefinitionSpec{
 		DisplayType: "test definition",
+	}
+}
+
+type resourceDefinition = protobuf.ResourceSpec[v1alpha1.ResourceDefinitionSpec, *v1alpha1.ResourceDefinitionSpec]
+
+type ResourceDefinitionSpecRD struct{}
+
+func (ResourceDefinitionSpecRD) ResourceDefinition(resource.Metadata, resourceDefinition) meta.ResourceDefinitionSpec {
+	return meta.ResourceDefinitionSpec{
+		DisplayType: "test definition",
+	}
+}
+
+func TestYAMLResourceEquality(t *testing.T) {
+	original := typed.NewResource[resourceDefinition, ResourceDefinitionSpecRD](
+		resource.NewMetadata("default", "testResourceYAML", "aaa", resource.VersionUndefined),
+		protobuf.NewResourceSpec(&v1alpha1.ResourceDefinitionSpec{
+			Aliases: []string{"test", "test2"},
+		}),
+	)
+
+	out := must(yaml.Marshal(original.Spec()))(t)
+
+	result := typed.NewResource[resourceDefinition, ResourceDefinitionSpecRD](
+		resource.NewMetadata("default", "testResourceYAML", "bbb", resource.VersionUndefined),
+		protobuf.NewResourceSpec(&v1alpha1.ResourceDefinitionSpec{}),
+	)
+
+	err := yaml.Unmarshal(out, result.Spec())
+	require.NoError(t, err)
+
+	*result.Metadata() = *original.Metadata()
+
+	if !resource.Equal(original, result) {
+		t.Log("original ->", must(yaml.Marshal(original.Spec()))(t))
+		t.Log("result ->", must(yaml.Marshal(result.Spec()))(t))
+		t.FailNow()
+	}
+}
+
+func ExampleResource_testInline() {
+	// This is a test to ensure that our custom 'inline' does work.
+	res := typed.NewResource[resourceDefinition, ResourceDefinitionSpecRD](
+		resource.NewMetadata("default", "testResourceYAML", "aaa", resource.VersionUndefined),
+		protobuf.NewResourceSpec(&v1alpha1.ResourceDefinitionSpec{
+			Aliases: []string{"test", "test2"},
+		}),
+	)
+
+	created, err := time.Parse("2006-01-02", "2006-01-02")
+	if err != nil {
+		panic(err)
+	}
+
+	res.Metadata().SetCreated(created)
+	res.Metadata().SetUpdated(created)
+
+	mRes, err := resource.MarshalYAML(res)
+	if err != nil {
+		panic(err)
+	}
+
+	out, err := yaml.Marshal(mRes)
+	if err != nil {
+		panic(err)
+	}
+
+	fmt.Println(string(out))
+
+	// Output:
+	// metadata:
+	//     namespace: default
+	//     type: testResourceYAML
+	//     id: aaa
+	//     version: undefined
+	//     owner:
+	//     phase: running
+	//     created: 2006-01-02T00:00:00Z
+	//     updated: 2006-01-02T00:00:00Z
+	// spec:
+	//     resourcetype: ""
+	//     displaytype: ""
+	//     defaultnamespace: ""
+	//     aliases:
+	//         - test
+	//         - test2
+	//     allaliases: []
+	//     printcolumns: []
+	//     sensitivity: 0
+}
+
+func must[T any](val T, err error) func(*testing.T) T {
+	return func(t *testing.T) T {
+		require.NoError(t, err)
+
+		return val
 	}
 }
 

@@ -8,6 +8,7 @@ import (
 	"encoding/json"
 
 	"google.golang.org/protobuf/proto"
+	"gopkg.in/yaml.v3"
 )
 
 // Spec should be proto.Message and pointer.
@@ -22,7 +23,13 @@ type Spec[T any] interface {
 // Example usage:
 // type WrappedSpec = ResourceSpec[ProtoSpec, *ProtoSpec].
 type ResourceSpec[T any, S Spec[T]] struct {
-	Value S `yaml:",inline"`
+	Value S
+}
+
+// MarshalYAML implements yaml.Marshaler interface. We want it to inline `Value` field, without
+// using `inline` tag.
+func (spec *ResourceSpec[T, S]) MarshalYAML() (interface{}, error) {
+	return spec.Value, nil
 }
 
 // DeepCopy creates a copy of the wrapped proto.Message.
@@ -40,6 +47,16 @@ func (spec *ResourceSpec[T, S]) MarshalJSON() ([]byte, error) {
 // MarshalProto implements ProtoMarshaler.
 func (spec *ResourceSpec[T, S]) MarshalProto() ([]byte, error) {
 	return ProtoMarshal(spec.Value)
+}
+
+// UnmarshalYAML implements yaml.Unmarshaler interface. We want it to inline `Value` field, without
+// using `inline` tag.
+func (spec *ResourceSpec[T, S]) UnmarshalYAML(node *yaml.Node) error {
+	if spec.Value == nil {
+		spec.Value = S(new(T))
+	}
+
+	return node.Decode(spec.Value)
 }
 
 // UnmarshalJSON implements json.Unmarshaler.
