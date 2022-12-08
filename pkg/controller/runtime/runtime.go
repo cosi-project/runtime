@@ -8,6 +8,7 @@ package runtime
 import (
 	"context"
 	"fmt"
+	"log"
 	"sync"
 
 	"github.com/cenkalti/backoff/v4"
@@ -50,13 +51,15 @@ type watchKey struct {
 	Type      resource.Type
 }
 
+const watchBuffer = 1000
+
 // NewRuntime initializes controller runtime object.
 func NewRuntime(st state.State, logger *zap.Logger) (*Runtime, error) {
 	runtime := &Runtime{
 		state:       st,
 		logger:      logger,
 		controllers: make(map[string]*adapter),
-		watchCh:     make(chan state.Event),
+		watchCh:     make(chan state.Event, watchBuffer),
 		watchErrors: make(chan error, 1),
 		watched:     make(map[watchKey]struct{}),
 	}
@@ -272,13 +275,19 @@ func (runtime *Runtime) processWatched() {
 				return nil
 			}
 
-			m[reducedMetadata{
+			key := reducedMetadata{
 				namespace:       e.Resource.Metadata().Namespace(),
 				typ:             e.Resource.Metadata().Type(),
 				id:              e.Resource.Metadata().ID(),
 				phase:           e.Resource.Metadata().Phase(),
 				finalizersEmpty: e.Resource.Metadata().Finalizers().Empty(),
-			}] = struct{}{}
+			}
+
+			if _, exists := m[key]; exists {
+				log.Printf("duplicate event for %q", e.Resource.Metadata().ID())
+			}
+
+			m[key] = struct{}{}
 
 			if !channel.SendWithContext(runtime.runCtx, ch, m) {
 				return nil
@@ -330,7 +339,6 @@ func (runtime *Runtime) processWatched() {
 			}
 
 			runtime.controllersMu.RUnlock()
-
 		}
 	})
 
