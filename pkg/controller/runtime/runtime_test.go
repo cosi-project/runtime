@@ -75,7 +75,7 @@ func TestRuntimeWatchError(t *testing.T) {
 	err = <-errCh
 	require.Error(t, err)
 
-	assert.EqualError(t, err, "controller runtime watch error: buffer overrun")
+	assert.EqualError(t, err, "controller runtime watch error: buffer overrun: namespace \"default\" type \"test/int\"")
 
 	cancel()
 }

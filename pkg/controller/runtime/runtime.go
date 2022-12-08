@@ -11,8 +11,10 @@ import (
 	"sync"
 
 	"github.com/cenkalti/backoff/v4"
+	"github.com/siderolabs/gen/channel"
 	"github.com/siderolabs/go-pointer"
 	"go.uber.org/zap"
+	"golang.org/x/sync/errgroup"
 
 	"github.com/cosi-project/runtime/pkg/controller"
 	"github.com/cosi-project/runtime/pkg/controller/runtime/dependency"
@@ -235,40 +237,102 @@ func (runtime *Runtime) watch(resourceNamespace resource.Namespace, resourceType
 }
 
 func (runtime *Runtime) processWatched() {
-	for {
-		var e state.Event
+	var eg errgroup.Group
 
-		select {
-		case <-runtime.runCtx.Done():
-			return
-		case e = <-runtime.watchCh:
+	type dedup map[reducedMetadata]struct{}
+
+	ch := make(chan dedup, 1)
+	empty := make(chan struct{}, 1)
+	empty <- struct{}{}
+
+	eg.Go(func() error {
+		for {
+			var e state.Event
+
+			select {
+			case <-runtime.runCtx.Done():
+				return nil
+			case e = <-runtime.watchCh:
+			}
+
+			if e.Type == state.Errored {
+				// watch failed, we need to abort
+				runtime.watchErrors <- e.Error
+
+				return nil
+			}
+
+			var m dedup
+
+			select {
+			case <-empty:
+				m = dedup{}
+			case m = <-ch:
+			case <-runtime.runCtx.Done():
+				return nil
+			}
+
+			m[reducedMetadata{
+				namespace:       e.Resource.Metadata().Namespace(),
+				typ:             e.Resource.Metadata().Type(),
+				id:              e.Resource.Metadata().ID(),
+				phase:           e.Resource.Metadata().Phase(),
+				finalizersEmpty: e.Resource.Metadata().Finalizers().Empty(),
+			}] = struct{}{}
+
+			if !channel.SendWithContext(runtime.runCtx, ch, m) {
+				return nil
+			}
 		}
+	})
 
-		if e.Type == state.Errored {
-			// watch failed, we need to abort
-			runtime.watchErrors <- e.Error
+	eg.Go(func() error {
+		for {
+			var m dedup
+			select {
+			case m = <-ch:
+			case <-runtime.runCtx.Done():
+				return nil
+			}
 
-			return
+			var k reducedMetadata
+
+			for k = range m {
+				break
+			}
+
+			delete(m, k)
+
+			if len(m) > 0 {
+				if !channel.SendWithContext(runtime.runCtx, ch, m) {
+					return nil
+				}
+			} else {
+				if !channel.SendWithContext(runtime.runCtx, empty, struct{}{}) {
+					return nil
+				}
+			}
+
+			controllers, err := runtime.depDB.GetDependentControllers(controller.Input{
+				Namespace: k.namespace,
+				Type:      k.typ,
+				ID:        pointer.To(k.id),
+			})
+			if err != nil {
+				// TODO: no way to handle it here
+				continue
+			}
+
+			runtime.controllersMu.RLock()
+
+			for _, ctrl := range controllers {
+				runtime.controllers[ctrl].watchTrigger(&k)
+			}
+
+			runtime.controllersMu.RUnlock()
+
 		}
+	})
 
-		md := e.Resource.Metadata()
-
-		controllers, err := runtime.depDB.GetDependentControllers(controller.Input{
-			Namespace: md.Namespace(),
-			Type:      md.Type(),
-			ID:        pointer.To(md.ID()),
-		})
-		if err != nil {
-			// TODO: no way to handle it here
-			continue
-		}
-
-		runtime.controllersMu.RLock()
-
-		for _, ctrl := range controllers {
-			runtime.controllers[ctrl].watchTrigger(md)
-		}
-
-		runtime.controllersMu.RUnlock()
-	}
+	eg.Wait()
 }

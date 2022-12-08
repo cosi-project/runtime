@@ -6,6 +6,7 @@ package inmem_test
 
 import (
 	"context"
+	"fmt"
 	"strconv"
 	"testing"
 	"time"
@@ -58,7 +59,7 @@ func TestBufferOverrun(t *testing.T) {
 	case ev := <-ch:
 		// buffer overrun
 		require.Equal(t, state.Errored, ev.Type)
-		require.EqualError(t, ev.Error, "buffer overrun")
+		require.EqualError(t, ev.Error, fmt.Sprintf("buffer overrun: namespace %q type %q", namespace, conformance.PathResourceType))
 	case <-time.After(time.Second):
 		t.Fatal("timeout waiting for event")
 	}
