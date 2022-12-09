@@ -26,7 +26,7 @@ type State struct {
 	storeMu sync.Mutex
 	loaded  uint64
 
-	capacity, gap int
+	initialCapacity, maxCapacity, gap int
 }
 
 // NewState creates new State with default options.
@@ -42,10 +42,11 @@ func NewStateWithOptions(opts ...StateOption) func(ns resource.Namespace) *State
 
 	return func(ns resource.Namespace) *State {
 		return &State{
-			ns:       ns,
-			capacity: options.HistoryCapacity,
-			gap:      options.HistoryGap,
-			store:    options.BackingStore,
+			ns:              ns,
+			initialCapacity: options.HistoryInitialCapacity,
+			maxCapacity:     options.HistoryMaxCapacity,
+			gap:             options.HistoryGap,
+			store:           options.BackingStore,
 		}
 	}
 }
@@ -55,7 +56,7 @@ func (st *State) getCollection(typ resource.Type) *ResourceCollection {
 		return r.(*ResourceCollection) //nolint:forcetypeassert
 	}
 
-	collection := NewResourceCollection(st.ns, typ, st.capacity, st.gap, st.store)
+	collection := NewResourceCollection(st.ns, typ, st.initialCapacity, st.maxCapacity, st.gap, st.store)
 
 	r, _ := st.collections.LoadOrStore(typ, collection)
 

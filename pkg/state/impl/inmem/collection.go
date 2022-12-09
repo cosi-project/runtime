@@ -34,20 +34,22 @@ type ResourceCollection struct {
 
 	writePos int64
 
-	capacity int
-	gap      int
+	capacity    int
+	maxCapacity int
+	gap         int
 }
 
 // NewResourceCollection returns new ResourceCollection.
-func NewResourceCollection(ns resource.Namespace, typ resource.Type, capacity, gap int, store BackingStore) *ResourceCollection {
+func NewResourceCollection(ns resource.Namespace, typ resource.Type, initialCapacity, maxCapacity, gap int, store BackingStore) *ResourceCollection {
 	collection := &ResourceCollection{
-		ns:       ns,
-		typ:      typ,
-		capacity: capacity,
-		gap:      gap,
-		storage:  make(map[resource.ID]resource.Resource),
-		stream:   make([]state.Event, capacity),
-		store:    store,
+		ns:          ns,
+		typ:         typ,
+		capacity:    initialCapacity,
+		maxCapacity: maxCapacity,
+		gap:         gap,
+		storage:     make(map[resource.ID]resource.Resource),
+		stream:      make([]state.Event, initialCapacity),
+		store:       store,
 	}
 
 	collection.c = sync.NewCond(&collection.mu)
@@ -57,6 +59,19 @@ func NewResourceCollection(ns resource.Namespace, typ resource.Type, capacity, g
 
 // publish should be called only with collection.mu held.
 func (collection *ResourceCollection) publish(event state.Event) {
+	// as stream is a cyclic buffer, we can safely expand it only on the first run over the buffer
+	// at this time `%capacity` will give same value if the capacity is increased
+	if collection.writePos == int64(collection.capacity) && collection.capacity < collection.maxCapacity {
+		oldCapacity := collection.capacity
+
+		collection.capacity *= 2
+		if collection.capacity > collection.maxCapacity {
+			collection.capacity = collection.maxCapacity
+		}
+
+		collection.stream = append(collection.stream, make([]state.Event, collection.capacity-oldCapacity)...)
+	}
+
 	collection.stream[collection.writePos%int64(collection.capacity)] = event
 	collection.writePos++
 
@@ -324,7 +339,7 @@ func (collection *ResourceCollection) Watch(ctx context.Context, id resource.ID,
 				}
 			}
 
-			if collection.writePos-pos >= int64(collection.capacity) {
+			if collection.writePos-pos > int64(collection.capacity) {
 				collection.mu.Unlock()
 
 				channel.SendWithContext(ctx, ch,
@@ -464,7 +479,7 @@ func (collection *ResourceCollection) WatchAll(ctx context.Context, ch chan<- st
 				}
 			}
 
-			if collection.writePos-pos >= int64(collection.capacity) {
+			if collection.writePos-pos > int64(collection.capacity) {
 				collection.mu.Unlock()
 
 				channel.SendWithContext(ctx, ch,

@@ -46,7 +46,10 @@ func TestRuntimeWatchError(t *testing.T) {
 
 	// create a state with tiny capacity
 	st := state.WrapCore(namespaced.NewState(func(ns string) state.CoreState {
-		return inmem.NewStateWithOptions(inmem.WithHistoryCapacity(10), inmem.WithHistoryGap(5))(ns)
+		return inmem.NewStateWithOptions(
+			inmem.WithHistoryMaxCapacity(10),
+			inmem.WithHistoryGap(5),
+		)(ns)
 	}))
 
 	logger := zaptest.NewLogger(t)

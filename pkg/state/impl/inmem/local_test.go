@@ -24,12 +24,44 @@ import (
 func TestLocalConformance(t *testing.T) {
 	t.Parallel()
 
-	defer goleak.VerifyNone(t, goleak.IgnoreCurrent())
+	t.Cleanup(func() { goleak.VerifyNone(t, goleak.IgnoreCurrent()) })
 
-	suite.Run(t, &conformance.StateSuite{
-		State:      state.WrapCore(inmem.NewState("default")),
-		Namespaces: []resource.Namespace{"default"},
-	})
+	for _, tt := range []struct { //nolint:govet
+		name    string
+		builder *inmem.State
+	}{
+		{
+			name:    "defaults",
+			builder: inmem.NewState("default"),
+		},
+		{
+			name: "dynamic large",
+			builder: inmem.NewStateWithOptions(
+				inmem.WithHistoryMaxCapacity(1024),
+				inmem.WithHistoryInitialCapacity(8),
+				inmem.WithHistoryGap(2),
+			)("default"),
+		},
+		{
+			name: "dynamic small",
+			builder: inmem.NewStateWithOptions(
+				inmem.WithHistoryMaxCapacity(32),
+				inmem.WithHistoryInitialCapacity(4),
+				inmem.WithHistoryGap(1),
+			)("default"),
+		},
+	} {
+		tt := tt
+
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
+			suite.Run(t, &conformance.StateSuite{
+				State:      state.WrapCore(tt.builder),
+				Namespaces: []resource.Namespace{"default"},
+			})
+		})
+	}
 }
 
 func TestBufferOverrun(t *testing.T) {
@@ -38,7 +70,10 @@ func TestBufferOverrun(t *testing.T) {
 	const namespace = "default"
 
 	// create inmem state with tiny capacity
-	st := state.WrapCore(inmem.NewStateWithOptions(inmem.WithHistoryCapacity(10), inmem.WithHistoryGap(5))(namespace))
+	st := state.WrapCore(inmem.NewStateWithOptions(
+		inmem.WithHistoryMaxCapacity(10),
+		inmem.WithHistoryGap(5),
+	)(namespace))
 
 	ctx, cancel := context.WithCancel(context.Background())
 	t.Cleanup(cancel)
@@ -114,6 +149,53 @@ watchLoop:
 			require.EqualError(t, ev.Error, fmt.Sprintf("buffer overrun: namespace %q type %q", namespace, conformance.PathResourceType))
 
 			break watchLoop
+		case <-time.After(time.Second):
+			t.Fatal("timeout waiting for event")
+		}
+	}
+}
+
+func TestNoBufferOverrunDynamic(t *testing.T) {
+	t.Parallel()
+
+	const (
+		namespace = "default"
+		N         = 4095
+	)
+
+	// create inmem state with tiny capacity
+	st := state.WrapCore(inmem.NewStateWithOptions(
+		inmem.WithHistoryInitialCapacity(4),
+		inmem.WithHistoryMaxCapacity(N),
+		inmem.WithHistoryGap(5),
+	)(namespace))
+
+	ctx, cancel := context.WithCancel(context.Background())
+	t.Cleanup(cancel)
+
+	// start watching for changes
+	watchKindCh := make(chan state.Event)
+
+	err := st.WatchKind(ctx, resource.NewMetadata(namespace, conformance.PathResourceType, "", resource.VersionUndefined), watchKindCh)
+	require.NoError(t, err)
+
+	// insert N resources
+	for i := 0; i < N; i++ {
+		err := st.Create(ctx, conformance.NewPathResource(namespace, strconv.Itoa(i)))
+		require.NoError(t, err)
+	}
+
+	eventsReceived := 0
+
+	for {
+		select {
+		case ev := <-watchKindCh:
+			require.Equal(t, state.Created, ev.Type)
+
+			eventsReceived++
+			if eventsReceived == N {
+				return // success
+			}
 		case <-time.After(time.Second):
 			t.Fatal("timeout waiting for event")
 		}

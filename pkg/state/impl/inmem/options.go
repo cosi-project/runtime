@@ -6,9 +6,10 @@ package inmem
 
 // StateOptions configure inmem.State.
 type StateOptions struct {
-	BackingStore    BackingStore
-	HistoryCapacity int
-	HistoryGap      int
+	BackingStore           BackingStore
+	HistoryMaxCapacity     int
+	HistoryInitialCapacity int
+	HistoryGap             int
 }
 
 // StateOption applies settings to StateOptions.
@@ -16,11 +17,44 @@ type StateOption func(options *StateOptions)
 
 // WithHistoryCapacity sets history depth for a given namspace and resource.
 //
-// Deep history requires more memory, but allows Watch request to return more historical entries, and also
-// acts like a buffer if watch consumer can't keep up with events.
+// Deprecated: use WithHistoryMaxCapacity and WithHistoryInitialCapacity instead.
 func WithHistoryCapacity(capacity int) StateOption {
 	return func(options *StateOptions) {
-		options.HistoryCapacity = capacity
+		options.HistoryMaxCapacity = capacity
+		options.HistoryInitialCapacity = capacity
+	}
+}
+
+// WithHistoryMaxCapacity sets history depth for a given namspace and resource.
+//
+// Deep history requires more memory, but allows Watch request to return more historical entries, and also
+// acts like a buffer if watch consumer can't keep up with events.
+//
+// Max capacity limits the maximum depth of the history buffer.
+func WithHistoryMaxCapacity(maxCapacity int) StateOption {
+	return func(options *StateOptions) {
+		options.HistoryMaxCapacity = maxCapacity
+
+		if options.HistoryInitialCapacity > options.HistoryMaxCapacity {
+			options.HistoryInitialCapacity = options.HistoryMaxCapacity
+		}
+	}
+}
+
+// WithHistoryInitialCapacity sets initial history depth for a given namspace and resource.
+//
+// Deep history requires more memory, but allows Watch request to return more historical entries, and also
+// acts like a buffer if watch consumer can't keep up with events.
+//
+// Initial capacity of the history buffer is used at the creation time and grows to the max capacity
+// based on the number of events.
+func WithHistoryInitialCapacity(initialCapacity int) StateOption {
+	return func(options *StateOptions) {
+		options.HistoryInitialCapacity = initialCapacity
+
+		if options.HistoryMaxCapacity < options.HistoryInitialCapacity {
+			options.HistoryMaxCapacity = options.HistoryInitialCapacity
+		}
 	}
 }
 
@@ -47,7 +81,8 @@ func WithBackingStore(store BackingStore) StateOption {
 // DefaultStateOptions returns default value of StateOptions.
 func DefaultStateOptions() StateOptions {
 	return StateOptions{
-		HistoryCapacity: 100,
-		HistoryGap:      5,
+		HistoryMaxCapacity:     100,
+		HistoryInitialCapacity: 100,
+		HistoryGap:             5,
 	}
 }
