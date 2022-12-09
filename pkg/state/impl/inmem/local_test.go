@@ -6,6 +6,7 @@ package inmem_test
 
 import (
 	"context"
+	"fmt"
 	"strconv"
 	"testing"
 	"time"
@@ -43,9 +44,13 @@ func TestBufferOverrun(t *testing.T) {
 	t.Cleanup(cancel)
 
 	// start watching for changes
-	ch := make(chan state.Event)
+	watchKindCh := make(chan state.Event)
+	watchCh := make(chan state.Event)
 
-	err := st.WatchKind(ctx, resource.NewMetadata(namespace, conformance.PathResourceType, "", resource.VersionUndefined), ch)
+	err := st.WatchKind(ctx, resource.NewMetadata(namespace, conformance.PathResourceType, "", resource.VersionUndefined), watchKindCh)
+	require.NoError(t, err)
+
+	err = st.Watch(ctx, resource.NewMetadata(namespace, conformance.PathResourceType, "0", resource.VersionUndefined), watchCh)
 	require.NoError(t, err)
 
 	// insert 10 resources
@@ -54,12 +59,63 @@ func TestBufferOverrun(t *testing.T) {
 		require.NoError(t, err)
 	}
 
+	// update 0th resource 10 times
+	for i := 0; i < 10; i++ {
+		_, err := st.UpdateWithConflicts(ctx, conformance.NewPathResource(namespace, "0").Metadata(), func(r resource.Resource) error {
+			r.Metadata().Finalizers().Add(strconv.Itoa(i))
+
+			return nil
+		})
+
+		require.NoError(t, err)
+	}
+
+watchKindChLoop:
+	for {
+		select {
+		case ev := <-watchKindCh:
+			t.Logf("got event: %v", ev)
+
+			// created event might come before error
+			if ev.Type == state.Created {
+				continue
+			}
+
+			// buffer overrun
+			require.Equal(t, state.Errored, ev.Type)
+			require.EqualError(t, ev.Error, fmt.Sprintf("buffer overrun: namespace %q type %q", namespace, conformance.PathResourceType))
+
+			break watchKindChLoop
+		case <-time.After(time.Second):
+			t.Fatal("timeout waiting for event")
+		}
+	}
+
 	select {
-	case ev := <-ch:
-		// buffer overrun
-		require.Equal(t, state.Errored, ev.Type)
-		require.EqualError(t, ev.Error, "buffer overrun")
+	case ev := <-watchCh:
+		// first event is the initial state (missing)
+		require.Equal(t, state.Destroyed, ev.Type)
 	case <-time.After(time.Second):
 		t.Fatal("timeout waiting for event")
+	}
+
+watchLoop:
+	for {
+		select {
+		case ev := <-watchCh:
+			t.Logf("got event: %v", ev)
+
+			if ev.Type == state.Created {
+				continue
+			}
+
+			// buffer overrun
+			require.Equal(t, state.Errored, ev.Type)
+			require.EqualError(t, ev.Error, fmt.Sprintf("buffer overrun: namespace %q type %q", namespace, conformance.PathResourceType))
+
+			break watchLoop
+		case <-time.After(time.Second):
+			t.Fatal("timeout waiting for event")
+		}
 	}
 }
