@@ -18,6 +18,8 @@ import (
 
 	"github.com/cosi-project/runtime/pkg/controller/conformance"
 	"github.com/cosi-project/runtime/pkg/controller/runtime"
+	"github.com/cosi-project/runtime/pkg/resource"
+	"github.com/cosi-project/runtime/pkg/safe"
 	"github.com/cosi-project/runtime/pkg/state"
 	"github.com/cosi-project/runtime/pkg/state/impl/inmem"
 	"github.com/cosi-project/runtime/pkg/state/impl/namespaced"
@@ -78,4 +80,64 @@ func TestRuntimeWatchError(t *testing.T) {
 	assert.ErrorContains(t, err, "controller runtime watch error: buffer overrun: namespace \"default\"")
 
 	cancel()
+}
+
+func TestRuntimeWatchDedup(t *testing.T) {
+	defer goleak.VerifyNone(t, goleak.IgnoreCurrent())
+
+	st := state.WrapCore(namespaced.NewState(inmem.Build))
+
+	logger := zaptest.NewLogger(t)
+	runtime, err := runtime.NewRuntime(st, logger)
+	require.NoError(t, err)
+
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	t.Cleanup(cancel)
+
+	errCh := make(chan error)
+
+	go func() {
+		errCh <- runtime.Run(ctx)
+	}()
+
+	require.NoError(t, runtime.RegisterController(&conformance.IntToStrController{
+		SourceNamespace: "default",
+		TargetNamespace: "default",
+	}))
+
+	for i := 0; i < 10; i++ {
+		for _, ns := range []resource.Namespace{"default", "another"} {
+			require.NoError(t, st.Create(ctx, conformance.NewIntResource(ns, strconv.Itoa(i), i)))
+		}
+	}
+
+	// wait for controller to start up
+	_, err = st.WatchFor(ctx, conformance.NewStrResource("default", "9", "9").Metadata(), state.WithEventTypes(state.Created))
+	require.NoError(t, err)
+
+	for j := 0; j < 2000; j++ {
+		for i := 0; i < 10; i++ {
+			for _, ns := range []resource.Namespace{"default", "another"} {
+				_, err = safe.StateUpdateWithConflicts(ctx, st, conformance.NewIntResource(ns, strconv.Itoa(i), i).Metadata(),
+					func(r *conformance.IntResource) error {
+						r.SetValue(i + j)
+
+						return nil
+					})
+
+				require.NoError(t, err)
+
+				select {
+				case <-ctx.Done():
+					t.Fatal("context canceled")
+				default:
+				}
+			}
+		}
+	}
+
+	cancel()
+
+	err = <-errCh
+	require.NoError(t, err)
 }
