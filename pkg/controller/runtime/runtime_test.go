@@ -24,21 +24,38 @@ import (
 )
 
 func TestRuntimeConformance(t *testing.T) {
-	defer goleak.VerifyNone(t, goleak.IgnoreCurrent())
+	for _, tt := range []struct {
+		name string
+		opts []runtime.Option
+	}{
+		{
+			name: "defaults",
+		},
+		{
+			name: "rate limited",
+			opts: []runtime.Option{
+				runtime.WithChangeRateLimit(10, 20),
+			},
+		},
+	} {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Cleanup(func() { goleak.VerifyNone(t, goleak.IgnoreCurrent()) })
 
-	suite := &conformance.RuntimeSuite{}
-	suite.SetupRuntime = func() {
-		suite.State = state.WrapCore(namespaced.NewState(inmem.Build))
+			suite := &conformance.RuntimeSuite{}
+			suite.SetupRuntime = func() {
+				suite.State = state.WrapCore(namespaced.NewState(inmem.Build))
 
-		var err error
+				var err error
 
-		logger := zaptest.NewLogger(t)
+				logger := zaptest.NewLogger(t)
 
-		suite.Runtime, err = runtime.NewRuntime(suite.State, logger)
-		suite.Require().NoError(err)
+				suite.Runtime, err = runtime.NewRuntime(suite.State, logger, tt.opts...)
+				suite.Require().NoError(err)
+			}
+
+			suiterunner.Run(t, suite)
+		})
 	}
-
-	suiterunner.Run(t, suite)
 }
 
 func TestRuntimeWatchError(t *testing.T) {

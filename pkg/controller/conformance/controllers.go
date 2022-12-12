@@ -116,6 +116,8 @@ func (ctrl *IntToStrController) Run(ctx context.Context, r controller.Runtime, l
 				}
 			}
 		}
+
+		r.ResetRestartBackoff()
 	}
 }
 
@@ -220,6 +222,8 @@ func (ctrl *StrToSentenceController) Run(ctx context.Context, r controller.Runti
 				}
 			}
 		}
+
+		r.ResetRestartBackoff()
 	}
 }
 
@@ -294,6 +298,8 @@ func (ctrl *SumController) Run(ctx context.Context, r controller.Runtime, logger
 		}); err != nil {
 			return fmt.Errorf("error updating sum: %w", err)
 		}
+
+		r.ResetRestartBackoff()
 	}
 }
 

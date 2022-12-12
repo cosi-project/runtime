@@ -16,6 +16,7 @@ import (
 	"github.com/cenkalti/backoff/v4"
 	"github.com/siderolabs/go-pointer"
 	"go.uber.org/zap"
+	"golang.org/x/time/rate"
 
 	"github.com/cosi-project/runtime/pkg/controller"
 	"github.com/cosi-project/runtime/pkg/controller/runtime/dependency"
@@ -31,7 +32,8 @@ type adapter struct {
 	ctrl controller.Controller
 	ch   chan controller.ReconcileEvent
 
-	backoff *backoff.ExponentialBackOff
+	backoff       *backoff.ExponentialBackOff
+	updateLimiter *rate.Limiter
 
 	watchFilters map[watchKey]watchFilter
 
@@ -220,6 +222,10 @@ func (adapter *adapter) WatchFor(ctx context.Context, resourcePointer resource.P
 
 // Create implements controller.Runtime interface.
 func (adapter *adapter) Create(ctx context.Context, r resource.Resource) error {
+	if err := adapter.updateLimiter.Wait(ctx); err != nil {
+		return fmt.Errorf("create rate limited: %w", err)
+	}
+
 	if !adapter.isOutput(r.Metadata().Type()) {
 		return fmt.Errorf("resource %q/%q is not an output for controller %q, create attempted on %q",
 			r.Metadata().Namespace(), r.Metadata().Type(), adapter.name, r.Metadata().ID())
@@ -230,6 +236,10 @@ func (adapter *adapter) Create(ctx context.Context, r resource.Resource) error {
 
 // Update implements controller.Runtime interface.
 func (adapter *adapter) Update(ctx context.Context, newResource resource.Resource) error {
+	if err := adapter.updateLimiter.Wait(ctx); err != nil {
+		return fmt.Errorf("update rate limited: %w", err)
+	}
+
 	if !adapter.isOutput(newResource.Metadata().Type()) {
 		return fmt.Errorf("resource %q/%q is not an output for controller %q, create attempted on %q",
 			newResource.Metadata().Namespace(), newResource.Metadata().Type(), adapter.name, newResource.Metadata().ID())
@@ -240,6 +250,10 @@ func (adapter *adapter) Update(ctx context.Context, newResource resource.Resourc
 
 // Modify implements controller.Runtime interface.
 func (adapter *adapter) Modify(ctx context.Context, emptyResource resource.Resource, updateFunc func(resource.Resource) error) error {
+	if err := adapter.updateLimiter.Wait(ctx); err != nil {
+		return fmt.Errorf("modify rate limited: %w", err)
+	}
+
 	if !adapter.isOutput(emptyResource.Metadata().Type()) {
 		return fmt.Errorf("resource %q/%q is not an output for controller %q, update attempted on %q",
 			emptyResource.Metadata().Namespace(), emptyResource.Metadata().Type(), adapter.name, emptyResource.Metadata().ID())
@@ -266,6 +280,10 @@ func (adapter *adapter) Modify(ctx context.Context, emptyResource resource.Resou
 
 // AddFinalizer implements controller.Runtime interface.
 func (adapter *adapter) AddFinalizer(ctx context.Context, resourcePointer resource.Pointer, fins ...resource.Finalizer) error {
+	if err := adapter.updateLimiter.Wait(ctx); err != nil {
+		return fmt.Errorf("add finalizer rate limited: %w", err)
+	}
+
 	if err := adapter.checkFinalizerAccess(resourcePointer.Namespace(), resourcePointer.Type(), resourcePointer.ID()); err != nil {
 		return err
 	}
@@ -275,6 +293,10 @@ func (adapter *adapter) AddFinalizer(ctx context.Context, resourcePointer resour
 
 // RemoveFinalizer implements controller.Runtime interface.
 func (adapter *adapter) RemoveFinalizer(ctx context.Context, resourcePointer resource.Pointer, fins ...resource.Finalizer) error {
+	if err := adapter.updateLimiter.Wait(ctx); err != nil {
+		return fmt.Errorf("remove finalizer rate limited: %w", err)
+	}
+
 	if err := adapter.checkFinalizerAccess(resourcePointer.Namespace(), resourcePointer.Type(), resourcePointer.ID()); err != nil {
 		return err
 	}
@@ -289,6 +311,10 @@ func (adapter *adapter) RemoveFinalizer(ctx context.Context, resourcePointer res
 
 // Teardown implements controller.Runtime interface.
 func (adapter *adapter) Teardown(ctx context.Context, resourcePointer resource.Pointer) (bool, error) {
+	if err := adapter.updateLimiter.Wait(ctx); err != nil {
+		return false, fmt.Errorf("teardown rate limited: %w", err)
+	}
+
 	if !adapter.isOutput(resourcePointer.Type()) {
 		return false, fmt.Errorf("resource %q/%q is not an output for controller %q, teardown attempted on %q", resourcePointer.Namespace(), resourcePointer.Type(), adapter.name, resourcePointer.ID())
 	}
@@ -298,6 +324,10 @@ func (adapter *adapter) Teardown(ctx context.Context, resourcePointer resource.P
 
 // Destroy implements controller.Runtime interface.
 func (adapter *adapter) Destroy(ctx context.Context, resourcePointer resource.Pointer) error {
+	if err := adapter.updateLimiter.Wait(ctx); err != nil {
+		return fmt.Errorf("destroy finalizer rate limited: %w", err)
+	}
+
 	if !adapter.isOutput(resourcePointer.Type()) {
 		return fmt.Errorf("resource %q/%q is not an output for controller %q, destroy attempted on %q", resourcePointer.Namespace(), resourcePointer.Type(), adapter.name, resourcePointer.ID())
 	}

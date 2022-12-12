@@ -13,6 +13,7 @@ import (
 	"github.com/cenkalti/backoff/v4"
 	"github.com/siderolabs/go-pointer"
 	"go.uber.org/zap"
+	"golang.org/x/time/rate"
 
 	"github.com/cosi-project/runtime/pkg/controller"
 	"github.com/cosi-project/runtime/pkg/controller/runtime/dependency"
@@ -41,6 +42,8 @@ type Runtime struct { //nolint:govet
 
 	runCtx       context.Context //nolint:containedctx
 	runCtxCancel context.CancelFunc
+
+	options Options
 }
 
 type watchKey struct {
@@ -49,7 +52,7 @@ type watchKey struct {
 }
 
 // NewRuntime initializes controller runtime object.
-func NewRuntime(st state.State, logger *zap.Logger) (*Runtime, error) {
+func NewRuntime(st state.State, logger *zap.Logger, opt ...Option) (*Runtime, error) {
 	runtime := &Runtime{
 		state:       st,
 		logger:      logger,
@@ -57,6 +60,11 @@ func NewRuntime(st state.State, logger *zap.Logger) (*Runtime, error) {
 		watchCh:     make(chan state.Event),
 		watchErrors: make(chan error, 1),
 		watched:     make(map[watchKey]struct{}),
+		options:     DefaultOptions(),
+	}
+
+	for _, o := range opt {
+		o(&runtime.options)
 	}
 
 	runtime.controllersCond = sync.NewCond(&runtime.controllersMu)
@@ -88,7 +96,8 @@ func (runtime *Runtime) RegisterController(ctrl controller.Controller) error {
 		ctrl: ctrl,
 		ch:   make(chan controller.ReconcileEvent, 1),
 
-		backoff: backoff.NewExponentialBackOff(),
+		backoff:       backoff.NewExponentialBackOff(),
+		updateLimiter: rate.NewLimiter(runtime.options.ChangeRateLimit, runtime.options.ChangeBurst),
 	}
 
 	// disable number of retries limit
