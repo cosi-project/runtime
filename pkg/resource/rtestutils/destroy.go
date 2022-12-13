@@ -18,11 +18,23 @@ import (
 
 // DestroyAll performs graceful teardown/destroy sequence for all resources of type.
 func DestroyAll[R ResourceWithRD](ctx context.Context, t *testing.T, st state.State) {
-	Destroy[R](ctx, t, st, ResourceIDsWithOwner[R](ctx, t, st, pointer.To("")))
+	BeginDestroyAll[R](ctx, t, st)(ctx, t)
 }
 
 // Destroy performs graceful teardown/destroy sequence for specified IDs.
 func Destroy[R ResourceWithRD](ctx context.Context, t *testing.T, st state.State, ids []string) {
+	BeginDestroy[R](ctx, t, st, ids)(ctx, t)
+}
+
+// BeginDestroyAll performs graceful teardown/destroy sequence for all resources of type.
+// It returns the function to wait for the resource to be destroyed.
+func BeginDestroyAll[R ResourceWithRD](ctx context.Context, t *testing.T, st state.State) DestroyFn {
+	return BeginDestroy[R](ctx, t, st, ResourceIDsWithOwner[R](ctx, t, st, pointer.To("")))
+}
+
+// BeginDestroy performs graceful teardown/destroy sequence for specified IDs.
+// It returns the function to wait for the resource to be destroyed.
+func BeginDestroy[R ResourceWithRD](ctx context.Context, t *testing.T, st state.State, ids []string) DestroyFn {
 	ctx, cancel := context.WithCancel(ctx)
 	defer cancel()
 
@@ -37,38 +49,43 @@ func Destroy[R ResourceWithRD](ctx context.Context, t *testing.T, st state.State
 		require.NoError(err)
 	}
 
-	watchCh := make(chan safe.WrappedStateEvent[R])
+	return func(ctx context.Context, t *testing.T) {
+		watchCh := make(chan safe.WrappedStateEvent[R])
 
-	require.NoError(safe.StateWatchKind(ctx, st, resource.NewMetadata(rds.DefaultNamespace, rds.Type, "", resource.VersionUndefined), watchCh, state.WithBootstrapContents(true)))
+		require.NoError(safe.StateWatchKind(ctx, st, resource.NewMetadata(rds.DefaultNamespace, rds.Type, "", resource.VersionUndefined), watchCh, state.WithBootstrapContents(true)))
 
-	left := len(ids)
+		left := len(ids)
 
-	for left > 0 {
-		var event safe.WrappedStateEvent[R]
+		for left > 0 {
+			var event safe.WrappedStateEvent[R]
 
-		select {
-		case <-ctx.Done():
-			require.FailNow("timeout", "left: %d %s", left, rds.Type)
-		case event = <-watchCh:
-		}
-
-		switch event.Type() {
-		case state.Destroyed:
-			left--
-		case state.Updated, state.Created:
-			r, err := event.Resource()
-			require.NoError(err)
-
-			if r.Metadata().Phase() == resource.PhaseTearingDown && r.Metadata().Finalizers().Empty() {
-				// time to destroy
-				require.NoError(st.Destroy(ctx, r.Metadata()))
-
-				t.Logf("cleaned up %s ID %q", rds.Type, r.Metadata().ID())
+			select {
+			case <-ctx.Done():
+				require.FailNow("timeout", "left: %d %s", left, rds.Type)
+			case event = <-watchCh:
 			}
-		case state.Bootstrapped:
-			// ignore
-		case state.Errored:
-			require.NoError(event.Error())
+
+			switch event.Type() {
+			case state.Destroyed:
+				left--
+			case state.Updated, state.Created:
+				r, err := event.Resource()
+				require.NoError(err)
+
+				if r.Metadata().Phase() == resource.PhaseTearingDown && r.Metadata().Finalizers().Empty() {
+					// time to destroy
+					require.NoError(st.Destroy(ctx, r.Metadata()))
+
+					t.Logf("cleaned up %s ID %q", rds.Type, r.Metadata().ID())
+				}
+			case state.Bootstrapped:
+				// ignore
+			case state.Errored:
+				require.NoError(event.Error())
+			}
 		}
 	}
 }
+
+// DestroyFn is function type used in BeginDestroy and BeginDestroyAll.
+type DestroyFn func(ctx context.Context, t *testing.T)
