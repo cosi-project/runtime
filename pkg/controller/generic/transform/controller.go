@@ -315,11 +315,17 @@ func (ctrl *Controller[Input, Output]) cleanupOutputs(
 			continue
 		}
 
-		// this output was touched (has active input), skip it
-		if _, touched := runState.touchedOutputIDs[out.Metadata().ID()]; touched {
-			delete(runState.removeInputFinalizers, out.Metadata().ID())
+		// always attempt clean up of tearing down outputs, even if there is a matching input
+		// in the case that output phase is tearing down, while touched is true, actually
+		// output belongs to a previous generation of the input resource with the same ID, so the output
+		// should be torn down first before the new output is created
+		if out.Metadata().Phase() != resource.PhaseTearingDown {
+			// this output was touched (has active input), skip it
+			if _, touched := runState.touchedOutputIDs[out.Metadata().ID()]; touched {
+				delete(runState.removeInputFinalizers, out.Metadata().ID())
 
-			continue
+				continue
+			}
 		}
 
 		// attempt teardown

@@ -350,6 +350,65 @@ func TestDestroyReconcileTeardown(t *testing.T) {
 	})
 }
 
+func TestDestroyFinalizersRecreateInput(t *testing.T) {
+	setup(t, func(ctx context.Context, st state.State, runtime *runtime.Runtime) {
+		require.NoError(t, runtime.RegisterController(NewABController(nil)))
+
+		for _, a := range []*A{
+			NewA("1", ASpec{Int: 1}),
+			NewA("2", ASpec{Int: 1}),
+			NewA("3", ASpec{Int: 1}),
+		} {
+			require.NoError(t, st.Create(ctx, a))
+		}
+
+		rtestutils.AssertResources(ctx, t, st, []resource.ID{"transformed-1", "transformed-2", "transformed-3"},
+			func(r *B, assert *assert.Assertions) {
+				assert.Equal(`""-1`, r.TypedSpec().Out)
+			},
+		)
+
+		// add finalizers
+		const finalizer = "foo.cosi"
+
+		for _, id := range []resource.ID{"transformed-1", "transformed-2", "transformed-3"} {
+			require.NoError(t, st.AddFinalizer(ctx, NewB(id, BSpec{}).Metadata(), finalizer))
+		}
+
+		// destroy an input, controller is blocked on removing the output resource due to finalizers
+		require.NoError(t, st.Destroy(ctx, NewA("3", ASpec{}).Metadata()))
+
+		// wait for the output to enter tearing down phase
+		rtestutils.AssertResources(ctx, t, st, []resource.ID{"transformed-3"},
+			func(r *B, assert *assert.Assertions) {
+				assert.Equal(resource.PhaseTearingDown, r.Metadata().Phase())
+			},
+		)
+
+		// recreate the input with new spec
+		require.NoError(t, st.Create(ctx, NewA("3", ASpec{Int: 2})))
+
+		// the output still reflects the old spec since the controller is blocked on removing the output
+		rtestutils.AssertResources(ctx, t, st, []resource.ID{"transformed-3"},
+			func(r *B, assert *assert.Assertions) {
+				assert.Equal(`""-1`, r.TypedSpec().Out)
+				assert.Equal(resource.PhaseTearingDown, r.Metadata().Phase())
+			},
+		)
+
+		// remove the finalizer
+		require.NoError(t, st.RemoveFinalizer(ctx, NewB("transformed-3", BSpec{}).Metadata(), finalizer))
+
+		// the output should be re-created with new spec
+		rtestutils.AssertResources(ctx, t, st, []resource.ID{"transformed-3"},
+			func(r *B, assert *assert.Assertions) {
+				assert.Equal(`""-2`, r.TypedSpec().Out)
+				assert.Equal(resource.PhaseRunning, r.Metadata().Phase())
+			},
+		)
+	})
+}
+
 func setup(t *testing.T, f func(ctx context.Context, st state.State, rt *runtime.Runtime)) {
 	require := require.New(t)
 	assert := assert.New(t)
