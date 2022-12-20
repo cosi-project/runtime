@@ -111,8 +111,8 @@ watchKindChLoop:
 		case ev := <-watchKindCh:
 			t.Logf("got event: %v", ev)
 
-			// created event might come before error
-			if ev.Type == state.Created {
+			// created/updated event might come before error
+			if ev.Type == state.Created || ev.Type == state.Updated {
 				continue
 			}
 
