@@ -12,80 +12,82 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/cosi-project/runtime/pkg/resource"
+	"github.com/cosi-project/runtime/pkg/resource/meta"
 	"github.com/cosi-project/runtime/pkg/safe"
 	"github.com/cosi-project/runtime/pkg/state"
 )
 
 // DestroyAll performs graceful teardown/destroy sequence for all resources of type.
 func DestroyAll[R ResourceWithRD](ctx context.Context, t *testing.T, st state.State) {
-	BeginDestroyAll[R](ctx, t, st)(ctx, t)
+	Destroy[R](ctx, t, st, ResourceIDsWithOwner[R](ctx, t, st, pointer.To("")))
 }
 
 // Destroy performs graceful teardown/destroy sequence for specified IDs.
 func Destroy[R ResourceWithRD](ctx context.Context, t *testing.T, st state.State, ids []string) {
-	BeginDestroy[R](ctx, t, st, ids)(ctx, t)
-}
-
-// BeginDestroyAll performs graceful teardown/destroy sequence for all resources of type.
-// It returns the function to wait for the resource to be destroyed.
-func BeginDestroyAll[R ResourceWithRD](ctx context.Context, t *testing.T, st state.State) DestroyFn {
-	return BeginDestroy[R](ctx, t, st, ResourceIDsWithOwner[R](ctx, t, st, pointer.To("")))
-}
-
-// BeginDestroy performs graceful teardown/destroy sequence for specified IDs.
-// It returns the function to wait for the resource to be destroyed.
-func BeginDestroy[R ResourceWithRD](ctx context.Context, t *testing.T, st state.State, ids []string) DestroyFn {
-	ctx, cancel := context.WithCancel(ctx)
-	defer cancel()
-
-	require := require.New(t)
-
 	var r R
 
 	rds := r.ResourceDefinition()
 
-	for _, id := range ids {
-		_, err := st.Teardown(ctx, resource.NewMetadata(rds.DefaultNamespace, rds.Type, id, resource.VersionUndefined))
-		require.NoError(err)
-	}
+	require.NoError(t, teardown(ctx, st, ids, rds))
 
-	return func(ctx context.Context, t *testing.T) {
-		watchCh := make(chan safe.WrappedStateEvent[R])
+	watchCh := make(chan safe.WrappedStateEvent[R])
 
-		require.NoError(safe.StateWatchKind(ctx, st, resource.NewMetadata(rds.DefaultNamespace, rds.Type, "", resource.VersionUndefined), watchCh, state.WithBootstrapContents(true)))
+	ctx, cancel := context.WithCancel(ctx)
+	defer cancel()
 
-		left := len(ids)
+	require.NoError(t, safe.StateWatchKind(ctx, st, resource.NewMetadata(rds.DefaultNamespace, rds.Type, "", resource.VersionUndefined), watchCh, state.WithBootstrapContents(true)))
 
-		for left > 0 {
-			var event safe.WrappedStateEvent[R]
+	for left := len(ids); left > 0; {
+		event, ok := recvWithContext(ctx, watchCh)
+		if !ok {
+			require.FailNow(t, "timeout", "left: %d %s", left, rds.Type)
+		}
 
-			select {
-			case <-ctx.Done():
-				require.FailNow("timeout", "left: %d %s", left, rds.Type)
-			case event = <-watchCh:
+		switch event.Type() {
+		case state.Destroyed:
+			left--
+		case state.Updated, state.Created:
+			r, err := event.Resource()
+			require.NoError(t, err)
+
+			if r.Metadata().Phase() == resource.PhaseTearingDown && r.Metadata().Finalizers().Empty() {
+				// time to destroy
+				require.NoError(t, st.Destroy(ctx, r.Metadata()))
+
+				t.Logf("cleaned up %s ID %q", rds.Type, r.Metadata().ID())
 			}
-
-			switch event.Type() {
-			case state.Destroyed:
-				left--
-			case state.Updated, state.Created:
-				r, err := event.Resource()
-				require.NoError(err)
-
-				if r.Metadata().Phase() == resource.PhaseTearingDown && r.Metadata().Finalizers().Empty() {
-					// time to destroy
-					require.NoError(st.Destroy(ctx, r.Metadata()))
-
-					t.Logf("cleaned up %s ID %q", rds.Type, r.Metadata().ID())
-				}
-			case state.Bootstrapped:
-				// ignore
-			case state.Errored:
-				require.NoError(event.Error())
-			}
+		case state.Bootstrapped:
+			// ignore
+		case state.Errored:
+			require.NoError(t, event.Error())
 		}
 	}
 }
 
-// DestroyFn is function type used in BeginDestroy and BeginDestroyAll.
-type DestroyFn func(ctx context.Context, t *testing.T)
+// Teardown moves provided resources to the PhaseTearingDown.
+func Teardown[R ResourceWithRD](ctx context.Context, t *testing.T, st state.State, ids []string) {
+	var r R
+
+	require.NoError(t, teardown(ctx, st, ids, r.ResourceDefinition()))
+}
+
+func teardown(ctx context.Context, st state.State, ids []string, rds meta.ResourceDefinitionSpec) error {
+	for _, id := range ids {
+		if _, err := st.Teardown(ctx, resource.NewMetadata(rds.DefaultNamespace, rds.Type, id, resource.VersionUndefined)); err != nil {
+			return err
+		}
+	}
+
+	return nil
+}
+
+func recvWithContext[T any](ctx context.Context, ch <-chan T) (T, bool) {
+	select {
+	case <-ctx.Done():
+		var zero T
+
+		return zero, false
+	case val := <-ch:
+		return val, true
+	}
+}
