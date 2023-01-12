@@ -32,16 +32,33 @@ func TestFinalizers(t *testing.T) {
 
 	assert.True(t, fins.Add(B))
 	assert.False(t, fins.Add(B))
+	assert.True(t, fins.Has(B))
+	assert.False(t, fins.Has(C))
 
 	assert.True(t, finsCopy.Add(B))
 
 	assert.False(t, fins.Remove(C))
 	assert.True(t, fins.Remove(B))
 	assert.False(t, fins.Remove(B))
+	assert.False(t, fins.Has(B))
+	assert.False(t, fins.Has(C))
 
 	finsCopy = fins
 
 	assert.True(t, finsCopy.Add(C))
 	assert.True(t, fins.Add(C))
 	assert.True(t, fins.Remove(C))
+
+	fins = nil
+
+	finsCopy.Set(fins)
+	assert.True(t, finsCopy.Empty())
+	assert.Nil(t, finsCopy)
+
+	assert.True(t, fins.Add(A))
+	assert.True(t, fins.Add(C))
+
+	finsCopy.Set(fins)
+	assert.True(t, finsCopy.Has(A))
+	assert.True(t, finsCopy.Has(C))
 }

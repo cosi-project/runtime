@@ -46,3 +46,26 @@ func (fins *Finalizers) Remove(fin Finalizer) bool {
 func (fins Finalizers) Empty() bool {
 	return len(fins) == 0
 }
+
+// Has returns true if fin is present in the list of finalizers.
+func (fins Finalizers) Has(fin Finalizer) bool {
+	for _, f := range fins {
+		if f == fin {
+			return true
+		}
+	}
+
+	return false
+}
+
+// Set copies the finalizers from the other.
+func (fins *Finalizers) Set(other Finalizers) {
+	if other == nil {
+		*fins = nil
+
+		return
+	}
+
+	*fins = make([]Finalizer, len(other))
+	copy(*fins, other)
+}
