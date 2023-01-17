@@ -383,9 +383,7 @@ func (adapter *adapter) run(ctx context.Context) {
 	}
 }
 
-func (adapter *adapter) runOnce(ctx context.Context, logger *zap.Logger) error {
-	var err error
-
+func (adapter *adapter) runOnce(ctx context.Context, logger *zap.Logger) (err error) {
 	defer func() {
 		if err != nil && errors.Is(err, context.Canceled) {
 			err = nil
@@ -406,7 +404,5 @@ func (adapter *adapter) runOnce(ctx context.Context, logger *zap.Logger) error {
 
 	logger.Debug("controller starting")
 
-	err = adapter.ctrl.Run(ctx, adapter, logger)
-
-	return err
+	return adapter.ctrl.Run(ctx, adapter, logger)
 }

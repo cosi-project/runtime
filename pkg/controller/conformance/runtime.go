@@ -400,3 +400,19 @@ func (suite *RuntimeSuite) TestFailingController() {
 	suite.Assert().NoError(retry.Constant(5*time.Second, retry.WithUnits(10*time.Millisecond)).
 		Retry(suite.assertIntObjects([]string{"0", "1"}, []int{0, 1})))
 }
+
+// TestPanickingController ...
+func (suite *RuntimeSuite) TestPanickingController() {
+	suite.Require().NoError(suite.Runtime.RegisterController(&FailingController{
+		TargetNamespace: "target",
+		Panic:           true,
+	}))
+
+	suite.startRuntime()
+
+	suite.Assert().NoError(retry.Constant(5*time.Second, retry.WithUnits(10*time.Millisecond)).
+		Retry(suite.assertIntObjects([]string{"0"}, []int{0})))
+
+	suite.Assert().NoError(retry.Constant(5*time.Second, retry.WithUnits(10*time.Millisecond)).
+		Retry(suite.assertIntObjects([]string{"0", "1"}, []int{0, 1})))
+}

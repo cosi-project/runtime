@@ -300,6 +300,7 @@ func (ctrl *SumController) Run(ctx context.Context, r controller.Runtime, logger
 // FailingController fails on each iteration creating new resources each time.
 type FailingController struct {
 	TargetNamespace resource.Namespace
+	Panic           bool
 
 	count int
 }
@@ -341,6 +342,10 @@ func (ctrl *FailingController) Run(ctx context.Context, r controller.Runtime, lo
 	}
 
 	ctrl.count++
+
+	if ctrl.Panic {
+		panic("failing here")
+	}
 
 	return fmt.Errorf("failing here")
 }
