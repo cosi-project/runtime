@@ -252,9 +252,7 @@ func (ctrlAdapter *controllerAdapter) run(ctx context.Context) {
 	}
 }
 
-func (ctrlAdapter *controllerAdapter) runOnce(ctx context.Context, logger *zap.Logger) error {
-	var err error
-
+func (ctrlAdapter *controllerAdapter) runOnce(ctx context.Context, logger *zap.Logger) (err error) {
 	defer func() {
 		if err != nil && (errors.Is(err, context.Canceled) || status.Code(errors.Unwrap(err)) == codes.Canceled) {
 			err = nil
@@ -275,9 +273,7 @@ func (ctrlAdapter *controllerAdapter) runOnce(ctx context.Context, logger *zap.L
 
 	logger.Debug("controller starting")
 
-	err = ctrlAdapter.controller.Run(ctx, ctrlAdapter, logger)
-
-	return err
+	return ctrlAdapter.controller.Run(ctx, ctrlAdapter, logger)
 }
 
 func (ctrlAdapter *controllerAdapter) establishEventChannel() {
