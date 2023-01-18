@@ -8,6 +8,7 @@ import (
 	"context"
 	"testing"
 
+	"github.com/siderolabs/gen/slices"
 	"github.com/siderolabs/go-pointer"
 	"github.com/stretchr/testify/require"
 
@@ -37,15 +38,27 @@ func Destroy[R ResourceWithRD](ctx context.Context, t *testing.T, st state.State
 
 	require.NoError(t, safe.StateWatchKind(ctx, st, resource.NewMetadata(rds.DefaultNamespace, rds.Type, "", resource.VersionUndefined), watchCh, state.WithBootstrapContents(true)))
 
-	for left := len(ids); left > 0; {
+	idMap := slices.ToSet(ids)
+
+	for len(idMap) > 0 {
 		event, ok := recvWithContext(ctx, watchCh)
 		if !ok {
-			require.FailNow(t, "timeout", "left: %d %s", left, rds.Type)
+			require.FailNow(t, "timeout", "left: %d %s", len(idMap), rds.Type)
+		}
+
+		if evR, err := event.Resource(); err == nil {
+			if _, ok := idMap[evR.Metadata().ID()]; !ok {
+				// not the resource we're interested in
+				continue
+			}
 		}
 
 		switch event.Type() {
 		case state.Destroyed:
-			left--
+			r, err := event.Resource()
+			require.NoError(t, err)
+
+			delete(idMap, r.Metadata().ID())
 		case state.Updated, state.Created:
 			r, err := event.Resource()
 			require.NoError(t, err)
