@@ -409,6 +409,49 @@ func TestDestroyFinalizersRecreateInput(t *testing.T) {
 	})
 }
 
+func TestWithIgnoreTearingdDownInputs(t *testing.T) {
+	setup(t, func(ctx context.Context, st state.State, runtime *runtime.Runtime) {
+		require.NoError(t, runtime.RegisterController(NewABController(nil, transform.WithIgnoreTearingDownInputs())))
+
+		for _, a := range []*A{
+			NewA("1", ASpec{Str: "foo", Int: 1}),
+			NewA("2", ASpec{Str: "bar", Int: 2}),
+			NewA("3", ASpec{Str: "baz", Int: 3}),
+		} {
+			require.NoError(t, st.Create(ctx, a))
+		}
+
+		rtestutils.AssertResources(ctx, t, st, []resource.ID{"transformed-1", "transformed-2", "transformed-3"}, func(r *B, assert *assert.Assertions) {})
+
+		_, err := st.Teardown(ctx, NewA("2", ASpec{}).Metadata())
+		require.NoError(t, err)
+
+		// controller should ignore tearing down input "2" and keep the output
+		rtestutils.AssertResources(ctx, t, st, []resource.ID{"transformed-1", "transformed-2", "transformed-3"}, func(r *B, assert *assert.Assertions) {})
+
+		require.NoError(t, st.Destroy(ctx, NewA("2", ASpec{}).Metadata()))
+
+		// as "2" is destroyed, controller should remove the output
+		rtestutils.AssertNoResource[*B](ctx, t, st, "transformed-2")
+
+		// now put a finalizer on the output
+		require.NoError(t, st.AddFinalizer(ctx, NewB("transformed-1", BSpec{}).Metadata(), "foo"))
+
+		// destroy the input
+		require.NoError(t, st.Destroy(ctx, NewA("1", ASpec{}).Metadata()))
+
+		rtestutils.AssertResources(ctx, t, st, []resource.ID{"transformed-1"}, func(r *B, assert *assert.Assertions) {
+			assert.Equal(resource.PhaseTearingDown, r.Metadata().Phase())
+		})
+
+		// release the finalizer
+		require.NoError(t, st.RemoveFinalizer(ctx, NewB("transformed-1", BSpec{}).Metadata(), "foo"))
+
+		// the output should be removed
+		rtestutils.AssertNoResource[*B](ctx, t, st, "transformed-1")
+	})
+}
+
 func setup(t *testing.T, f func(ctx context.Context, st state.State, rt *runtime.Runtime)) {
 	require := require.New(t)
 	assert := assert.New(t)

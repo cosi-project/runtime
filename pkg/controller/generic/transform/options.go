@@ -11,9 +11,10 @@ import (
 
 // ControllerOptions configures TransformController.
 type ControllerOptions struct {
-	inputListOptions []state.ListOption
-	extraInputs      []controller.Input
-	inputFinalizers  bool
+	inputListOptions        []state.ListOption
+	extraInputs             []controller.Input
+	inputFinalizers         bool
+	ignoreTearingDownInputs bool
 }
 
 // ControllerOption is an option for TransformController.
@@ -40,6 +41,24 @@ func WithExtraInputs(inputs ...controller.Input) ControllerOption {
 // The finalizer on input will be removed only when matching output is destroyed.
 func WithInputFinalizers() ControllerOption {
 	return func(o *ControllerOptions) {
+		if o.ignoreTearingDownInputs {
+			panic("WithIgnoreTearingDownInputs is mutually exclusive with WithInputFinalizers")
+		}
+
 		o.inputFinalizers = true
+	}
+}
+
+// WithIgnoreTearingDownInputs makes controller treat tearing down inputs as 'normal' inputs.
+//
+// With this setting enabled outputs will still exist until the input is destroyed.
+// This setting is mutually exclusive with WithInputFinalizers.
+func WithIgnoreTearingDownInputs() ControllerOption {
+	return func(o *ControllerOptions) {
+		if o.inputFinalizers {
+			panic("WithIgnoreTearingDownInputs is mutually exclusive with WithInputFinalizers")
+		}
+
+		o.ignoreTearingDownInputs = true
 	}
 }

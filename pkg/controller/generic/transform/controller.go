@@ -209,7 +209,7 @@ func (ctrl *Controller[Input, Output]) processInputs(
 
 		mappedOut := ctrl.mapFunc(in)
 
-		if in.Metadata().Phase() == resource.PhaseTearingDown {
+		if !ctrl.options.ignoreTearingDownInputs && in.Metadata().Phase() == resource.PhaseTearingDown {
 			ctrl.reconcileTearingDownInput(ctx, r, logger, runState, in, mappedOut)
 
 			// skip normal reconciliation
@@ -217,6 +217,7 @@ func (ctrl *Controller[Input, Output]) processInputs(
 		}
 
 		// in this part of the function input resource is in PhaseRunning
+		// (or tearing down inputs are ignored with ignoreTearingDownInputs option, but in this case inputFinalizers are disabled)
 		runState.touchedOutputIDs[mappedOut.Metadata().ID()] = struct{}{}
 
 		// if the input finalizers are enabled, set the finalizer on input asap
