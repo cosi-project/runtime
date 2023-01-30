@@ -10,7 +10,6 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"google.golang.org/protobuf/proto"
 	"google.golang.org/protobuf/types/known/timestamppb"
 	"gopkg.in/yaml.v3"
 
@@ -56,7 +55,7 @@ func TestMarshalUnmarshal(t *testing.T) {
 	protoR2, err := r.Marshal()
 	require.NoError(t, err)
 
-	assert.True(t, proto.Equal(protoR, protoR2))
+	assert.True(t, protobuf.ProtoEqual(protoR, protoR2))
 
 	r2, err := protobuf.Unmarshal(protoR2)
 	require.NoError(t, err)

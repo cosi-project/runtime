@@ -18,6 +18,10 @@ type vtprotoMessage interface {
 	UnmarshalVT([]byte) error
 }
 
+type vtprotoEqual interface {
+	EqualMessageVT(proto.Message) bool
+}
+
 // ProtoMarshal returns the wire-format encoding of m.
 func ProtoMarshal(m proto.Message) ([]byte, error) {
 	if vm, ok := m.(vtprotoMessage); ok {
@@ -35,4 +39,15 @@ func ProtoUnmarshal(b []byte, m proto.Message) error {
 	}
 
 	return proto.Unmarshal(b, m)
+}
+
+// ProtoEqual returns true if the two messages are equal.
+//
+// This is a wrapper around proto.Equal which also supports vtproto messages.
+func ProtoEqual(a, b proto.Message) bool {
+	if vm, ok := a.(vtprotoEqual); ok {
+		return vm.EqualMessageVT(b)
+	}
+
+	return proto.Equal(a, b)
 }

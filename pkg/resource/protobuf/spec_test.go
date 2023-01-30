@@ -36,7 +36,7 @@ func TestResourceSpec(t *testing.T) {
 	err = specDecoded.UnmarshalProto(data)
 	require.NoError(t, err)
 
-	require.True(t, proto.Equal(spec.Value, specDecoded.Value))
+	require.True(t, protobuf.ProtoEqual(spec.Value, specDecoded.Value))
 }
 
 type testResource = typed.Resource[testSpec, testRD]

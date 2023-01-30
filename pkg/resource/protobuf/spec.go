@@ -85,7 +85,7 @@ func (spec *ResourceSpec[T, S]) Equal(other interface{}) bool {
 		return false
 	}
 
-	return proto.Equal(spec.Value, otherSpec.Value)
+	return ProtoEqual(spec.Value, otherSpec.Value)
 }
 
 // NewResourceSpec creates new ResourceSpec[T, S].
