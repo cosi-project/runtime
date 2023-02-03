@@ -96,6 +96,7 @@ func (adapter *Adapter) List(ctx context.Context, resourceKind resource.Kind, op
 		Type:      resourceKind.Type(),
 		Options: &v1alpha1.ListOptions{
 			LabelQuery: labelQuery,
+			IdQuery:    transformIDQuery(opts.IDQuery),
 		},
 	})
 	if err != nil {
@@ -334,6 +335,7 @@ func (adapter *Adapter) WatchKind(ctx context.Context, resourceKind resource.Kin
 			BootstrapContents: opts.BootstrapContents,
 			TailEvents:        int32(opts.TailEvents),
 			LabelQuery:        labelQuery,
+			IdQuery:           transformIDQuery(opts.IDQuery),
 		},
 		ApiVersion: 1,
 	})

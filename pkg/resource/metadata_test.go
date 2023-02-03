@@ -187,7 +187,14 @@ finalizers:
 	assert.True(t, md.Equal(in))
 }
 
-var ts, _ = time.Parse(time.RFC3339, "2021-06-23T19:22:29Z")
+var ts = func() time.Time {
+	t, err := time.Parse(time.RFC3339, "2021-06-23T19:22:29Z")
+	if err != nil {
+		panic(err)
+	}
+
+	return t
+}()
 
 type protoMd struct{}
 

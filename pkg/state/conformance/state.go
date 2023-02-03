@@ -6,7 +6,9 @@ package conformance
 
 import (
 	"context"
+	"fmt"
 	"math/rand"
+	"regexp"
 	"sort"
 	"sync"
 	"time"
@@ -952,6 +954,69 @@ func (suite *StateSuite) TestLabels() {
 
 	suite.Require().Equal(1, list.Len())
 	suite.Assert().True(resourceEqualIgnoreVersion(path3, list.Get(0)))
+}
+
+// TestIDQuery verifies ID query for List and WatchKind operations.
+func (suite *StateSuite) TestIDQuery() {
+	ns := suite.getNamespace()
+
+	for i := 0; i < 10; i++ {
+		path := NewPathResource(ns, fmt.Sprintf("idquery/path%d", i))
+
+		suite.Require().NoError(suite.State.Create(context.Background(), path))
+	}
+
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	list, err := safe.StateList[*PathResource](ctx, suite.State, NewPathResource(ns, "").Metadata(),
+		state.WithIDQuery(resource.IDRegexpMatch(regexp.MustCompile(`^idquery/.+[2-4]$`))),
+	)
+	suite.Require().NoError(err)
+
+	suite.Require().Equal(3, list.Len())
+
+	suite.Assert().Equal("idquery/path2", list.Get(0).Metadata().ID())
+	suite.Assert().Equal("idquery/path3", list.Get(1).Metadata().ID())
+	suite.Assert().Equal("idquery/path4", list.Get(2).Metadata().ID())
+
+	watchCh := make(chan state.Event)
+
+	suite.Require().NoError(suite.State.WatchKind(ctx, NewPathResource(ns, "").Metadata(), watchCh,
+		state.WithBootstrapContents(true),
+		state.WatchWithIDQuery(resource.IDRegexpMatch(regexp.MustCompile(`^idquery/.+[2-4]$`))),
+	))
+
+	for i := 2; i <= 4; i++ {
+		select {
+		case event := <-watchCh:
+			suite.Assert().Equal(state.Created, event.Type)
+			suite.Assert().Equal(fmt.Sprintf("idquery/path%d", i), event.Resource.Metadata().ID())
+		case <-time.After(1 * time.Second):
+			suite.Require().FailNow("timeout waiting for event")
+		}
+	}
+
+	select {
+	case event := <-watchCh:
+		suite.Assert().Equal(state.Bootstrapped, event.Type)
+	case <-time.After(1 * time.Second):
+		suite.Require().FailNow("timeout waiting for event")
+	}
+
+	for i := 0; i < 10; i++ {
+		suite.Require().NoError(suite.State.Destroy(ctx, NewPathResource(ns, fmt.Sprintf("idquery/path%d", i)).Metadata()))
+	}
+
+	for i := 2; i <= 4; i++ {
+		select {
+		case event := <-watchCh:
+			suite.Assert().Equal(state.Destroyed, event.Type)
+			suite.Assert().Equal(fmt.Sprintf("idquery/path%d", i), event.Resource.Metadata().ID())
+		case <-time.After(1 * time.Second):
+			suite.Require().FailNow("timeout waiting for event")
+		}
+	}
 }
 
 func resourceEqualIgnoreVersion(res1, res2 resource.Resource) bool {

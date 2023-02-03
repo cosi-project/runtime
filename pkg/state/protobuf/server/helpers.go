@@ -5,6 +5,8 @@
 package server
 
 import (
+	"regexp"
+
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 
@@ -30,4 +32,18 @@ func ConvertLabelQuery(terms []*v1alpha1.LabelTerm) ([]resource.LabelQueryOption
 	}
 
 	return labelOpts, nil
+}
+
+// ConvertIDQuery converts protobuf representation of IDQuery to state representation.
+func ConvertIDQuery(input *v1alpha1.IDQuery) ([]resource.IDQueryOption, error) {
+	if input == nil || input.Regexp == "" {
+		return nil, nil
+	}
+
+	re, err := regexp.Compile(input.Regexp)
+	if err != nil {
+		return nil, status.Errorf(codes.InvalidArgument, "failed to compile regexp: %v", err)
+	}
+
+	return []resource.IDQueryOption{resource.IDRegexpMatch(re)}, nil
 }

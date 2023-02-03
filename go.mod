@@ -1,6 +1,6 @@
 module github.com/cosi-project/runtime
 
-go 1.19
+go 1.20
 
 // forked yaml that introduces RawYAML interface that can be used to provide YAML encoder bytes
 // which are then encoded as a valid YAML block with proper indentiation

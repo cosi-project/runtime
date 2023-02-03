@@ -144,6 +144,9 @@ func (this *ListOptions) EqualVT(that *ListOptions) bool {
 	if !this.LabelQuery.EqualVT(that.LabelQuery) {
 		return false
 	}
+	if !this.IdQuery.EqualVT(that.IdQuery) {
+		return false
+	}
 	return string(this.unknownFields) == string(that.unknownFields)
 }
 
@@ -403,6 +406,9 @@ func (this *WatchOptions) EqualVT(that *WatchOptions) bool {
 		return false
 	}
 	if !this.LabelQuery.EqualVT(that.LabelQuery) {
+		return false
+	}
+	if !this.IdQuery.EqualVT(that.IdQuery) {
 		return false
 	}
 	return string(this.unknownFields) == string(that.unknownFields)
@@ -725,6 +731,16 @@ func (m *ListOptions) MarshalToSizedBufferVT(dAtA []byte) (int, error) {
 	if m.unknownFields != nil {
 		i -= len(m.unknownFields)
 		copy(dAtA[i:], m.unknownFields)
+	}
+	if m.IdQuery != nil {
+		size, err := m.IdQuery.MarshalToSizedBufferVT(dAtA[:i])
+		if err != nil {
+			return 0, err
+		}
+		i -= size
+		i = encodeVarint(dAtA, i, uint64(size))
+		i--
+		dAtA[i] = 0x12
 	}
 	if m.LabelQuery != nil {
 		size, err := m.LabelQuery.MarshalToSizedBufferVT(dAtA[:i])
@@ -1297,6 +1313,16 @@ func (m *WatchOptions) MarshalToSizedBufferVT(dAtA []byte) (int, error) {
 		i -= len(m.unknownFields)
 		copy(dAtA[i:], m.unknownFields)
 	}
+	if m.IdQuery != nil {
+		size, err := m.IdQuery.MarshalToSizedBufferVT(dAtA[:i])
+		if err != nil {
+			return 0, err
+		}
+		i -= size
+		i = encodeVarint(dAtA, i, uint64(size))
+		i--
+		dAtA[i] = 0x22
+	}
 	if m.LabelQuery != nil {
 		size, err := m.LabelQuery.MarshalToSizedBufferVT(dAtA[:i])
 		if err != nil {
@@ -1473,6 +1499,10 @@ func (m *ListOptions) SizeVT() (n int) {
 	_ = l
 	if m.LabelQuery != nil {
 		l = m.LabelQuery.SizeVT()
+		n += 1 + l + sov(uint64(l))
+	}
+	if m.IdQuery != nil {
+		l = m.IdQuery.SizeVT()
 		n += 1 + l + sov(uint64(l))
 	}
 	n += len(m.unknownFields)
@@ -1682,6 +1712,10 @@ func (m *WatchOptions) SizeVT() (n int) {
 	}
 	if m.LabelQuery != nil {
 		l = m.LabelQuery.SizeVT()
+		n += 1 + l + sov(uint64(l))
+	}
+	if m.IdQuery != nil {
+		l = m.IdQuery.SizeVT()
 		n += 1 + l + sov(uint64(l))
 	}
 	n += len(m.unknownFields)
@@ -2411,6 +2445,42 @@ func (m *ListOptions) UnmarshalVT(dAtA []byte) error {
 				m.LabelQuery = &LabelQuery{}
 			}
 			if err := m.LabelQuery.UnmarshalVT(dAtA[iNdEx:postIndex]); err != nil {
+				return err
+			}
+			iNdEx = postIndex
+		case 2:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field IdQuery", wireType)
+			}
+			var msglen int
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflow
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				msglen |= int(b&0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			if msglen < 0 {
+				return ErrInvalidLength
+			}
+			postIndex := iNdEx + msglen
+			if postIndex < 0 {
+				return ErrInvalidLength
+			}
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			if m.IdQuery == nil {
+				m.IdQuery = &IDQuery{}
+			}
+			if err := m.IdQuery.UnmarshalVT(dAtA[iNdEx:postIndex]); err != nil {
 				return err
 			}
 			iNdEx = postIndex
@@ -3763,6 +3833,42 @@ func (m *WatchOptions) UnmarshalVT(dAtA []byte) error {
 				m.LabelQuery = &LabelQuery{}
 			}
 			if err := m.LabelQuery.UnmarshalVT(dAtA[iNdEx:postIndex]); err != nil {
+				return err
+			}
+			iNdEx = postIndex
+		case 4:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field IdQuery", wireType)
+			}
+			var msglen int
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflow
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				msglen |= int(b&0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			if msglen < 0 {
+				return ErrInvalidLength
+			}
+			postIndex := iNdEx + msglen
+			if postIndex < 0 {
+				return ErrInvalidLength
+			}
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			if m.IdQuery == nil {
+				m.IdQuery = &IDQuery{}
+			}
+			if err := m.IdQuery.UnmarshalVT(dAtA[iNdEx:postIndex]); err != nil {
 				return err
 			}
 			iNdEx = postIndex

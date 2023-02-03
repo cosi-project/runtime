@@ -75,6 +75,15 @@ func (server *State) List(req *v1alpha1.ListRequest, srv v1alpha1.State_ListServ
 				opts = append(opts, state.WithLabelQuery(labelOpts...))
 			}
 		}
+
+		if req.Options.GetIdQuery() != nil {
+			idOpts, err := ConvertIDQuery(req.Options.GetIdQuery())
+			if err != nil {
+				return err
+			}
+
+			opts = append(opts, state.WithIDQuery(idOpts...))
+		}
 	}
 
 	items, err := server.state.List(srv.Context(), resource.NewMetadata(req.Namespace, req.Type, "", resource.VersionUndefined), opts...)
@@ -273,6 +282,17 @@ func (server *State) Watch(req *v1alpha1.WatchRequest, srv v1alpha1.State_WatchS
 			}
 
 			opts = append(opts, state.WatchWithLabelQuery(labelOpts...))
+		}
+
+		if req.Options.GetIdQuery() != nil {
+			var idOpts []resource.IDQueryOption
+
+			idOpts, err = ConvertIDQuery(req.Options.GetIdQuery())
+			if err != nil {
+				return err
+			}
+
+			opts = append(opts, state.WatchWithIDQuery(idOpts...))
 		}
 
 		err = server.state.WatchKind(ctx, resource.NewMetadata(req.Namespace, req.Type, "", resource.VersionUndefined), ch, opts...)
