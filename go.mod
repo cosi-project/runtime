@@ -7,7 +7,7 @@ go 1.20
 replace gopkg.in/yaml.v3 => github.com/unix4ever/yaml v0.0.0-20220527175918-f17b0f05cf2c
 
 require (
-	github.com/ProtonMail/gopenpgp/v2 v2.5.0
+	github.com/ProtonMail/gopenpgp/v2 v2.5.2
 	github.com/cenkalti/backoff/v4 v4.2.0
 	github.com/gertd/go-pluralize v0.2.1
 	github.com/golang/protobuf v1.5.2
@@ -19,18 +19,18 @@ require (
 	github.com/siderolabs/go-retry v0.3.2
 	github.com/siderolabs/protoenc v0.2.0
 	github.com/stretchr/testify v1.8.1
-	go.etcd.io/bbolt v1.3.6
+	go.etcd.io/bbolt v1.3.7
 	go.uber.org/goleak v1.2.0
 	go.uber.org/zap v1.24.0
 	golang.org/x/sync v0.1.0
 	golang.org/x/time v0.3.0
-	google.golang.org/grpc v1.52.0
+	google.golang.org/grpc v1.52.3
 	google.golang.org/protobuf v1.28.1
 	gopkg.in/yaml.v3 v3.0.1
 )
 
 require (
-	github.com/ProtonMail/go-crypto v0.0.0-20221026131551-cf6655e29de4 // indirect
+	github.com/ProtonMail/go-crypto v0.0.0-20230124153114-0acdc8ae009b // indirect
 	github.com/ProtonMail/go-mime v0.0.0-20221031134845-8fd9bc37cf08 // indirect
 	github.com/benbjohnson/clock v1.1.0 // indirect
 	github.com/cloudflare/circl v1.1.0 // indirect
@@ -47,7 +47,7 @@ require (
 	golang.org/x/crypto v0.0.0-20220411220226-7b82a4e95df4 // indirect
 	golang.org/x/lint v0.0.0-20210508222113-6edffad5e616 // indirect
 	golang.org/x/net v0.4.0 // indirect
-	golang.org/x/sys v0.3.0 // indirect
+	golang.org/x/sys v0.4.0 // indirect
 	golang.org/x/text v0.5.0 // indirect
 	google.golang.org/genproto v0.0.0-20221207170731-23e4bf6bdc37 // indirect
 	gopkg.in/check.v1 v1.0.0-20190902080502-41f04d3bba15 // indirect

@@ -41,9 +41,8 @@ func TestResourceSpec(t *testing.T) {
 
 type testResource = typed.Resource[testSpec, testRD]
 
-type testRD struct{} //nolint:unused
+type testRD struct{}
 
-//nolint:unused
 func (testRD) ResourceDefinition(resource.Metadata, testSpec) meta.ResourceDefinitionSpec {
 	return meta.ResourceDefinitionSpec{
 		Type: "testResource",
