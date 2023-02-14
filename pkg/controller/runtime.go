@@ -95,3 +95,9 @@ type Writer interface {
 	AddFinalizer(context.Context, resource.Pointer, ...resource.Finalizer) error
 	RemoveFinalizer(context.Context, resource.Pointer, ...resource.Finalizer) error
 }
+
+// ReaderWriter combines Reader and Writer interfaces.
+type ReaderWriter interface {
+	Reader
+	Writer
+}

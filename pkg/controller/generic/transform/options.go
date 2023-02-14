@@ -13,6 +13,7 @@ import (
 type ControllerOptions struct {
 	inputListOptions        []state.ListOption
 	extraInputs             []controller.Input
+	extraOutputs            []controller.Output
 	inputFinalizers         bool
 	ignoreTearingDownInputs bool
 }
@@ -33,6 +34,13 @@ func WithInputListOptions(opts ...state.ListOption) ControllerOption {
 func WithExtraInputs(inputs ...controller.Input) ControllerOption {
 	return func(o *ControllerOptions) {
 		o.extraInputs = append(o.extraInputs, inputs...)
+	}
+}
+
+// WithExtraOutputs adds extra outputs to the controller.
+func WithExtraOutputs(outputs ...controller.Output) ControllerOption {
+	return func(o *ControllerOptions) {
+		o.extraOutputs = append(o.extraOutputs, outputs...)
 	}
 }
 

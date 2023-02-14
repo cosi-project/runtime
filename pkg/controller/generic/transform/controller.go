@@ -27,7 +27,7 @@ import (
 //   - if this controller is configured to set finalizers on its inputs, the finalizer will only be removed when matching output is destroyed.
 type Controller[Input generic.ResourceWithRD, Output generic.ResourceWithRD] struct {
 	mapFunc              func(Input) Output
-	transformFunc        func(context.Context, controller.Reader, *zap.Logger, Input, Output) error
+	transformFunc        func(context.Context, controller.ReaderWriter, *zap.Logger, Input, Output) error
 	finalizerRemovalFunc func(context.Context, controller.Reader, *zap.Logger, Input) error
 	generic.NamedController
 	options ControllerOptions
@@ -47,6 +47,11 @@ type Settings[Input generic.ResourceWithRD, Output generic.ResourceWithRD] struc
 	// call reconcile on next event.
 	// If TransformFunc returns any other error, controller will fail.
 	TransformFunc func(context.Context, controller.Reader, *zap.Logger, Input, Output) error
+	// TransformExtraOutputFunc acts like TransformFunc, but used with extra outputs.
+	//
+	// If the controller produces additional outputs, this function should be used instead of TransformFunc.
+	// The only difference is that Reader+Writer is passed as the argument.
+	TransformExtraOutputFunc func(context.Context, controller.ReaderWriter, *zap.Logger, Input, Output) error
 	// FinalizerRemovalFunc is called when Input is being torn down while Input Finalizers are enabled.
 	//
 	// This function defines the pre-checks to be done before finalizer on the input can be removed.
@@ -70,10 +75,21 @@ func NewController[Input generic.ResourceWithRD, Output generic.ResourceWithRD](
 	switch {
 	case settings.MapMetadataFunc == nil:
 		panic("MapFunc is required")
-	case settings.TransformFunc == nil:
+	case settings.TransformFunc == nil && len(options.extraOutputs) == 0:
 		panic("TransformFunc is required")
+	case settings.TransformExtraOutputFunc == nil && len(options.extraOutputs) > 0:
+		panic("TransformExtraOutputFunc is required")
+	case settings.TransformFunc != nil && settings.TransformExtraOutputFunc != nil:
+		panic("TransformFunc and TransformExtraOutputFunc are mutually exclusive")
 	case options.inputFinalizers && settings.FinalizerRemovalFunc == nil:
 		panic("FinalizerRemovalFunc is required when input finalizers are enabled")
+	}
+
+	transformFunc := settings.TransformExtraOutputFunc
+	if transformFunc == nil {
+		transformFunc = func(ctx context.Context, rw controller.ReaderWriter, l *zap.Logger, i Input, o Output) error {
+			return settings.TransformFunc(ctx, rw, l, i, o)
+		}
 	}
 
 	return &Controller[Input, Output]{
@@ -81,7 +97,7 @@ func NewController[Input generic.ResourceWithRD, Output generic.ResourceWithRD](
 			ControllerName: settings.Name,
 		},
 		mapFunc:              settings.MapMetadataFunc,
-		transformFunc:        settings.TransformFunc,
+		transformFunc:        transformFunc,
 		finalizerRemovalFunc: settings.FinalizerRemovalFunc,
 		options:              options,
 	}
@@ -120,12 +136,12 @@ func (ctrl *Controller[Input, Output]) Inputs() []controller.Input {
 func (ctrl *Controller[Input, Output]) Outputs() []controller.Output {
 	var output Output
 
-	return []controller.Output{
+	return append([]controller.Output{
 		{
 			Type: output.ResourceDefinition().Type,
 			Kind: controller.OutputExclusive,
 		},
-	}
+	}, ctrl.options.extraOutputs...)
 }
 
 type runState struct {
