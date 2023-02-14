@@ -23,12 +23,12 @@ type DeepCopyable[T any] interface {
 // methods. It intantianed only during ResourceDefinition calls, so it should never contain any data which
 // survives those calls. It can be used to provide additional method Make(*resource.Metadata, *T) any, which is used for
 // custom interfaces. Look at LookupExtension and Maker for more details.
-type Extension[T any] interface {
+type Extension interface {
 	ResourceDefinition() spec.ResourceDefinitionSpec
 }
 
 // Resource provides a generic base implementation for resource.Resource.
-type Resource[T DeepCopyable[T], E Extension[T]] struct {
+type Resource[T DeepCopyable[T], E Extension] struct {
 	spec T
 	md   resource.Metadata
 }
@@ -132,7 +132,7 @@ func (t *Resource[T, E]) UnmarshalProto(md *resource.Metadata, protoBytes []byte
 }
 
 // NewResource initializes and returns a new instance of Resource with typed spec field.
-func NewResource[T DeepCopyable[T], E Extension[T]](md resource.Metadata, spec T) *Resource[T, E] {
+func NewResource[T DeepCopyable[T], E Extension](md resource.Metadata, spec T) *Resource[T, E] {
 	result := Resource[T, E]{md: md, spec: spec}
 
 	return &result
