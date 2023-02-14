@@ -39,11 +39,11 @@ func TestResourceSpec(t *testing.T) {
 	require.True(t, protobuf.ProtoEqual(spec.Value, specDecoded.Value))
 }
 
-type testResource = typed.Resource[testSpec, testRD]
+type testResource = typed.Resource[testSpec, testExtension]
 
-type testRD struct{}
+type testExtension struct{}
 
-func (testRD) ResourceDefinition(resource.Metadata, testSpec) meta.ResourceDefinitionSpec {
+func (testExtension) ResourceDefinition() meta.ResourceDefinitionSpec {
 	return meta.ResourceDefinitionSpec{
 		Type: "testResource",
 	}
@@ -52,11 +52,11 @@ func (testRD) ResourceDefinition(resource.Metadata, testSpec) meta.ResourceDefin
 func TestResourceEquality(t *testing.T) {
 	t.Parallel()
 
-	r1 := typed.NewResource[testSpec, testRD](resource.NewMetadata("default", "testResource", "aaa", resource.VersionUndefined), protobuf.NewResourceSpec(&v1alpha1.Metadata{
+	r1 := typed.NewResource[testSpec, testExtension](resource.NewMetadata("default", "testResource", "aaa", resource.VersionUndefined), protobuf.NewResourceSpec(&v1alpha1.Metadata{
 		Version: "v0.1.0",
 	}))
 
-	r2 := typed.NewResource[testSpec, testRD](resource.NewMetadata("default", "testResource", "aaa", resource.VersionUndefined), protobuf.NewResourceSpec(&v1alpha1.Metadata{
+	r2 := typed.NewResource[testSpec, testExtension](resource.NewMetadata("default", "testResource", "aaa", resource.VersionUndefined), protobuf.NewResourceSpec(&v1alpha1.Metadata{
 		Version: "v0.1.0",
 	}))
 
@@ -91,7 +91,7 @@ func TestResourceEquality(t *testing.T) {
 func TestDynamicResourceEquality(t *testing.T) {
 	t.Parallel()
 
-	r1 := typed.NewResource[ReflectSpec, ReflectSpecRD](
+	r1 := typed.NewResource[ReflectSpec, ReflectSpecExtension](
 		resource.NewMetadata("default", "reflectResource", "aaa", resource.VersionUndefined),
 		ReflectSpec{"test"})
 
@@ -118,7 +118,7 @@ func TestDynamicResourceEquality(t *testing.T) {
 	require.Equal(t, r1.Spec(), r3.Spec())
 }
 
-type reflectResource = typed.Resource[ReflectSpec, ReflectSpecRD]
+type reflectResource = typed.Resource[ReflectSpec, ReflectSpecExtension]
 
 type ReflectSpec struct {
 	Var string `protobuf:"1"`
@@ -128,9 +128,9 @@ func (t ReflectSpec) DeepCopy() ReflectSpec {
 	return t
 }
 
-type ReflectSpecRD struct{}
+type ReflectSpecExtension struct{}
 
-func (ReflectSpecRD) ResourceDefinition(resource.Metadata, ReflectSpec) meta.ResourceDefinitionSpec {
+func (ReflectSpecExtension) ResourceDefinition() meta.ResourceDefinitionSpec {
 	return meta.ResourceDefinitionSpec{
 		DisplayType: "test definition",
 	}
@@ -138,16 +138,16 @@ func (ReflectSpecRD) ResourceDefinition(resource.Metadata, ReflectSpec) meta.Res
 
 type resourceDefinition = protobuf.ResourceSpec[v1alpha1.ResourceDefinitionSpec, *v1alpha1.ResourceDefinitionSpec]
 
-type ResourceDefinitionSpecRD struct{}
+type resourceDefinitionExtension struct{}
 
-func (ResourceDefinitionSpecRD) ResourceDefinition(resource.Metadata, resourceDefinition) meta.ResourceDefinitionSpec {
+func (resourceDefinitionExtension) ResourceDefinition() meta.ResourceDefinitionSpec {
 	return meta.ResourceDefinitionSpec{
 		DisplayType: "test definition",
 	}
 }
 
 func TestYAMLResourceEquality(t *testing.T) {
-	original := typed.NewResource[resourceDefinition, ResourceDefinitionSpecRD](
+	original := typed.NewResource[resourceDefinition, resourceDefinitionExtension](
 		resource.NewMetadata("default", "testResourceYAML", "aaa", resource.VersionUndefined),
 		protobuf.NewResourceSpec(&v1alpha1.ResourceDefinitionSpec{
 			Aliases: []string{"test", "test2"},
@@ -156,7 +156,7 @@ func TestYAMLResourceEquality(t *testing.T) {
 
 	out := must(yaml.Marshal(original.Spec()))(t)
 
-	result := typed.NewResource[resourceDefinition, ResourceDefinitionSpecRD](
+	result := typed.NewResource[resourceDefinition, resourceDefinitionExtension](
 		resource.NewMetadata("default", "testResourceYAML", "bbb", resource.VersionUndefined),
 		protobuf.NewResourceSpec(&v1alpha1.ResourceDefinitionSpec{}),
 	)
@@ -175,7 +175,7 @@ func TestYAMLResourceEquality(t *testing.T) {
 
 func ExampleResource_testInline() {
 	// This is a test to ensure that our custom 'inline' does work.
-	res := typed.NewResource[resourceDefinition, ResourceDefinitionSpecRD](
+	res := typed.NewResource[resourceDefinition, resourceDefinitionExtension](
 		resource.NewMetadata("default", "testResourceYAML", "aaa", resource.VersionUndefined),
 		protobuf.NewResourceSpec(&v1alpha1.ResourceDefinitionSpec{
 			Aliases: []string{"test", "test2"},

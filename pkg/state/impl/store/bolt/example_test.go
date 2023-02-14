@@ -28,9 +28,9 @@ import (
 
 type ExampleSpec = protobuf.ResourceSpec[v1alpha1.Metadata, *v1alpha1.Metadata]
 
-type ExampleRD struct{}
+type ExampleExtension struct{}
 
-func (ExampleRD) ResourceDefinition(_ resource.Metadata, _ ExampleSpec) meta.ResourceDefinitionSpec {
+func (ExampleExtension) ResourceDefinition() meta.ResourceDefinitionSpec {
 	return meta.ResourceDefinitionSpec{
 		Type: "testResource",
 	}
@@ -92,7 +92,7 @@ func Example() {
 		},
 	))
 
-	r1 := typed.NewResource[ExampleSpec, ExampleRD](
+	r1 := typed.NewResource[ExampleSpec, ExampleExtension](
 		resource.NewMetadata(
 			"persistent",
 			"testResource",

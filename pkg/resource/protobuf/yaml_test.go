@@ -33,22 +33,22 @@ const TestType = resource.Type("Test.test.cosi.dev")
 
 type (
 	// TestResource is a test resource.
-	TestResource = typed.Resource[TestSpec, TestRD]
+	TestResource = typed.Resource[TestSpec, TestExtension]
 )
 
 // NewTestResource initializes TestResource resource.
 func NewTestResource(id resource.ID, spec TestSpec) *TestResource {
-	return typed.NewResource[TestSpec, TestRD](
+	return typed.NewResource[TestSpec, TestExtension](
 		resource.NewMetadata(TestNamespaceName, TestType, id, resource.VersionUndefined),
 		spec,
 	)
 }
 
-// TestRD provides auxiliary methods for A.
-type TestRD struct{}
+// TestExtension provides auxiliary methods for A.
+type TestExtension struct{}
 
 // ResourceDefinition implements core.ResourceDefinitionProvider interface.
-func (TestRD) ResourceDefinition(_ resource.Metadata, _ TestSpec) meta.ResourceDefinitionSpec {
+func (TestExtension) ResourceDefinition() meta.ResourceDefinitionSpec {
 	return meta.ResourceDefinitionSpec{
 		Type:             TestType,
 		DefaultNamespace: TestNamespaceName,

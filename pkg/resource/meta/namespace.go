@@ -15,21 +15,21 @@ import (
 const NamespaceType = resource.Type("Namespaces.meta.cosi.dev")
 
 // Namespace provides metadata about namespaces.
-type Namespace = typed.Resource[NamespaceSpec, NamespaceRD]
+type Namespace = typed.Resource[NamespaceSpec, NamespaceExtension]
 
 // NewNamespace initializes a Namespace resource.
 func NewNamespace(id resource.ID, spec NamespaceSpec) *Namespace {
-	return typed.NewResource[NamespaceSpec, NamespaceRD](
+	return typed.NewResource[NamespaceSpec, NamespaceExtension](
 		resource.NewMetadata(NamespaceName, NamespaceType, id, resource.VersionUndefined),
 		spec,
 	)
 }
 
-// NamespaceRD provides auxiliary methods for Namespace.
-type NamespaceRD struct{}
+// NamespaceExtension provides auxiliary methods for Namespace.
+type NamespaceExtension struct{}
 
 // ResourceDefinition implements core.ResourceDefinitionProvider interface.
-func (NamespaceRD) ResourceDefinition(_ resource.Metadata, _ NamespaceSpec) ResourceDefinitionSpec {
+func (NamespaceExtension) ResourceDefinition() ResourceDefinitionSpec {
 	return ResourceDefinitionSpec{
 		Type:             NamespaceType,
 		DefaultNamespace: NamespaceName,

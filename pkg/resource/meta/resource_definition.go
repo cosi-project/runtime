@@ -24,7 +24,7 @@ type (
 	ResourceDefinitionSpec = spec.ResourceDefinitionSpec
 
 	// ResourceDefinition provides metadata about namespaces.
-	ResourceDefinition = typed.Resource[ResourceDefinitionSpec, ResourceDefinitionRD]
+	ResourceDefinition = typed.Resource[ResourceDefinitionSpec, ResourceDefinitionExtension]
 )
 
 // NewResourceDefinition initializes a ResourceDefinition resource.
@@ -33,17 +33,17 @@ func NewResourceDefinition(spec ResourceDefinitionSpec) (*ResourceDefinition, er
 		return nil, fmt.Errorf("error validating resource definition %q: %w", spec.Type, err)
 	}
 
-	return typed.NewResource[ResourceDefinitionSpec, ResourceDefinitionRD](
+	return typed.NewResource[ResourceDefinitionSpec, ResourceDefinitionExtension](
 		resource.NewMetadata(NamespaceName, ResourceDefinitionType, spec.ID(), resource.VersionUndefined),
 		spec,
 	), nil
 }
 
-// ResourceDefinitionRD provides auxiliary methods for ResourceDefinition.
-type ResourceDefinitionRD struct{}
+// ResourceDefinitionExtension provides auxiliary methods for ResourceDefinition.
+type ResourceDefinitionExtension struct{}
 
 // ResourceDefinition implements core.ResourceDefinitionProvider interface.
-func (ResourceDefinitionRD) ResourceDefinition(_ resource.Metadata, _ spec.ResourceDefinitionSpec) ResourceDefinitionSpec {
+func (ResourceDefinitionExtension) ResourceDefinition() ResourceDefinitionSpec {
 	return ResourceDefinitionSpec{
 		Type:             ResourceDefinitionType,
 		Aliases:          []resource.Type{"api-resources"},

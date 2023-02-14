@@ -17,21 +17,21 @@ const ANamespaceName = resource.Namespace("ns-a")
 const AType = resource.Type("A.test.cosi.dev")
 
 // A is a test resource.
-type A = typed.Resource[ASpec, ARD]
+type A = typed.Resource[ASpec, AE]
 
 // NewA initializes a A resource.
 func NewA(id resource.ID, spec ASpec) *A {
-	return typed.NewResource[ASpec, ARD](
+	return typed.NewResource[ASpec, AE](
 		resource.NewMetadata(ANamespaceName, AType, id, resource.VersionUndefined),
 		spec,
 	)
 }
 
-// ARD provides auxiliary methods for A.
-type ARD struct{}
+// AE provides auxiliary methods for A.
+type AE struct{}
 
 // ResourceDefinition implements core.ResourceDefinitionProvider interface.
-func (ARD) ResourceDefinition(_ resource.Metadata, _ ASpec) meta.ResourceDefinitionSpec {
+func (AE) ResourceDefinition() meta.ResourceDefinitionSpec {
 	return meta.ResourceDefinitionSpec{
 		Type:             AType,
 		DefaultNamespace: ANamespaceName,
@@ -56,21 +56,21 @@ const BNamespaceName = resource.Namespace("ns-b")
 const BType = resource.Type("B.test.cosi.dev")
 
 // B is a test resource.
-type B = typed.Resource[BSpec, BRD]
+type B = typed.Resource[BSpec, BE]
 
 // NewB initializes a B resource.
 func NewB(id resource.ID, spec BSpec) *B {
-	return typed.NewResource[BSpec, BRD](
+	return typed.NewResource[BSpec, BE](
 		resource.NewMetadata(BNamespaceName, BType, id, resource.VersionUndefined),
 		spec,
 	)
 }
 
-// BRD provides auxiliary methods for B.
-type BRD struct{}
+// BE provides auxiliary methods for B.
+type BE struct{}
 
 // ResourceDefinition implements core.ResourceDefinitionProvider interface.
-func (BRD) ResourceDefinition(_ resource.Metadata, _ BSpec) meta.ResourceDefinitionSpec {
+func (BE) ResourceDefinition() meta.ResourceDefinitionSpec {
 	return meta.ResourceDefinitionSpec{
 		Type:             BType,
 		DefaultNamespace: BNamespaceName,

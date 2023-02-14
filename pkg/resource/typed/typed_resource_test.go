@@ -6,6 +6,7 @@ package typed_test
 
 import (
 	"encoding/json"
+	"strconv"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -25,20 +26,32 @@ func (t TestSpec) DeepCopy() TestSpec {
 	return t
 }
 
-type Test = typed.Resource[TestSpec, TestRD]
+type Test = typed.Resource[TestSpec, TestExtension]
 
 var _ resource.Resource = (*Test)(nil)
 
 func NewTest(md resource.Metadata, spec TestSpec) *Test {
-	return typed.NewResource[TestSpec, TestRD](md, spec)
+	return typed.NewResource[TestSpec, TestExtension](md, spec)
 }
 
-type TestRD struct{}
+type TestExtension struct{}
 
-func (TestRD) ResourceDefinition(md resource.Metadata, spec TestSpec) meta.ResourceDefinitionSpec {
+func (TestExtension) ResourceDefinition() meta.ResourceDefinitionSpec {
 	return meta.ResourceDefinitionSpec{
 		DisplayType: "test definition",
 	}
+}
+
+func (te TestExtension) Make(_ *resource.Metadata, spec *TestSpec) any {
+	return (*Matcher)(spec)
+}
+
+type Matcher struct {
+	Var int
+}
+
+func (m Matcher) Match(str string) bool {
+	return strconv.Itoa(m.Var) == str
 }
 
 func TestTypedResource(t *testing.T) {
@@ -68,21 +81,26 @@ func TestTypedResource(t *testing.T) {
 
 	// check that getting resource definition actually works on phantom types
 	asrt.Equal(res.ResourceDefinition().DisplayType, "test definition")
+
+	extension, ok := typed.LookupExtension[interface{ Match(string) bool }](res)
+	asrt.True(ok)
+	asrt.True(extension.Match("45"))
+	asrt.False(extension.Match("46"))
 }
 
 type jsonResSpec = protobuf.ResourceSpec[v1alpha1.Metadata, *v1alpha1.Metadata]
 
-type jsonResRD struct{}
+type jsonResExtension struct{}
 
-// ResourceDefinition ...
-func (jsonResRD) ResourceDefinition(md resource.Metadata, spec jsonResSpec) meta.ResourceDefinitionSpec {
+// Extension ...
+func (jsonResExtension) ResourceDefinition() meta.ResourceDefinitionSpec {
 	return meta.ResourceDefinitionSpec{
 		DisplayType: "test definition",
 	}
 }
 
 func TestUnmarshalJSON(t *testing.T) {
-	res := typed.NewResource[jsonResSpec, jsonResRD](
+	res := typed.NewResource[jsonResSpec, jsonResExtension](
 		resource.NewMetadata("default", "type", "1", resource.VersionUndefined),
 		jsonResSpec{},
 	)
