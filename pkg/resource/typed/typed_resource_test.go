@@ -88,6 +88,32 @@ func TestTypedResource(t *testing.T) {
 	asrt.False(extension.Match("46"))
 }
 
+func TestAllocations(t *testing.T) {
+	md := resource.NewMetadata("default", "type", "aaa", resource.VersionUndefined)
+	spec := TestSpec{
+		Var: 42,
+	}
+
+	res := NewTest(md, spec)
+
+	benchRes := testing.Benchmark(func(b *testing.B) {
+		for i := 0; i < b.N; i++ {
+			extension, ok := typed.LookupExtension[interface{ Match(string) bool }](res)
+			if !ok {
+				b.FailNow()
+			}
+
+			if !extension.Match("42") {
+				b.FailNow()
+			}
+		}
+	})
+
+	if benchRes.AllocsPerOp() != 0 {
+		t.Fatal("expected zero allocations, got", benchRes.AllocsPerOp())
+	}
+}
+
 type jsonResSpec = protobuf.ResourceSpec[v1alpha1.Metadata, *v1alpha1.Metadata]
 
 type jsonResExtension struct{}
