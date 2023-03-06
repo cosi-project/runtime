@@ -17,7 +17,14 @@ import (
 )
 
 // AssertResources asserts on a resource list.
-func AssertResources[R ResourceWithRD](ctx context.Context, t *testing.T, st state.State, ids []resource.ID, assertionFunc func(r R, assertion *assert.Assertions)) {
+func AssertResources[R ResourceWithRD](
+	ctx context.Context,
+	t *testing.T,
+	st state.State,
+	ids []resource.ID,
+	assertionFunc func(r R, assertion *assert.Assertions),
+	opts ...Option,
+) {
 	require := require.New(t)
 
 	var r R
@@ -28,8 +35,10 @@ func AssertResources[R ResourceWithRD](ctx context.Context, t *testing.T, st sta
 	defer cancel()
 
 	watchCh := make(chan state.Event)
+	opt := makeOptions(opts...)
+	namespace := pick(opt.Namespace != "", opt.Namespace, rds.DefaultNamespace)
 
-	require.NoError(st.WatchKind(ctx, resource.NewMetadata(rds.DefaultNamespace, rds.Type, "", resource.VersionUndefined), watchCh))
+	require.NoError(st.WatchKind(ctx, resource.NewMetadata(namespace, rds.Type, "", resource.VersionUndefined), watchCh))
 
 	for {
 		ok := 0
@@ -38,7 +47,7 @@ func AssertResources[R ResourceWithRD](ctx context.Context, t *testing.T, st sta
 		asserter := assert.New(&aggregator)
 
 		for _, id := range ids {
-			res, err := safe.StateGet[R](ctx, st, resource.NewMetadata(rds.DefaultNamespace, rds.Type, id, resource.VersionUndefined))
+			res, err := safe.StateGet[R](ctx, st, resource.NewMetadata(namespace, rds.Type, id, resource.VersionUndefined))
 			if err != nil {
 				if state.IsNotFoundError(err) {
 					asserter.NoError(err)
@@ -76,7 +85,13 @@ func AssertResources[R ResourceWithRD](ctx context.Context, t *testing.T, st sta
 }
 
 // AssertNoResource asserts that a resource no longer exists.
-func AssertNoResource[R ResourceWithRD](ctx context.Context, t *testing.T, st state.State, id resource.ID) {
+func AssertNoResource[R ResourceWithRD](
+	ctx context.Context,
+	t *testing.T,
+	st state.State,
+	id resource.ID,
+	opts ...Option,
+) {
 	require := require.New(t)
 
 	var r R
@@ -87,8 +102,10 @@ func AssertNoResource[R ResourceWithRD](ctx context.Context, t *testing.T, st st
 	defer cancel()
 
 	watchCh := make(chan state.Event)
+	opt := makeOptions(opts...)
+	namespace := pick(opt.Namespace != "", opt.Namespace, rds.DefaultNamespace)
 
-	require.NoError(st.Watch(ctx, resource.NewMetadata(rds.DefaultNamespace, rds.Type, id, resource.VersionUndefined), watchCh))
+	require.NoError(st.Watch(ctx, resource.NewMetadata(namespace, rds.Type, id, resource.VersionUndefined), watchCh))
 
 	for {
 		select {
@@ -109,4 +126,37 @@ func AssertNoResource[R ResourceWithRD](ctx context.Context, t *testing.T, st st
 // AssertAll asserts on all resources of a kind.
 func AssertAll[R ResourceWithRD](ctx context.Context, t *testing.T, st state.State, assertionFunc func(r R, assertion *assert.Assertions)) {
 	AssertResources(ctx, t, st, ResourceIDs[R](ctx, t, st), assertionFunc)
+}
+
+// Options is a set of options for the test utils.
+type Options struct {
+	Namespace string
+}
+
+// Option is a functional option for the test utils.
+type Option func(*Options)
+
+func makeOptions(opts ...Option) Options {
+	var opt Options
+
+	for _, o := range opts {
+		o(&opt)
+	}
+
+	return opt
+}
+
+// WithNamespace sets the namespace for the test utils.
+func WithNamespace(namespace string) Option {
+	return func(o *Options) {
+		o.Namespace = namespace
+	}
+}
+
+func pick[T any](cond bool, a, b T) T {
+	if cond {
+		return a
+	}
+
+	return b
 }
