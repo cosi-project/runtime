@@ -12,6 +12,7 @@ import (
 	"time"
 
 	"github.com/siderolabs/gen/channel"
+	"github.com/siderolabs/gen/slices"
 
 	"github.com/cosi-project/runtime/pkg/resource"
 	"github.com/cosi-project/runtime/pkg/state"
@@ -385,8 +386,8 @@ func (collection *ResourceCollection) Watch(ctx context.Context, id resource.ID,
 
 // WatchAll for any resource change stored in this collection.
 //
-//nolint:gocognit,gocyclo,cyclop
-func (collection *ResourceCollection) WatchAll(ctx context.Context, ch chan<- state.Event, opts ...state.WatchKindOption) error {
+//nolint:gocognit,gocyclo,cyclop,maintidx
+func (collection *ResourceCollection) WatchAll(ctx context.Context, singleCh chan<- state.Event, aggCh chan<- []state.Event, opts ...state.WatchKindOption) error {
 	var options state.WatchKindOptions
 
 	for _, opt := range opts {
@@ -440,23 +441,40 @@ func (collection *ResourceCollection) WatchAll(ctx context.Context, ch chan<- st
 
 	go func() {
 		// send initial contents if they were captured
-		for _, res := range bootstrapList {
-			if !channel.SendWithContext(ctx, ch,
-				state.Event{
-					Type:     state.Created,
-					Resource: res,
-				},
-			) {
-				return
-			}
-		}
-
-		bootstrapList = nil
-
 		if options.BootstrapContents {
-			if !channel.SendWithContext(ctx, ch, state.Event{Type: state.Bootstrapped}) {
-				return
+			switch {
+			case singleCh != nil:
+				for _, res := range bootstrapList {
+					if !channel.SendWithContext(ctx, singleCh,
+						state.Event{
+							Type:     state.Created,
+							Resource: res,
+						},
+					) {
+						return
+					}
+				}
+
+				if !channel.SendWithContext(ctx, singleCh, state.Event{Type: state.Bootstrapped}) {
+					return
+				}
+			case aggCh != nil:
+				events := slices.Map(bootstrapList, func(r resource.Resource) state.Event {
+					return state.Event{
+						Type:     state.Created,
+						Resource: r,
+					}
+				})
+
+				events = append(events, state.Event{Type: state.Bootstrapped})
+
+				if !channel.SendWithContext(ctx, aggCh, events) {
+					return
+				}
 			}
+
+			// make the list nil so that it gets GC'ed, we don't need it anymore after this point
+			bootstrapList = nil
 		}
 
 		for {
@@ -486,12 +504,17 @@ func (collection *ResourceCollection) WatchAll(ctx context.Context, ch chan<- st
 			if collection.writePos-pos > int64(collection.capacity) {
 				collection.mu.Unlock()
 
-				channel.SendWithContext(ctx, ch,
-					state.Event{
-						Type:  state.Errored,
-						Error: fmt.Errorf("buffer overrun: namespace %q type %q", collection.ns, collection.typ),
-					},
-				)
+				overrunEvent := state.Event{
+					Type:  state.Errored,
+					Error: fmt.Errorf("buffer overrun: namespace %q type %q", collection.ns, collection.typ),
+				}
+
+				switch {
+				case singleCh != nil:
+					channel.SendWithContext(ctx, singleCh, overrunEvent)
+				case aggCh != nil:
+					channel.SendWithContext(ctx, aggCh, []state.Event{overrunEvent})
+				}
 
 				return
 			}
@@ -511,13 +534,10 @@ func (collection *ResourceCollection) WatchAll(ctx context.Context, ch chan<- st
 
 			collection.mu.Unlock()
 
-			for _, event := range events {
+			events = filterInPlaceMutating(events, func(event *state.Event) bool {
 				switch event.Type {
 				case state.Created, state.Destroyed:
-					if !matches(event.Resource) {
-						// skip the event
-						continue
-					}
+					return matches(event.Resource)
 				case state.Updated:
 					oldMatches := matches(event.Old)
 					newMatches := matches(event.Resource)
@@ -527,26 +547,62 @@ func (collection *ResourceCollection) WatchAll(ctx context.Context, ch chan<- st
 					case oldMatches && !newMatches:
 						event.Type = state.Destroyed
 						event.Old = nil
+
+						return true
 					case !oldMatches && newMatches:
 						event.Type = state.Created
 						event.Old = nil
+
+						return true
 					case newMatches && oldMatches:
 						// passthrough the event
+						return true
 					default:
 						// skip the event
-						continue
+						return false
 					}
 				case state.Errored, state.Bootstrapped:
 					panic("should never be reached")
 				}
 
-				// deliver event
-				if !channel.SendWithContext(ctx, ch, event) {
+				return false
+			})
+
+			if len(events) == 0 {
+				continue
+			}
+
+			switch {
+			case aggCh != nil:
+				if !channel.SendWithContext(ctx, aggCh, events) {
 					return
+				}
+			case singleCh != nil:
+				for _, event := range events {
+					if !channel.SendWithContext(ctx, singleCh, event) {
+						return
+					}
 				}
 			}
 		}
 	}()
 
 	return nil
+}
+
+// filterInPlaceMutating is almost same as slices.FilterInPlace, but it mutates the slice in place.
+func filterInPlaceMutating[S ~[]V, V any](slc S, fn func(*V) bool) S {
+	if len(slc) == 0 {
+		return slc
+	}
+
+	r := slc[:0]
+
+	for _, v := range slc {
+		if fn(&v) {
+			r = append(r, v)
+		}
+	}
+
+	return r
 }

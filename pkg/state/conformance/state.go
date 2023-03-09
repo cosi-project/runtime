@@ -206,9 +206,18 @@ func (suite *StateSuite) TestCRDWithOwners() {
 
 // TestWatchKind verifies WatchKind API.
 func (suite *StateSuite) TestWatchKind() {
+	suite.testWatchKind(false)
+}
+
+// TestWatchKindAggregated verifies WatchKind API with aggregated watch.
+func (suite *StateSuite) TestWatchKindAggregated() {
+	suite.testWatchKind(true)
+}
+
+func (suite *StateSuite) testWatchKind(useAggregated bool) {
 	ns := suite.getNamespace()
-	path1 := NewPathResource(ns, "var/db")
-	path2 := NewPathResource(ns, "var/tmp")
+	path1 := NewPathResource(ns, fmt.Sprintf("var/db/%v", useAggregated))
+	path2 := NewPathResource(ns, fmt.Sprintf("var/tmp/%v", useAggregated))
 
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
@@ -217,7 +226,7 @@ func (suite *StateSuite) TestWatchKind() {
 
 	ch := make(chan state.Event)
 
-	suite.Require().NoError(suite.State.WatchKind(ctx, path1.Metadata(), ch))
+	suite.Require().NoError(watchAggregateAdapter(ctx, useAggregated, suite.State, path1.Metadata(), ch))
 
 	suite.Require().NoError(suite.State.Create(ctx, path2))
 
@@ -269,7 +278,7 @@ func (suite *StateSuite) TestWatchKind() {
 
 	chWithBootstrap := make(chan state.Event)
 
-	suite.Require().NoError(suite.State.WatchKind(ctx, path1.Metadata(), chWithBootstrap, state.WithBootstrapContents(true)))
+	suite.Require().NoError(watchAggregateAdapter(ctx, useAggregated, suite.State, path1.Metadata(), chWithBootstrap, state.WithBootstrapContents(true)))
 
 	resources, err := suite.State.List(ctx, path1.Metadata())
 	suite.Require().NoError(err)
@@ -317,15 +326,24 @@ func (suite *StateSuite) TestWatchKind() {
 
 // TestWatchKindWithTailEvents verifies WatchKind API with tail events.
 func (suite *StateSuite) TestWatchKindWithTailEvents() {
+	suite.testWatchKindWithTailEvents(false)
+}
+
+// TestWatchKindAggregatedWithTailEvents verifies WatchKind API with aggregated watch and tail events.
+func (suite *StateSuite) TestWatchKindAggregatedWithTailEvents() {
+	suite.testWatchKindWithTailEvents(true)
+}
+
+func (suite *StateSuite) testWatchKindWithTailEvents(useAggregated bool) {
 	ns := suite.getNamespace()
-	res := NewPathResource(ns, "res/watch-kind-with-tail-events")
+	res := NewPathResource(ns, fmt.Sprintf("res/watch-kind-with-tail-events/%v", useAggregated))
 
 	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 	defer cancel()
 
 	ch := make(chan state.Event)
 
-	suite.Require().NoError(suite.State.WatchKind(ctx, res.Metadata(), ch))
+	suite.Require().NoError(watchAggregateAdapter(ctx, useAggregated, suite.State, res.Metadata(), ch))
 
 	suite.Require().NoError(suite.State.Create(ctx, res))
 
@@ -352,7 +370,7 @@ loop:
 	// get event history
 	chWithTail := make(chan state.Event)
 
-	err = suite.State.WatchKind(ctx, res.Metadata(), chWithTail, state.WithKindTailEvents(1000))
+	err = watchAggregateAdapter(ctx, useAggregated, suite.State, res.Metadata(), chWithTail, state.WithKindTailEvents(1000))
 	if state.IsUnsupportedError(err) {
 		suite.T().Skip("watch with tail events is not supported by this backend")
 	}
@@ -379,18 +397,31 @@ loop:
 
 // TestWatchKindWithLabels verifies WatchKind API with label selectors.
 func (suite *StateSuite) TestWatchKindWithLabels() {
+	suite.testWatchKindWithLabels(false)
+}
+
+// TestWatchKindAggregatedWithLabels verifies WatchKind API with aggregated watch and label selectors.
+func (suite *StateSuite) TestWatchKindAggregatedWithLabels() {
+	suite.testWatchKindWithLabels(true)
+}
+
+func (suite *StateSuite) testWatchKindWithLabels(useAggregated bool) {
 	ns := suite.getNamespace()
 
-	path1 := NewPathResource(ns, "var/label1")
-	path1.Metadata().Labels().Set("label", "label1")
-	path1.Metadata().Labels().Set("common", "app")
+	labelLabel := fmt.Sprintf("label/%v", useAggregated)
+	labelCommon := fmt.Sprintf("common/%v", useAggregated)
+	labelApp := fmt.Sprintf("app/%v", useAggregated)
 
-	path2 := NewPathResource(ns, "var/label2")
-	path2.Metadata().Labels().Set("label", "label2")
-	path2.Metadata().Labels().Set("common", "app")
+	path1 := NewPathResource(ns, fmt.Sprintf("var/label1/%v", useAggregated))
+	path1.Metadata().Labels().Set(labelLabel, "label1")
+	path1.Metadata().Labels().Set(labelCommon, "app")
 
-	path3 := NewPathResource(ns, "var/label3")
-	path3.Metadata().Labels().Set("label", "label3")
+	path2 := NewPathResource(ns, fmt.Sprintf("var/label2/%v", useAggregated))
+	path2.Metadata().Labels().Set(labelLabel, "label2")
+	path2.Metadata().Labels().Set(labelCommon, "app")
+
+	path3 := NewPathResource(ns, fmt.Sprintf("var/label3/%v", useAggregated))
+	path3.Metadata().Labels().Set(labelLabel, "label3")
 
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
@@ -401,21 +432,25 @@ func (suite *StateSuite) TestWatchKindWithLabels() {
 	chCommonApp := make(chan state.Event)
 
 	// watch with label == label1
-	suite.Require().NoError(suite.State.WatchKind(
+	suite.Require().NoError(watchAggregateAdapter(
 		ctx,
+		useAggregated,
+		suite.State,
 		path1.Metadata(),
 		chLabel1,
 		state.WithBootstrapContents(true),
-		state.WatchWithLabelQuery(resource.LabelEqual("label", "label1")),
+		state.WatchWithLabelQuery(resource.LabelEqual(labelLabel, "label1")),
 	))
 
 	// watch with exists(common)
-	suite.Require().NoError(suite.State.WatchKind(
+	suite.Require().NoError(watchAggregateAdapter(
 		ctx,
+		useAggregated,
+		suite.State,
 		path1.Metadata(),
 		chCommonApp,
 		state.WithBootstrapContents(true),
-		state.WatchWithLabelQuery(resource.LabelExists("common")),
+		state.WatchWithLabelQuery(resource.LabelExists(labelCommon)),
 	))
 
 	suite.Require().NoError(suite.State.Create(ctx, path2))
@@ -458,7 +493,7 @@ func (suite *StateSuite) TestWatchKindWithLabels() {
 
 	// modify path3 so that it matches common
 	_, err := safe.StateUpdateWithConflicts(ctx, suite.State, path3.Metadata(), func(r *PathResource) error {
-		r.Metadata().Labels().Set("common", "foo")
+		r.Metadata().Labels().Set(labelCommon, "foo")
 
 		return nil
 	})
@@ -476,7 +511,7 @@ func (suite *StateSuite) TestWatchKindWithLabels() {
 
 	// do an update on path1, it should match both watch channels
 	_, err = safe.StateUpdateWithConflicts(ctx, suite.State, path1.Metadata(), func(r *PathResource) error {
-		r.Metadata().Labels().Set("app", "app-awesome")
+		r.Metadata().Labels().Set(labelApp, "app-awesome")
 
 		return nil
 	})
@@ -488,12 +523,12 @@ func (suite *StateSuite) TestWatchKindWithLabels() {
 			suite.Assert().Equal(state.Updated, event.Type)
 			suite.Assert().Equal(resource.String(path1), resource.String(event.Resource))
 
-			_, ok := event.Resource.Metadata().Labels().Get("app")
+			_, ok := event.Resource.Metadata().Labels().Get(labelApp)
 			suite.Assert().True(ok)
 
 			suite.Assert().Equal(resource.String(path1), resource.String(event.Old))
 
-			_, ok = event.Old.Metadata().Labels().Get("app")
+			_, ok = event.Old.Metadata().Labels().Get(labelApp)
 			suite.Assert().False(ok)
 		case <-time.After(time.Second):
 			suite.FailNow("timed out waiting for event")
@@ -502,7 +537,7 @@ func (suite *StateSuite) TestWatchKindWithLabels() {
 
 	// modify path1 so that it no longer matches common
 	_, err = safe.StateUpdateWithConflicts(ctx, suite.State, path1.Metadata(), func(r *PathResource) error {
-		r.Metadata().Labels().Delete("common")
+		r.Metadata().Labels().Delete(labelCommon)
 
 		return nil
 	})
@@ -524,12 +559,12 @@ func (suite *StateSuite) TestWatchKindWithLabels() {
 		suite.Assert().Equal(state.Updated, event.Type)
 		suite.Assert().Equal(resource.String(path1), resource.String(event.Resource))
 
-		_, ok := event.Resource.Metadata().Labels().Get("common")
+		_, ok := event.Resource.Metadata().Labels().Get(labelCommon)
 		suite.Assert().False(ok)
 
 		suite.Assert().Equal(resource.String(path1), resource.String(event.Old))
 
-		_, ok = event.Old.Metadata().Labels().Get("common")
+		_, ok = event.Old.Metadata().Labels().Get(labelCommon)
 		suite.Assert().True(ok)
 	case <-time.After(time.Second):
 		suite.FailNow("timed out waiting for event")

@@ -94,8 +94,8 @@ func TestBufferOverrun(t *testing.T) {
 		require.NoError(t, err)
 	}
 
-	// update 0th resource 10 times
-	for i := 0; i < 10; i++ {
+	// update 0th resource 20 times
+	for i := 0; i < 20; i++ {
 		_, err := st.UpdateWithConflicts(ctx, conformance.NewPathResource(namespace, "0").Metadata(), func(r resource.Resource) error {
 			r.Metadata().Finalizers().Add(strconv.Itoa(i))
 

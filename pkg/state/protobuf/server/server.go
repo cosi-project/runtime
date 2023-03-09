@@ -258,7 +258,8 @@ func (server *State) Destroy(ctx context.Context, req *v1alpha1.DestroyRequest) 
 //nolint:gocognit,gocyclo,cyclop
 func (server *State) Watch(req *v1alpha1.WatchRequest, srv v1alpha1.State_WatchServer) error {
 	ctx := srv.Context()
-	ch := make(chan state.Event)
+	singleCh := make(chan state.Event)
+	aggregatedCh := make(chan []state.Event)
 
 	var err error
 
@@ -295,7 +296,11 @@ func (server *State) Watch(req *v1alpha1.WatchRequest, srv v1alpha1.State_WatchS
 			opts = append(opts, state.WatchWithIDQuery(idOpts...))
 		}
 
-		err = server.state.WatchKind(ctx, resource.NewMetadata(req.Namespace, req.Type, "", resource.VersionUndefined), ch, opts...)
+		if req.Options.Aggregated {
+			err = server.state.WatchKindAggregated(ctx, resource.NewMetadata(req.Namespace, req.Type, "", resource.VersionUndefined), aggregatedCh, opts...)
+		} else {
+			err = server.state.WatchKind(ctx, resource.NewMetadata(req.Namespace, req.Type, "", resource.VersionUndefined), singleCh, opts...)
+		}
 	} else {
 		var opts []state.WatchOption
 
@@ -311,7 +316,7 @@ func (server *State) Watch(req *v1alpha1.WatchRequest, srv v1alpha1.State_WatchS
 			return status.Error(codes.Unimplemented, "label query is not implemented for resource watch")
 		}
 
-		err = server.state.Watch(ctx, resource.NewMetadata(req.Namespace, req.Type, req.GetId(), resource.VersionUndefined), ch, opts...)
+		err = server.state.Watch(ctx, resource.NewMetadata(req.Namespace, req.Type, req.GetId(), resource.VersionUndefined), singleCh, opts...)
 	}
 
 	if err != nil {
@@ -324,83 +329,117 @@ func (server *State) Watch(req *v1alpha1.WatchRequest, srv v1alpha1.State_WatchS
 	}
 
 	for {
-		var event state.Event
-
 		select {
-		case event = <-ch:
+		case event := <-singleCh:
+			var msgEvent *v1alpha1.Event
+
+			msgEvent, err = mapEvent(req.ApiVersion, event)
+			if err != nil {
+				return err
+			}
+
+			if msgEvent == nil {
+				continue
+			}
+
+			if err = srv.Send(&v1alpha1.WatchResponse{Event: []*v1alpha1.Event{msgEvent}}); err != nil {
+				return err
+			}
+		case events := <-aggregatedCh:
+			msgEvents := make([]*v1alpha1.Event, 0, len(events))
+
+			for _, event := range events {
+				var msgEvent *v1alpha1.Event
+
+				msgEvent, err = mapEvent(req.ApiVersion, event)
+				if err != nil {
+					return err
+				}
+
+				if msgEvent == nil {
+					continue
+				}
+
+				msgEvents = append(msgEvents, msgEvent)
+			}
+
+			if err = srv.Send(&v1alpha1.WatchResponse{Event: msgEvents}); err != nil {
+				return err
+			}
 		case <-ctx.Done():
 			return nil
 		}
+	}
+}
 
-		if req.ApiVersion < 1 {
-			// skip events which are not supported by the client
-			if event.Type == state.Bootstrapped || event.Type == state.Errored {
-				continue
-			}
-		}
-
-		var marshaled *v1alpha1.Resource
-
-		if event.Resource != nil {
-			var protoR *protobuf.Resource
-
-			protoR, err = protobuf.FromResource(event.Resource)
-			if err != nil {
-				return err
-			}
-
-			marshaled, err = protoR.Marshal()
-			if err != nil {
-				return err
-			}
-		}
-
-		var oldMarshaled *v1alpha1.Resource
-
-		if event.Old != nil {
-			var oldProtoR *protobuf.Resource
-
-			oldProtoR, err = protobuf.FromResource(event.Old)
-			if err != nil {
-				return err
-			}
-
-			oldMarshaled, err = oldProtoR.Marshal()
-			if err != nil {
-				return err
-			}
-		}
-
-		var protoError *string
-
-		if event.Error != nil {
-			protoError = pointer.To(event.Error.Error())
-		}
-
-		var eventType v1alpha1.EventType
-
-		switch event.Type {
-		case state.Created:
-			eventType = v1alpha1.EventType_CREATED
-		case state.Updated:
-			eventType = v1alpha1.EventType_UPDATED
-		case state.Destroyed:
-			eventType = v1alpha1.EventType_DESTROYED
-		case state.Bootstrapped:
-			eventType = v1alpha1.EventType_BOOTSTRAPPED
-		case state.Errored:
-			eventType = v1alpha1.EventType_ERRORED
-		}
-
-		if err = srv.Send(&v1alpha1.WatchResponse{
-			Event: &v1alpha1.Event{
-				EventType: eventType,
-				Resource:  marshaled,
-				Old:       oldMarshaled,
-				Error:     protoError,
-			},
-		}); err != nil {
-			return err
+func mapEvent(apiVersion int32, event state.Event) (*v1alpha1.Event, error) {
+	if apiVersion < 1 {
+		// skip events which are not supported by the client
+		if event.Type == state.Bootstrapped || event.Type == state.Errored {
+			return nil, nil //nolint:nilnil
 		}
 	}
+
+	var (
+		marshaled *v1alpha1.Resource
+		err       error
+	)
+
+	if event.Resource != nil {
+		var protoR *protobuf.Resource
+
+		protoR, err = protobuf.FromResource(event.Resource)
+		if err != nil {
+			return nil, err
+		}
+
+		marshaled, err = protoR.Marshal()
+		if err != nil {
+			return nil, err
+		}
+	}
+
+	var oldMarshaled *v1alpha1.Resource
+
+	if event.Old != nil {
+		var oldProtoR *protobuf.Resource
+
+		oldProtoR, err = protobuf.FromResource(event.Old)
+		if err != nil {
+			return nil, err
+		}
+
+		oldMarshaled, err = oldProtoR.Marshal()
+		if err != nil {
+			return nil, err
+		}
+	}
+
+	var protoError *string
+
+	if event.Error != nil {
+		protoError = pointer.To(event.Error.Error())
+	}
+
+	var eventType v1alpha1.EventType
+
+	switch event.Type {
+	case state.Created:
+		eventType = v1alpha1.EventType_CREATED
+	case state.Updated:
+		eventType = v1alpha1.EventType_UPDATED
+	case state.Destroyed:
+		eventType = v1alpha1.EventType_DESTROYED
+	case state.Bootstrapped:
+		eventType = v1alpha1.EventType_BOOTSTRAPPED
+	case state.Errored:
+		eventType = v1alpha1.EventType_ERRORED
+	}
+
+	return &v1alpha1.Event{
+		EventType: eventType,
+		Resource:  marshaled,
+		Old:       oldMarshaled,
+		Error:     protoError,
+	}, nil
 }

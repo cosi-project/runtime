@@ -304,7 +304,7 @@ func (adapter *Adapter) Watch(ctx context.Context, resourcePointer resource.Poin
 		return err
 	}
 
-	go watchAdapter(ctx, cli, ch, opts.UnmarshalOptions.SkipProtobufUnmarshal)
+	go watchAdapter(ctx, cli, ch, nil, opts.UnmarshalOptions.SkipProtobufUnmarshal)
 
 	return nil
 }
@@ -349,15 +349,61 @@ func (adapter *Adapter) WatchKind(ctx context.Context, resourceKind resource.Kin
 		return err
 	}
 
-	go watchAdapter(ctx, cli, ch, opts.UnmarshalOptions.SkipProtobufUnmarshal)
+	go watchAdapter(ctx, cli, ch, nil, opts.UnmarshalOptions.SkipProtobufUnmarshal)
 
 	return nil
 }
 
-//nolint:gocognit
-func watchAdapter(ctx context.Context, cli v1alpha1.State_WatchClient, ch chan<- state.Event, skipProtobufUnmarshal bool) {
+// WatchKindAggregated watches resources of specific kind (namespace and type).
+func (adapter *Adapter) WatchKindAggregated(ctx context.Context, resourceKind resource.Kind, ch chan<- []state.Event, opt ...state.WatchKindOption) error {
+	opts := state.WatchKindOptions{}
+
+	for _, o := range opt {
+		o(&opts)
+	}
+
+	var labelQuery *v1alpha1.LabelQuery
+
+	if len(opts.LabelQuery.Terms) > 0 {
+		var err error
+
+		labelQuery, err = transformLabelQuery(opts.LabelQuery)
+		if err != nil {
+			return err
+		}
+	}
+
+	cli, err := adapter.client.Watch(ctx, &v1alpha1.WatchRequest{
+		Namespace: resourceKind.Namespace(),
+		Type:      resourceKind.Type(),
+		Options: &v1alpha1.WatchOptions{
+			BootstrapContents: opts.BootstrapContents,
+			TailEvents:        int32(opts.TailEvents),
+			LabelQuery:        labelQuery,
+			IdQuery:           transformIDQuery(opts.IDQuery),
+			Aggregated:        true,
+		},
+		ApiVersion: 1,
+	})
+	if err != nil {
+		return err
+	}
+
+	// receive first (empty) watch event
+	_, err = cli.Recv()
+	if err != nil {
+		return err
+	}
+
+	go watchAdapter(ctx, cli, nil, ch, opts.UnmarshalOptions.SkipProtobufUnmarshal)
+
+	return nil
+}
+
+//nolint:gocognit,gocyclo,cyclop
+func watchAdapter(ctx context.Context, cli v1alpha1.State_WatchClient, singleCh chan<- state.Event, aggregatedCh chan<- []state.Event, skipProtobufUnmarshal bool) {
 	sendError := func(err error) {
-		channel.SendWithContext(ctx, ch,
+		channel.SendWithContext(ctx, singleCh,
 			state.Event{
 				Type:  state.Errored,
 				Error: err,
@@ -377,67 +423,82 @@ func watchAdapter(ctx context.Context, cli v1alpha1.State_WatchClient, ch chan<-
 			return
 		}
 
-		event := state.Event{}
+		events := make([]state.Event, 0, len(msg.Event))
 
-		switch msg.Event.EventType {
-		case v1alpha1.EventType_CREATED:
-			event.Type = state.Created
-		case v1alpha1.EventType_UPDATED:
-			event.Type = state.Updated
-		case v1alpha1.EventType_DESTROYED:
-			event.Type = state.Destroyed
-		case v1alpha1.EventType_BOOTSTRAPPED:
-			event.Type = state.Bootstrapped
-		case v1alpha1.EventType_ERRORED:
-			event.Type = state.Errored
-		}
+		for _, msgEvent := range msg.Event {
+			event := state.Event{}
 
-		if msg.Event.Resource != nil {
-			unmarshaled, err := protobuf.Unmarshal(msg.Event.Resource)
-			if err != nil {
-				sendError(err)
-
-				return
+			switch msgEvent.EventType {
+			case v1alpha1.EventType_CREATED:
+				event.Type = state.Created
+			case v1alpha1.EventType_UPDATED:
+				event.Type = state.Updated
+			case v1alpha1.EventType_DESTROYED:
+				event.Type = state.Destroyed
+			case v1alpha1.EventType_BOOTSTRAPPED:
+				event.Type = state.Bootstrapped
+			case v1alpha1.EventType_ERRORED:
+				event.Type = state.Errored
 			}
 
-			if skipProtobufUnmarshal {
-				event.Resource = unmarshaled
-			} else {
-				event.Resource, err = protobuf.UnmarshalResource(unmarshaled)
+			if msgEvent.Resource != nil {
+				unmarshaled, err := protobuf.Unmarshal(msgEvent.Resource)
 				if err != nil {
 					sendError(err)
 
 					return
 				}
+
+				if skipProtobufUnmarshal {
+					event.Resource = unmarshaled
+				} else {
+					event.Resource, err = protobuf.UnmarshalResource(unmarshaled)
+					if err != nil {
+						sendError(err)
+
+						return
+					}
+				}
 			}
-		}
 
-		if msg.Event.Old != nil {
-			unmarshaled, err := protobuf.Unmarshal(msg.Event.Old)
-			if err != nil {
-				sendError(err)
-
-				return
-			}
-
-			if skipProtobufUnmarshal {
-				event.Old = unmarshaled
-			} else {
-				event.Old, err = protobuf.UnmarshalResource(unmarshaled)
+			if msgEvent.Old != nil {
+				unmarshaled, err := protobuf.Unmarshal(msgEvent.Old)
 				if err != nil {
 					sendError(err)
 
 					return
 				}
+
+				if skipProtobufUnmarshal {
+					event.Old = unmarshaled
+				} else {
+					event.Old, err = protobuf.UnmarshalResource(unmarshaled)
+					if err != nil {
+						sendError(err)
+
+						return
+					}
+				}
 			}
+
+			if msgEvent.Error != nil {
+				event.Error = errors.New(*msgEvent.Error)
+			}
+
+			events = append(events, event)
 		}
 
-		if msg.Event.Error != nil {
-			event.Error = errors.New(*msg.Event.Error)
-		}
-
-		if !channel.SendWithContext(ctx, ch, event) {
-			return
+		switch {
+		case singleCh != nil:
+			for _, event := range events {
+				if !channel.SendWithContext(ctx, singleCh, event) {
+					return
+				}
+			}
+		case aggregatedCh != nil:
+			if !channel.SendWithContext(ctx, aggregatedCh, events) {
+				return
+			}
 		}
 	}
 }

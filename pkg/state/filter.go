@@ -176,3 +176,17 @@ func (filter *stateFilter) WatchKind(ctx context.Context, resourceKind resource.
 
 	return filter.state.WatchKind(ctx, resourceKind, ch, opts...)
 }
+
+// WatchKindAggregate watches resources of specific kind (namespace and type).
+func (filter *stateFilter) WatchKindAggregated(ctx context.Context, resourceKind resource.Kind, ch chan<- []Event, opts ...WatchKindOption) error {
+	if err := filter.rule(ctx, Access{
+		ResourceNamespace: resourceKind.Namespace(),
+		ResourceType:      resourceKind.Type(),
+
+		Verb: Watch,
+	}); err != nil {
+		return err
+	}
+
+	return filter.state.WatchKindAggregated(ctx, resourceKind, ch, opts...)
+}

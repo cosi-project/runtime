@@ -6,6 +6,6 @@ package runtime
 
 import "github.com/cosi-project/runtime/pkg/resource"
 
-func filterDestroyReady(md *resource.Metadata) bool {
-	return md.Phase() == resource.PhaseTearingDown && md.Finalizers().Empty()
+func filterDestroyReady(md *reducedMetadata) bool {
+	return md.phase == resource.PhaseTearingDown && md.finalizersEmpty
 }

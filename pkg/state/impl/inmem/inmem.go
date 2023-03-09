@@ -180,5 +180,14 @@ func (st *State) WatchKind(ctx context.Context, resourceKind resource.Kind, ch c
 		return err
 	}
 
-	return st.getCollection(resourceKind.Type()).WatchAll(ctx, ch, opts...)
+	return st.getCollection(resourceKind.Type()).WatchAll(ctx, ch, nil, opts...)
+}
+
+// WatchKindAggregated all resources by type.
+func (st *State) WatchKindAggregated(ctx context.Context, resourceKind resource.Kind, ch chan<- []state.Event, opts ...state.WatchKindOption) error {
+	if err := st.loadStore(ctx); err != nil {
+		return err
+	}
+
+	return st.getCollection(resourceKind.Type()).WatchAll(ctx, nil, ch, opts...)
 }

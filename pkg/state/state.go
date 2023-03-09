@@ -81,6 +81,9 @@ type CoreState interface {
 
 	// WatchKind watches resources of specific kind (namespace and type).
 	WatchKind(context.Context, resource.Kind, chan<- Event, ...WatchKindOption) error
+
+	// WatchKindAggregated watches resources of specific kind (namespace and type), updates are sent aggregated.
+	WatchKindAggregated(context.Context, resource.Kind, chan<- []Event, ...WatchKindOption) error
 }
 
 // UpdaterFunc is called on resource to update it to the desired state.

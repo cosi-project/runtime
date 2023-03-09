@@ -91,3 +91,8 @@ func (st *State) Watch(ctx context.Context, ptr resource.Pointer, ch chan<- stat
 func (st *State) WatchKind(ctx context.Context, kind resource.Kind, ch chan<- state.Event, opts ...state.WatchKindOption) error {
 	return st.getNamespace(kind.Namespace()).WatchKind(ctx, kind, ch, opts...)
 }
+
+// WatchKindAggregated watches resources of specific kind (namespace and type).
+func (st *State) WatchKindAggregated(ctx context.Context, kind resource.Kind, ch chan<- []state.Event, opts ...state.WatchKindOption) error {
+	return st.getNamespace(kind.Namespace()).WatchKindAggregated(ctx, kind, ch, opts...)
+}

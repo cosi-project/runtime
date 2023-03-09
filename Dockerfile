@@ -2,7 +2,7 @@
 
 # THIS FILE WAS AUTOMATICALLY GENERATED, PLEASE DO NOT EDIT.
 #
-# Generated on 2023-02-27T15:03:11Z by kres latest.
+# Generated on 2023-03-10T10:44:31Z by kres 1c10545-dirty.
 
 ARG TOOLCHAIN
 
@@ -21,10 +21,10 @@ RUN markdownlint --ignore "CHANGELOG.md" --ignore "**/node_modules/**" --ignore 
 
 # collects proto specs
 FROM scratch AS proto-specs
-ADD https://raw.githubusercontent.com/cosi-project/specification/c644a4b0fd408ec41bd29193bcdbd1a5b7feead2/proto/v1alpha1/resource.proto /api/v1alpha1/
-ADD https://raw.githubusercontent.com/cosi-project/specification/c644a4b0fd408ec41bd29193bcdbd1a5b7feead2/proto/v1alpha1/state.proto /api/v1alpha1/
-ADD https://raw.githubusercontent.com/cosi-project/specification/c644a4b0fd408ec41bd29193bcdbd1a5b7feead2/proto/v1alpha1/runtime.proto /api/v1alpha1/
-ADD https://raw.githubusercontent.com/cosi-project/specification/c644a4b0fd408ec41bd29193bcdbd1a5b7feead2/proto/v1alpha1/meta.proto /api/v1alpha1/
+ADD https://raw.githubusercontent.com/cosi-project/specification/a6ec705e7132b0b1bc403980dd52f2e5f1912907/proto/v1alpha1/resource.proto /api/v1alpha1/
+ADD https://raw.githubusercontent.com/cosi-project/specification/a6ec705e7132b0b1bc403980dd52f2e5f1912907/proto/v1alpha1/state.proto /api/v1alpha1/
+ADD https://raw.githubusercontent.com/cosi-project/specification/a6ec705e7132b0b1bc403980dd52f2e5f1912907/proto/v1alpha1/runtime.proto /api/v1alpha1/
+ADD https://raw.githubusercontent.com/cosi-project/specification/a6ec705e7132b0b1bc403980dd52f2e5f1912907/proto/v1alpha1/meta.proto /api/v1alpha1/
 ADD api/key_storage/key_storage.proto /api/key_storage/
 
 # base toolchain image
@@ -110,12 +110,12 @@ RUN --mount=type=cache,target=/root/.cache/go-build --mount=type=cache,target=/g
 # runs unit-tests with race detector
 FROM base AS unit-tests-race
 ARG TESTPKGS
-RUN --mount=type=cache,target=/root/.cache/go-build --mount=type=cache,target=/go/pkg --mount=type=cache,target=/tmp CGO_ENABLED=1 go test -v -race -count 1 ${TESTPKGS}
+RUN --mount=type=cache,target=/root/.cache/go-build --mount=type=cache,target=/go/pkg --mount=type=cache,target=/tmp CGO_ENABLED=1 go test -v -race -count 1 -p 1 ${TESTPKGS}
 
 # runs unit-tests
 FROM base AS unit-tests-run
 ARG TESTPKGS
-RUN --mount=type=cache,target=/root/.cache/go-build --mount=type=cache,target=/go/pkg --mount=type=cache,target=/tmp go test -v -covermode=atomic -coverprofile=coverage.txt -coverpkg=${TESTPKGS} -count 1 ${TESTPKGS}
+RUN --mount=type=cache,target=/root/.cache/go-build --mount=type=cache,target=/go/pkg --mount=type=cache,target=/tmp go test -v -covermode=atomic -coverprofile=coverage.txt -coverpkg=${TESTPKGS} -count 1 -p 1 ${TESTPKGS}
 
 # cleaned up specs and compiled versions
 FROM scratch AS generate

@@ -411,6 +411,9 @@ func (this *WatchOptions) EqualVT(that *WatchOptions) bool {
 	if !this.IdQuery.EqualVT(that.IdQuery) {
 		return false
 	}
+	if this.Aggregated != that.Aggregated {
+		return false
+	}
 	return string(this.unknownFields) == string(that.unknownFields)
 }
 
@@ -427,8 +430,22 @@ func (this *WatchResponse) EqualVT(that *WatchResponse) bool {
 	} else if this == nil || that == nil {
 		return false
 	}
-	if !this.Event.EqualVT(that.Event) {
+	if len(this.Event) != len(that.Event) {
 		return false
+	}
+	for i, vx := range this.Event {
+		vy := that.Event[i]
+		if p, q := vx, vy; p != q {
+			if p == nil {
+				p = &Event{}
+			}
+			if q == nil {
+				q = &Event{}
+			}
+			if !p.EqualVT(q) {
+				return false
+			}
+		}
 	}
 	return string(this.unknownFields) == string(that.unknownFields)
 }
@@ -1313,6 +1330,16 @@ func (m *WatchOptions) MarshalToSizedBufferVT(dAtA []byte) (int, error) {
 		i -= len(m.unknownFields)
 		copy(dAtA[i:], m.unknownFields)
 	}
+	if m.Aggregated {
+		i--
+		if m.Aggregated {
+			dAtA[i] = 1
+		} else {
+			dAtA[i] = 0
+		}
+		i--
+		dAtA[i] = 0x28
+	}
 	if m.IdQuery != nil {
 		size, err := m.IdQuery.MarshalToSizedBufferVT(dAtA[:i])
 		if err != nil {
@@ -1381,15 +1408,17 @@ func (m *WatchResponse) MarshalToSizedBufferVT(dAtA []byte) (int, error) {
 		i -= len(m.unknownFields)
 		copy(dAtA[i:], m.unknownFields)
 	}
-	if m.Event != nil {
-		size, err := m.Event.MarshalToSizedBufferVT(dAtA[:i])
-		if err != nil {
-			return 0, err
+	if len(m.Event) > 0 {
+		for iNdEx := len(m.Event) - 1; iNdEx >= 0; iNdEx-- {
+			size, err := m.Event[iNdEx].MarshalToSizedBufferVT(dAtA[:i])
+			if err != nil {
+				return 0, err
+			}
+			i -= size
+			i = encodeVarint(dAtA, i, uint64(size))
+			i--
+			dAtA[i] = 0xa
 		}
-		i -= size
-		i = encodeVarint(dAtA, i, uint64(size))
-		i--
-		dAtA[i] = 0xa
 	}
 	return len(dAtA) - i, nil
 }
@@ -1718,6 +1747,9 @@ func (m *WatchOptions) SizeVT() (n int) {
 		l = m.IdQuery.SizeVT()
 		n += 1 + l + sov(uint64(l))
 	}
+	if m.Aggregated {
+		n += 2
+	}
 	n += len(m.unknownFields)
 	return n
 }
@@ -1728,9 +1760,11 @@ func (m *WatchResponse) SizeVT() (n int) {
 	}
 	var l int
 	_ = l
-	if m.Event != nil {
-		l = m.Event.SizeVT()
-		n += 1 + l + sov(uint64(l))
+	if len(m.Event) > 0 {
+		for _, e := range m.Event {
+			l = e.SizeVT()
+			n += 1 + l + sov(uint64(l))
+		}
 	}
 	n += len(m.unknownFields)
 	return n
@@ -3872,6 +3906,26 @@ func (m *WatchOptions) UnmarshalVT(dAtA []byte) error {
 				return err
 			}
 			iNdEx = postIndex
+		case 5:
+			if wireType != 0 {
+				return fmt.Errorf("proto: wrong wireType = %d for field Aggregated", wireType)
+			}
+			var v int
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflow
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				v |= int(b&0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			m.Aggregated = bool(v != 0)
 		default:
 			iNdEx = preIndex
 			skippy, err := skip(dAtA[iNdEx:])
@@ -3952,10 +4006,8 @@ func (m *WatchResponse) UnmarshalVT(dAtA []byte) error {
 			if postIndex > l {
 				return io.ErrUnexpectedEOF
 			}
-			if m.Event == nil {
-				m.Event = &Event{}
-			}
-			if err := m.Event.UnmarshalVT(dAtA[iNdEx:postIndex]); err != nil {
+			m.Event = append(m.Event, &Event{})
+			if err := m.Event[len(m.Event)-1].UnmarshalVT(dAtA[iNdEx:postIndex]); err != nil {
 				return err
 			}
 			iNdEx = postIndex

@@ -46,7 +46,26 @@ type adapter struct {
 	watchFilterMu sync.Mutex
 }
 
-type watchFilter func(*resource.Metadata) bool
+// reducedMetadata is _comparable_, so that it can be a map key.
+type reducedMetadata struct {
+	namespace       resource.Namespace
+	typ             resource.Type
+	id              resource.ID
+	phase           resource.Phase
+	finalizersEmpty bool
+}
+
+func reduceMetadata(md *resource.Metadata) reducedMetadata {
+	return reducedMetadata{
+		namespace:       md.Namespace(),
+		typ:             md.Type(),
+		id:              md.ID(),
+		phase:           md.Phase(),
+		finalizersEmpty: md.Finalizers().Empty(),
+	}
+}
+
+type watchFilter func(*reducedMetadata) bool
 
 // EventCh implements controller.Runtime interface.
 func (adapter *adapter) EventCh() <-chan controller.ReconcileEvent {
@@ -371,12 +390,12 @@ func (adapter *adapter) deleteWatchFilter(resourceNamespace resource.Namespace, 
 	delete(adapter.watchFilters, watchKey{resourceNamespace, resourceType})
 }
 
-func (adapter *adapter) watchTrigger(md *resource.Metadata) {
+func (adapter *adapter) watchTrigger(md *reducedMetadata) {
 	adapter.watchFilterMu.Lock()
 	defer adapter.watchFilterMu.Unlock()
 
 	if adapter.watchFilters != nil {
-		if filter := adapter.watchFilters[watchKey{md.Namespace(), md.Type()}]; filter != nil && !filter(md) {
+		if filter := adapter.watchFilters[watchKey{md.namespace, md.typ}]; filter != nil && !filter(md) {
 			// skip reconcile if the event doesn't match the filter
 			return
 		}

@@ -5,19 +5,19 @@ spec:
     - --experimental_allow_proto3_optional
   vtProtobufEnabled: true
   specs:
-    - source: https://raw.githubusercontent.com/cosi-project/specification/c644a4b0fd408ec41bd29193bcdbd1a5b7feead2/proto/v1alpha1/resource.proto
+    - source: https://raw.githubusercontent.com/cosi-project/specification/a6ec705e7132b0b1bc403980dd52f2e5f1912907/proto/v1alpha1/resource.proto
       subdirectory: v1alpha1/
       genGateway: true
       external: false
-    - source: https://raw.githubusercontent.com/cosi-project/specification/c644a4b0fd408ec41bd29193bcdbd1a5b7feead2/proto/v1alpha1/state.proto
+    - source: https://raw.githubusercontent.com/cosi-project/specification/a6ec705e7132b0b1bc403980dd52f2e5f1912907/proto/v1alpha1/state.proto
       subdirectory: v1alpha1/
       genGateway: true
       external: false
-    - source: https://raw.githubusercontent.com/cosi-project/specification/c644a4b0fd408ec41bd29193bcdbd1a5b7feead2/proto/v1alpha1/runtime.proto
+    - source: https://raw.githubusercontent.com/cosi-project/specification/a6ec705e7132b0b1bc403980dd52f2e5f1912907/proto/v1alpha1/runtime.proto
       subdirectory: v1alpha1/
       genGateway: true
       external: false
-    - source: https://raw.githubusercontent.com/cosi-project/specification/c644a4b0fd408ec41bd29193bcdbd1a5b7feead2/proto/v1alpha1/meta.proto
+    - source: https://raw.githubusercontent.com/cosi-project/specification/a6ec705e7132b0b1bc403980dd52f2e5f1912907/proto/v1alpha1/meta.proto
       subdirectory: v1alpha1/
       genGateway: true
       external: false
@@ -25,3 +25,7 @@ spec:
       subdirectory: key_storage/
       genGateway: false
       external: false
+---
+kind: golang.UnitTests
+spec:
+  extraArgs: "-p 1" # limit parallelism to avoid flakiness on busy GH runners
