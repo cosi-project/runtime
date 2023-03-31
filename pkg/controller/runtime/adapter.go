@@ -329,7 +329,7 @@ func (adapter *adapter) RemoveFinalizer(ctx context.Context, resourcePointer res
 }
 
 // Teardown implements controller.Runtime interface.
-func (adapter *adapter) Teardown(ctx context.Context, resourcePointer resource.Pointer) (bool, error) {
+func (adapter *adapter) Teardown(ctx context.Context, resourcePointer resource.Pointer, opOpts ...controller.Option) (bool, error) {
 	if err := adapter.updateLimiter.Wait(ctx); err != nil {
 		return false, fmt.Errorf("teardown rate limited: %w", err)
 	}
@@ -338,11 +338,20 @@ func (adapter *adapter) Teardown(ctx context.Context, resourcePointer resource.P
 		return false, fmt.Errorf("resource %q/%q is not an output for controller %q, teardown attempted on %q", resourcePointer.Namespace(), resourcePointer.Type(), adapter.name, resourcePointer.ID())
 	}
 
-	return adapter.runtime.state.Teardown(ctx, resourcePointer, state.WithTeardownOwner(adapter.name))
+	var opts []state.TeardownOption
+
+	opOpt := controller.ToOptions(opOpts...)
+	if opOpt.Owner != nil {
+		opts = append(opts, state.WithTeardownOwner(*opOpt.Owner))
+	} else {
+		opts = append(opts, state.WithTeardownOwner(adapter.name))
+	}
+
+	return adapter.runtime.state.Teardown(ctx, resourcePointer, opts...)
 }
 
 // Destroy implements controller.Runtime interface.
-func (adapter *adapter) Destroy(ctx context.Context, resourcePointer resource.Pointer) error {
+func (adapter *adapter) Destroy(ctx context.Context, resourcePointer resource.Pointer, opOpts ...controller.Option) error {
 	if err := adapter.updateLimiter.Wait(ctx); err != nil {
 		return fmt.Errorf("destroy finalizer rate limited: %w", err)
 	}
@@ -351,7 +360,16 @@ func (adapter *adapter) Destroy(ctx context.Context, resourcePointer resource.Po
 		return fmt.Errorf("resource %q/%q is not an output for controller %q, destroy attempted on %q", resourcePointer.Namespace(), resourcePointer.Type(), adapter.name, resourcePointer.ID())
 	}
 
-	return adapter.runtime.state.Destroy(ctx, resourcePointer, state.WithDestroyOwner(adapter.name))
+	var opts []state.DestroyOption
+
+	opOpt := controller.ToOptions(opOpts...)
+	if opOpt.Owner != nil {
+		opts = append(opts, state.WithDestroyOwner(*opOpt.Owner))
+	} else {
+		opts = append(opts, state.WithDestroyOwner(adapter.name))
+	}
+
+	return adapter.runtime.state.Destroy(ctx, resourcePointer, opts...)
 }
 
 func (adapter *adapter) initialize() error {

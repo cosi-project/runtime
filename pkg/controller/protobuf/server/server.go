@@ -455,7 +455,11 @@ func (runtime *Runtime) Teardown(ctx context.Context, req *v1alpha1.RuntimeTeard
 		return nil, err
 	}
 
-	ready, err := bridge.adapter.Teardown(ctx, resource.NewMetadata(req.Namespace, req.Type, req.Id, resource.VersionUndefined))
+	ready, err := bridge.adapter.Teardown(
+		ctx,
+		resource.NewMetadata(req.Namespace, req.Type, req.Id, resource.VersionUndefined),
+		fromOptions(req.Options)...,
+	)
 
 	switch {
 	case state.IsNotFoundError(err):
@@ -478,7 +482,11 @@ func (runtime *Runtime) Destroy(ctx context.Context, req *v1alpha1.RuntimeDestro
 		return nil, err
 	}
 
-	err = bridge.adapter.Destroy(ctx, resource.NewMetadata(req.Namespace, req.Type, req.Id, resource.VersionUndefined))
+	err = bridge.adapter.Destroy(
+		ctx,
+		resource.NewMetadata(req.Namespace, req.Type, req.Id, resource.VersionUndefined),
+		fromOptions(req.Options)...,
+	)
 
 	switch {
 	case state.IsNotFoundError(err):
@@ -490,6 +498,19 @@ func (runtime *Runtime) Destroy(ctx context.Context, req *v1alpha1.RuntimeDestro
 	}
 
 	return &v1alpha1.RuntimeDestroyResponse{}, nil
+}
+
+func fromOptions(options *v1alpha1.Options) []controller.Option {
+	if options == nil {
+		return nil
+	}
+
+	var opts []controller.Option
+	if options.Owner != nil {
+		opts = append(opts, controller.WithOwner(*options.Owner))
+	}
+
+	return opts
 }
 
 // AddFinalizer to a resource.

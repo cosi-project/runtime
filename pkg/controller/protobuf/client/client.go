@@ -609,13 +609,18 @@ func (ctrlAdapter *controllerAdapter) Modify(ctx context.Context, emptyResource 
 	}
 }
 
-func (ctrlAdapter *controllerAdapter) Teardown(ctx context.Context, resourcePointer resource.Pointer) (bool, error) {
+func (ctrlAdapter *controllerAdapter) Teardown(ctx context.Context, resourcePointer resource.Pointer, opOpts ...controller.Option) (bool, error) {
+	if len(opOpts) > 0 {
+		return false, fmt.Errorf("options are not supported over the wire yet")
+	}
+
 	resp, err := ctrlAdapter.adapter.client.Teardown(ctx, &v1alpha1.RuntimeTeardownRequest{
 		ControllerToken: ctrlAdapter.token,
 
 		Namespace: resourcePointer.Namespace(),
 		Type:      resourcePointer.Type(),
 		Id:        resourcePointer.ID(),
+		Options:   makeOptions(opOpts),
 	})
 	if err != nil {
 		switch status.Code(err) { //nolint:exhaustive
@@ -631,13 +636,18 @@ func (ctrlAdapter *controllerAdapter) Teardown(ctx context.Context, resourcePoin
 	return resp.Ready, nil
 }
 
-func (ctrlAdapter *controllerAdapter) Destroy(ctx context.Context, resourcePointer resource.Pointer) error {
+func (ctrlAdapter *controllerAdapter) Destroy(ctx context.Context, resourcePointer resource.Pointer, opOpts ...controller.Option) error {
+	if len(opOpts) > 0 {
+		return fmt.Errorf("options are not supported over the wire yet")
+	}
+
 	_, err := ctrlAdapter.adapter.client.Destroy(ctx, &v1alpha1.RuntimeDestroyRequest{
 		ControllerToken: ctrlAdapter.token,
 
 		Namespace: resourcePointer.Namespace(),
 		Type:      resourcePointer.Type(),
 		Id:        resourcePointer.ID(),
+		Options:   makeOptions(opOpts),
 	})
 	if err != nil {
 		switch status.Code(err) { //nolint:exhaustive
@@ -651,6 +661,18 @@ func (ctrlAdapter *controllerAdapter) Destroy(ctx context.Context, resourcePoint
 	}
 
 	return nil
+}
+
+func makeOptions(options []controller.Option) *v1alpha1.Options {
+	if len(options) == 0 {
+		return nil
+	}
+
+	opts := controller.ToOptions(options...)
+
+	return &v1alpha1.Options{
+		Owner: opts.Owner,
+	}
 }
 
 func (ctrlAdapter *controllerAdapter) AddFinalizer(ctx context.Context, resourcePointer resource.Pointer, fins ...resource.Finalizer) error {

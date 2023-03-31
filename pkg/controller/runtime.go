@@ -89,8 +89,8 @@ type Writer interface {
 	Create(context.Context, resource.Resource) error
 	Update(context.Context, resource.Resource) error
 	Modify(context.Context, resource.Resource, func(resource.Resource) error) error
-	Teardown(context.Context, resource.Pointer) (bool, error)
-	Destroy(context.Context, resource.Pointer) error
+	Teardown(context.Context, resource.Pointer, ...Option) (bool, error)
+	Destroy(context.Context, resource.Pointer, ...Option) error
 
 	AddFinalizer(context.Context, resource.Pointer, ...resource.Finalizer) error
 	RemoveFinalizer(context.Context, resource.Pointer, ...resource.Finalizer) error
@@ -100,4 +100,30 @@ type Writer interface {
 type ReaderWriter interface {
 	Reader
 	Writer
+}
+
+// Option for operation.
+type Option func(*Options)
+
+// Options for operation.
+type Options struct {
+	Owner *string
+}
+
+// WithOwner allows to specify owner of the resource.
+func WithOwner(owner string) Option {
+	return func(o *Options) {
+		o.Owner = &owner
+	}
+}
+
+// ToOptions converts variadic options to Options.
+func ToOptions(opts ...Option) Options {
+	var options Options
+
+	for _, opt := range opts {
+		opt(&options)
+	}
+
+	return options
 }

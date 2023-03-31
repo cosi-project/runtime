@@ -2,7 +2,7 @@
 
 # THIS FILE WAS AUTOMATICALLY GENERATED, PLEASE DO NOT EDIT.
 #
-# Generated on 2023-04-04T04:41:53Z by kres a048013.
+# Generated on 2023-04-05T15:47:47Z by kres latest.
 
 ARG TOOLCHAIN
 
@@ -21,10 +21,10 @@ RUN markdownlint --ignore "CHANGELOG.md" --ignore "**/node_modules/**" --ignore 
 
 # collects proto specs
 FROM scratch AS proto-specs
-ADD https://raw.githubusercontent.com/cosi-project/specification/a6ec705e7132b0b1bc403980dd52f2e5f1912907/proto/v1alpha1/resource.proto /api/v1alpha1/
-ADD https://raw.githubusercontent.com/cosi-project/specification/a6ec705e7132b0b1bc403980dd52f2e5f1912907/proto/v1alpha1/state.proto /api/v1alpha1/
-ADD https://raw.githubusercontent.com/cosi-project/specification/a6ec705e7132b0b1bc403980dd52f2e5f1912907/proto/v1alpha1/runtime.proto /api/v1alpha1/
-ADD https://raw.githubusercontent.com/cosi-project/specification/a6ec705e7132b0b1bc403980dd52f2e5f1912907/proto/v1alpha1/meta.proto /api/v1alpha1/
+ADD https://raw.githubusercontent.com/cosi-project/specification/c90c30f215daf0b87cc4a0cbbd4801c37aa2b27f/proto/v1alpha1/resource.proto /api/v1alpha1/
+ADD https://raw.githubusercontent.com/cosi-project/specification/c90c30f215daf0b87cc4a0cbbd4801c37aa2b27f/proto/v1alpha1/state.proto /api/v1alpha1/
+ADD https://raw.githubusercontent.com/cosi-project/specification/c90c30f215daf0b87cc4a0cbbd4801c37aa2b27f/proto/v1alpha1/runtime.proto /api/v1alpha1/
+ADD https://raw.githubusercontent.com/cosi-project/specification/c90c30f215daf0b87cc4a0cbbd4801c37aa2b27f/proto/v1alpha1/meta.proto /api/v1alpha1/
 ADD api/key_storage/key_storage.proto /api/key_storage/
 
 # base toolchain image
