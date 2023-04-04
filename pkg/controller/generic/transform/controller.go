@@ -259,12 +259,12 @@ func (ctrl *Controller[Input, Output]) processInputs(
 					runState.multiErr = multierror.Append(runState.multiErr, err)
 
 					continue
-				} else {
-					logger.Debug("added finalizer to input resource",
-						zap.Stringer("input", in.Metadata()),
-						zap.String("finalizer", ctrl.Name()),
-					)
 				}
+
+				logger.Debug("added finalizer to input resource",
+					zap.Stringer("input", in.Metadata()),
+					zap.String("finalizer", ctrl.Name()),
+				)
 			}
 		}
 

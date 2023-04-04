@@ -125,7 +125,7 @@ func Example() {
 
 	fmt.Println(result.Metadata().ID())
 
-	result, err = resources.Get(
+	_, err = resources.Get(
 		context.Background(),
 		resource.NewMetadata(
 			"persistent",

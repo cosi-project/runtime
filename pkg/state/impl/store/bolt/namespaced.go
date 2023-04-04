@@ -23,7 +23,7 @@ type NamespacedBackingStore struct {
 }
 
 // Put implements inmem.BackingStore.
-func (store *NamespacedBackingStore) Put(ctx context.Context, resourceType resource.Type, res resource.Resource) error {
+func (store *NamespacedBackingStore) Put(_ context.Context, resourceType resource.Type, res resource.Resource) error {
 	marshaled, err := store.store.marshaler.MarshalResource(res)
 	if err != nil {
 		return err
@@ -45,7 +45,7 @@ func (store *NamespacedBackingStore) Put(ctx context.Context, resourceType resou
 }
 
 // Destroy implements inmem.BackingStore.
-func (store *NamespacedBackingStore) Destroy(ctx context.Context, resourceType resource.Type, ptr resource.Pointer) error {
+func (store *NamespacedBackingStore) Destroy(_ context.Context, resourceType resource.Type, ptr resource.Pointer) error {
 	return store.store.db.Update(func(tx *bbolt.Tx) error {
 		bucket, err := tx.CreateBucketIfNotExists([]byte(store.namespace))
 		if err != nil {
@@ -62,7 +62,7 @@ func (store *NamespacedBackingStore) Destroy(ctx context.Context, resourceType r
 }
 
 // Load implements inmem.BackingStore.
-func (store *NamespacedBackingStore) Load(ctx context.Context, handler inmem.LoadHandler) error {
+func (store *NamespacedBackingStore) Load(_ context.Context, handler inmem.LoadHandler) error {
 	return store.store.db.View(func(tx *bbolt.Tx) error {
 		bucket := tx.Bucket([]byte(store.namespace))
 		if bucket == nil {

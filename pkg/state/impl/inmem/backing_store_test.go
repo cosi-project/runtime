@@ -23,7 +23,7 @@ type backingStoreMock struct {
 	store map[string]resource.Resource
 }
 
-func (mock *backingStoreMock) Load(ctx context.Context, handler inmem.LoadHandler) error {
+func (mock *backingStoreMock) Load(_ context.Context, handler inmem.LoadHandler) error {
 	for _, r := range mock.store {
 		if err := handler(r.Metadata().Type(), r); err != nil {
 			return err
@@ -33,7 +33,7 @@ func (mock *backingStoreMock) Load(ctx context.Context, handler inmem.LoadHandle
 	return nil
 }
 
-func (mock *backingStoreMock) Put(ctx context.Context, resourceType resource.Type, resource resource.Resource) error {
+func (mock *backingStoreMock) Put(_ context.Context, resourceType resource.Type, resource resource.Resource) error {
 	key := fmt.Sprintf("%s/%s", resourceType, resource.Metadata().ID())
 
 	mock.store[key] = resource.DeepCopy()
@@ -41,7 +41,7 @@ func (mock *backingStoreMock) Put(ctx context.Context, resourceType resource.Typ
 	return nil
 }
 
-func (mock *backingStoreMock) Destroy(ctx context.Context, resourceType resource.Type, ptr resource.Pointer) error {
+func (mock *backingStoreMock) Destroy(_ context.Context, resourceType resource.Type, ptr resource.Pointer) error {
 	key := fmt.Sprintf("%s/%s", resourceType, ptr.ID())
 
 	delete(mock.store, key)

@@ -64,7 +64,7 @@ func (bridge *controllerBridge) Inputs() []controller.Input {
 	return bridge.inputs
 }
 
-func (bridge *controllerBridge) Run(ctx context.Context, adapter controller.Runtime, logger *zap.Logger) error {
+func (bridge *controllerBridge) Run(ctx context.Context, adapter controller.Runtime, _ *zap.Logger) error {
 	bridge.adapter = adapter
 	close(bridge.adapterWait)
 
@@ -112,7 +112,7 @@ func convertOutputs(protoOutputs []*v1alpha1.ControllerOutput) []controller.Outp
 }
 
 // RegisterController registers controller and establishes token for ControllerAdapter calls.
-func (runtime *Runtime) RegisterController(ctx context.Context, req *v1alpha1.RegisterControllerRequest) (*v1alpha1.RegisterControllerResponse, error) {
+func (runtime *Runtime) RegisterController(_ context.Context, req *v1alpha1.RegisterControllerRequest) (*v1alpha1.RegisterControllerResponse, error) {
 	bridge := &controllerBridge{
 		name:    req.ControllerName,
 		inputs:  convertInputs(req.Inputs),
@@ -134,7 +134,7 @@ func (runtime *Runtime) RegisterController(ctx context.Context, req *v1alpha1.Re
 }
 
 // Start the controller runtime.
-func (runtime *Runtime) Start(ctx context.Context, req *v1alpha1.StartRequest) (*v1alpha1.StartResponse, error) {
+func (runtime *Runtime) Start(context.Context, *v1alpha1.StartRequest) (*v1alpha1.StartResponse, error) {
 	runtime.ctxMu.Lock()
 	defer runtime.ctxMu.Unlock()
 
@@ -156,7 +156,7 @@ func (runtime *Runtime) Start(ctx context.Context, req *v1alpha1.StartRequest) (
 }
 
 // Stop the controller runtime.
-func (runtime *Runtime) Stop(ctx context.Context, req *v1alpha1.StopRequest) (*v1alpha1.StopResponse, error) {
+func (runtime *Runtime) Stop(context.Context, *v1alpha1.StopRequest) (*v1alpha1.StopResponse, error) {
 	runtime.ctxMu.Lock()
 	defer runtime.ctxMu.Unlock()
 

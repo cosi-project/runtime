@@ -97,7 +97,7 @@ func (st *State) loadStore(ctx context.Context) error {
 }
 
 // Get a resource.
-func (st *State) Get(ctx context.Context, resourcePointer resource.Pointer, opts ...state.GetOption) (resource.Resource, error) { //nolint:ireturn
+func (st *State) Get(ctx context.Context, resourcePointer resource.Pointer, _ ...state.GetOption) (resource.Resource, error) { //nolint:ireturn
 	if err := st.loadStore(ctx); err != nil {
 		return nil, err
 	}
