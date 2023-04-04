@@ -12,13 +12,14 @@ import (
 
 	"github.com/cosi-project/runtime/pkg/controller/conformance"
 	"github.com/cosi-project/runtime/pkg/resource"
+	"github.com/cosi-project/runtime/pkg/resource/testutils"
 	"github.com/cosi-project/runtime/pkg/safe"
 	"github.com/cosi-project/runtime/pkg/state"
 	"github.com/cosi-project/runtime/pkg/state/impl/inmem"
 	"github.com/cosi-project/runtime/pkg/state/impl/namespaced"
 )
 
-func setup(t *testing.T) (context.Context, string, string, *conformance.IntResource, state.State, chan safe.WrappedStateEvent[*conformance.IntResource], chan state.Event) { //nolint:ireturn
+func setup(t testutils.T) (context.Context, string, string, *conformance.IntResource, state.State, chan safe.WrappedStateEvent[*conformance.IntResource], chan state.Event) { //nolint:ireturn
 	t.Parallel()
 
 	ctx := context.Background()

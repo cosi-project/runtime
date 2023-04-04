@@ -6,24 +6,24 @@ package rtestutils
 
 import (
 	"context"
-	"testing"
 
 	"github.com/stretchr/testify/require"
 
 	"github.com/cosi-project/runtime/pkg/resource"
+	"github.com/cosi-project/runtime/pkg/resource/testutils"
 	"github.com/cosi-project/runtime/pkg/state"
 )
 
 // ResourceIDsWithOwner returns a list of resource IDs and filters them by owner (if set).
-func ResourceIDsWithOwner[R ResourceWithRD](ctx context.Context, t *testing.T, st state.State, owner *string, options ...state.ListOption) []resource.ID {
-	require := require.New(t)
+func ResourceIDsWithOwner[R ResourceWithRD](ctx context.Context, t testutils.T, st state.State, owner *string, options ...state.ListOption) []resource.ID {
+	req := require.New(t)
 
 	var r R
 
 	rds := r.ResourceDefinition()
 
 	items, err := st.List(ctx, resource.NewMetadata(rds.DefaultNamespace, rds.Type, "", resource.VersionUndefined), options...)
-	require.NoError(err)
+	req.NoError(err)
 
 	ids := make([]resource.ID, 0, len(items.Items))
 
@@ -39,6 +39,6 @@ func ResourceIDsWithOwner[R ResourceWithRD](ctx context.Context, t *testing.T, s
 }
 
 // ResourceIDs returns a list of resource IDs.
-func ResourceIDs[R ResourceWithRD](ctx context.Context, t *testing.T, st state.State, options ...state.ListOption) []resource.ID {
+func ResourceIDs[R ResourceWithRD](ctx context.Context, t testutils.T, st state.State, options ...state.ListOption) []resource.ID {
 	return ResourceIDsWithOwner[R](ctx, t, st, nil, options...)
 }

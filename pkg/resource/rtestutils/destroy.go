@@ -6,7 +6,6 @@ package rtestutils
 
 import (
 	"context"
-	"testing"
 
 	"github.com/siderolabs/gen/slices"
 	"github.com/siderolabs/go-pointer"
@@ -14,17 +13,18 @@ import (
 
 	"github.com/cosi-project/runtime/pkg/resource"
 	"github.com/cosi-project/runtime/pkg/resource/meta"
+	"github.com/cosi-project/runtime/pkg/resource/testutils"
 	"github.com/cosi-project/runtime/pkg/safe"
 	"github.com/cosi-project/runtime/pkg/state"
 )
 
 // DestroyAll performs graceful teardown/destroy sequence for all resources of type.
-func DestroyAll[R ResourceWithRD](ctx context.Context, t *testing.T, st state.State) {
+func DestroyAll[R ResourceWithRD](ctx context.Context, t testutils.T, st state.State) {
 	Destroy[R](ctx, t, st, ResourceIDsWithOwner[R](ctx, t, st, pointer.To("")))
 }
 
 // Destroy performs graceful teardown/destroy sequence for specified IDs.
-func Destroy[R ResourceWithRD](ctx context.Context, t *testing.T, st state.State, ids []string) {
+func Destroy[R ResourceWithRD](ctx context.Context, t testutils.T, st state.State, ids []string) {
 	var r R
 
 	rds := r.ResourceDefinition()
@@ -78,7 +78,7 @@ func Destroy[R ResourceWithRD](ctx context.Context, t *testing.T, st state.State
 }
 
 // Teardown moves provided resources to the PhaseTearingDown.
-func Teardown[R ResourceWithRD](ctx context.Context, t *testing.T, st state.State, ids []string) {
+func Teardown[R ResourceWithRD](ctx context.Context, t testutils.T, st state.State, ids []string) {
 	var r R
 
 	require.NoError(t, teardown(ctx, st, ids, r.ResourceDefinition()))

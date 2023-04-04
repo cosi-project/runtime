@@ -6,12 +6,12 @@ package rtestutils
 
 import (
 	"context"
-	"testing"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
 	"github.com/cosi-project/runtime/pkg/resource"
+	"github.com/cosi-project/runtime/pkg/resource/testutils"
 	"github.com/cosi-project/runtime/pkg/safe"
 	"github.com/cosi-project/runtime/pkg/state"
 )
@@ -19,7 +19,7 @@ import (
 // AssertResources asserts on a resource list.
 func AssertResources[R ResourceWithRD](
 	ctx context.Context,
-	t *testing.T,
+	t testutils.T,
 	st state.State,
 	ids []resource.ID,
 	assertionFunc func(r R, assertion *assert.Assertions),
@@ -87,7 +87,7 @@ func AssertResources[R ResourceWithRD](
 // AssertNoResource asserts that a resource no longer exists.
 func AssertNoResource[R ResourceWithRD](
 	ctx context.Context,
-	t *testing.T,
+	t testutils.T,
 	st state.State,
 	id resource.ID,
 	opts ...Option,
@@ -124,7 +124,7 @@ func AssertNoResource[R ResourceWithRD](
 }
 
 // AssertAll asserts on all resources of a kind.
-func AssertAll[R ResourceWithRD](ctx context.Context, t *testing.T, st state.State, assertionFunc func(r R, assertion *assert.Assertions)) {
+func AssertAll[R ResourceWithRD](ctx context.Context, t testutils.T, st state.State, assertionFunc func(r R, assertion *assert.Assertions)) {
 	AssertResources(ctx, t, st, ResourceIDs[R](ctx, t, st), assertionFunc)
 }
 

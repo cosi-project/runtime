@@ -23,6 +23,7 @@ import (
 	"github.com/cosi-project/runtime/pkg/logging"
 	"github.com/cosi-project/runtime/pkg/resource"
 	"github.com/cosi-project/runtime/pkg/resource/rtestutils"
+	"github.com/cosi-project/runtime/pkg/resource/testutils"
 	"github.com/cosi-project/runtime/pkg/safe"
 	"github.com/cosi-project/runtime/pkg/state"
 	"github.com/cosi-project/runtime/pkg/state/impl/inmem"
@@ -65,7 +66,7 @@ func NewABController(reconcileTeardownCh <-chan struct{}, opts ...transform.Cont
 }
 
 func TestSimpleMap(t *testing.T) {
-	setup(t, func(ctx context.Context, st state.State, runtime *runtime.Runtime) {
+	setup(t, func(ctx context.Context, st state.State, runtime *runtime.Runtime, t testutils.T) {
 		require.NoError(t, runtime.RegisterController(NewABController(nil)))
 
 		for _, a := range []*A{
@@ -111,7 +112,7 @@ func TestSimpleMap(t *testing.T) {
 }
 
 func TestMapWithErrors(t *testing.T) {
-	setup(t, func(ctx context.Context, st state.State, runtime *runtime.Runtime) {
+	setup(t, func(ctx context.Context, st state.State, runtime *runtime.Runtime, t testutils.T) {
 		require.NoError(t, runtime.RegisterController(NewABController(nil)))
 
 		for _, a := range []*A{
@@ -154,7 +155,7 @@ func TestMapWithErrors(t *testing.T) {
 }
 
 func TestDestroy(t *testing.T) {
-	setup(t, func(ctx context.Context, st state.State, runtime *runtime.Runtime) {
+	setup(t, func(ctx context.Context, st state.State, runtime *runtime.Runtime, t testutils.T) {
 		require.NoError(t, runtime.RegisterController(NewABController(nil)))
 
 		for _, a := range []*A{
@@ -185,7 +186,7 @@ func TestDestroy(t *testing.T) {
 }
 
 func TestDestroyOutputFinalizers(t *testing.T) {
-	setup(t, func(ctx context.Context, st state.State, runtime *runtime.Runtime) {
+	setup(t, func(ctx context.Context, st state.State, runtime *runtime.Runtime, t testutils.T) {
 		require.NoError(t, runtime.RegisterController(NewABController(nil)))
 
 		for _, a := range []*A{
@@ -228,7 +229,7 @@ func TestDestroyOutputFinalizers(t *testing.T) {
 }
 
 func TestDestroyInputFinalizers(t *testing.T) {
-	setup(t, func(ctx context.Context, st state.State, runtime *runtime.Runtime) {
+	setup(t, func(ctx context.Context, st state.State, runtime *runtime.Runtime, t testutils.T) {
 		teardownCh := make(chan struct{})
 
 		require.NoError(t, runtime.RegisterController(NewABController(teardownCh, transform.WithInputFinalizers())))
@@ -295,7 +296,7 @@ func TestDestroyInputFinalizers(t *testing.T) {
 }
 
 func TestDestroyReconcileTeardown(t *testing.T) {
-	setup(t, func(ctx context.Context, st state.State, runtime *runtime.Runtime) {
+	setup(t, func(ctx context.Context, st state.State, runtime *runtime.Runtime, t testutils.T) {
 		teardownCh := make(chan struct{})
 
 		require.NoError(t, runtime.RegisterController(
@@ -351,7 +352,7 @@ func TestDestroyReconcileTeardown(t *testing.T) {
 }
 
 func TestDestroyFinalizersRecreateInput(t *testing.T) {
-	setup(t, func(ctx context.Context, st state.State, runtime *runtime.Runtime) {
+	setup(t, func(ctx context.Context, st state.State, runtime *runtime.Runtime, t testutils.T) {
 		require.NoError(t, runtime.RegisterController(NewABController(nil)))
 
 		for _, a := range []*A{
@@ -410,7 +411,7 @@ func TestDestroyFinalizersRecreateInput(t *testing.T) {
 }
 
 func TestWithIgnoreTearingdDownInputs(t *testing.T) {
-	setup(t, func(ctx context.Context, st state.State, runtime *runtime.Runtime) {
+	setup(t, func(ctx context.Context, st state.State, runtime *runtime.Runtime, t testutils.T) {
 		require.NoError(t, runtime.RegisterController(NewABController(nil, transform.WithIgnoreTearingDownInputs())))
 
 		for _, a := range []*A{
@@ -452,10 +453,7 @@ func TestWithIgnoreTearingdDownInputs(t *testing.T) {
 	})
 }
 
-func setup(t *testing.T, f func(ctx context.Context, st state.State, rt *runtime.Runtime)) {
-	require := require.New(t)
-	assert := assert.New(t)
-
+func setup(t testutils.T, f func(ctx context.Context, st state.State, rt *runtime.Runtime, t testutils.T)) {
 	defer goleak.VerifyNone(t, goleak.IgnoreCurrent())
 
 	st := state.WrapCore(namespaced.NewState(inmem.Build))
@@ -463,7 +461,7 @@ func setup(t *testing.T, f func(ctx context.Context, st state.State, rt *runtime
 	logger := logging.DefaultLogger()
 
 	runtime, err := runtime.NewRuntime(st, logger)
-	require.NoError(err)
+	require.NoError(t, err)
 
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
@@ -472,13 +470,15 @@ func setup(t *testing.T, f func(ctx context.Context, st state.State, rt *runtime
 
 	wg.Add(1)
 
+	wrappedT, ctx := testutils.WrapT(ctx, t)
+
 	go func() {
 		defer wg.Done()
 
-		assert.NoError(runtime.Run(ctx))
+		assert.NoError(wrappedT, runtime.Run(ctx))
 	}()
 
 	t.Cleanup(wg.Wait)
 
-	f(ctx, st, runtime)
+	f(ctx, st, runtime, wrappedT)
 }

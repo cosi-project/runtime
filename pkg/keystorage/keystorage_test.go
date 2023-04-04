@@ -13,6 +13,7 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/cosi-project/runtime/pkg/keystorage"
+	"github.com/cosi-project/runtime/pkg/resource/testutils"
 )
 
 var (
@@ -38,7 +39,7 @@ func TestKeyStorage_Initialize(t *testing.T) {
 	}
 
 	tests := map[string]struct {
-		testErr func(*testing.T, error)
+		testErr func(testutils.T, error)
 		args    args
 	}{
 		"empty master key": {
@@ -141,7 +142,7 @@ func TestKeyStorage_DeleteMasterKeySlot(t *testing.T) {
 	// execution order is important here
 	tests := []struct {
 		name    string
-		testErr func(*testing.T, error)
+		testErr func(testutils.T, error)
 		args    args
 	}{
 		{
@@ -239,7 +240,7 @@ func TestKeyStorage_Set(t *testing.T) {
 	}
 
 	tests := map[string]struct {
-		testErr func(*testing.T, error)
+		testErr func(testutils.T, error)
 		args    args
 	}{
 		"empty slot id": {
@@ -316,16 +317,16 @@ func setSlice[T any](s []T, i int, v ...T) {
 	copy(s[i:i+len(v)], v)
 }
 
-func regexpTest(re string) func(t *testing.T, err error) {
-	return func(t *testing.T, err error) {
+func regexpTest(re string) func(t testutils.T, err error) {
+	return func(t testutils.T, err error) {
 		require.Error(t, err)
 		require.NotZero(t, re)
 		require.Regexp(t, re, err.Error())
 	}
 }
 
-func tagTest[T xerrors.Tag]() func(t *testing.T, err error) {
-	return func(t *testing.T, err error) {
+func tagTest[T xerrors.Tag]() func(t testutils.T, err error) {
+	return func(t testutils.T, err error) {
 		require.Error(t, err)
 		require.True(t, xerrors.TagIs[T](err))
 	}

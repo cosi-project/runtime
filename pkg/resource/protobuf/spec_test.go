@@ -17,6 +17,7 @@ import (
 	"github.com/cosi-project/runtime/pkg/resource"
 	"github.com/cosi-project/runtime/pkg/resource/meta"
 	"github.com/cosi-project/runtime/pkg/resource/protobuf"
+	"github.com/cosi-project/runtime/pkg/resource/testutils"
 	"github.com/cosi-project/runtime/pkg/resource/typed"
 )
 
@@ -224,8 +225,8 @@ func ExampleResource_testInline() {
 	//     sensitivity: 0
 }
 
-func must[T any](val T, err error) func(*testing.T) T {
-	return func(t *testing.T) T {
+func must[T any](val T, err error) func(testutils.T) T {
+	return func(t testutils.T) T {
 		require.NoError(t, err)
 
 		return val
