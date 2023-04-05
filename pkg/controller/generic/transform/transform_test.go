@@ -7,8 +7,8 @@ package transform_test
 
 import (
 	"context"
+	"errors"
 	"fmt"
-	"sync"
 	"testing"
 	"time"
 
@@ -20,6 +20,7 @@ import (
 	"github.com/cosi-project/runtime/pkg/controller"
 	"github.com/cosi-project/runtime/pkg/controller/generic/transform"
 	"github.com/cosi-project/runtime/pkg/controller/runtime"
+	"github.com/cosi-project/runtime/pkg/future"
 	"github.com/cosi-project/runtime/pkg/logging"
 	"github.com/cosi-project/runtime/pkg/resource"
 	"github.com/cosi-project/runtime/pkg/resource/rtestutils"
@@ -453,32 +454,30 @@ func TestWithIgnoreTearingdDownInputs(t *testing.T) {
 }
 
 func setup(t *testing.T, f func(ctx context.Context, st state.State, rt *runtime.Runtime)) {
-	require := require.New(t)
-	assert := assert.New(t)
-
 	defer goleak.VerifyNone(t, goleak.IgnoreCurrent())
 
 	st := state.WrapCore(namespaced.NewState(inmem.Build))
 
 	logger := logging.DefaultLogger()
 
-	runtime, err := runtime.NewRuntime(st, logger)
-	require.NoError(err)
+	rt, err := runtime.NewRuntime(st, logger)
+	require.NoError(t, err)
 
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
 
-	var wg sync.WaitGroup
+	ctx, errCh := future.GoContext(ctx, rt.Run)
 
-	wg.Add(1)
+	t.Cleanup(func() {
+		err, ok := <-errCh
+		if !ok {
+			t.Fatal("runtime exited unexpectedly")
+		}
 
-	go func() {
-		defer wg.Done()
+		if err != nil && !errors.Is(err, context.Canceled) {
+			t.Fatal(err)
+		}
+	})
 
-		assert.NoError(runtime.Run(ctx))
-	}()
-
-	t.Cleanup(wg.Wait)
-
-	f(ctx, st, runtime)
+	f(ctx, st, rt)
 }

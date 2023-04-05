@@ -19,6 +19,7 @@ import (
 
 	"github.com/cosi-project/runtime/pkg/controller/conformance"
 	"github.com/cosi-project/runtime/pkg/controller/runtime"
+	"github.com/cosi-project/runtime/pkg/future"
 	"github.com/cosi-project/runtime/pkg/resource"
 	"github.com/cosi-project/runtime/pkg/safe"
 	"github.com/cosi-project/runtime/pkg/state"
@@ -73,19 +74,15 @@ func TestRuntimeWatchError(t *testing.T) {
 	}))
 
 	logger := zaptest.NewLogger(t)
-	runtime, err := runtime.NewRuntime(st, logger)
+	rt, err := runtime.NewRuntime(st, logger)
 	require.NoError(t, err)
 
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	t.Cleanup(cancel)
 
-	errCh := make(chan error)
+	ctx, errCh := future.GoContext(ctx, rt.Run)
 
-	go func() {
-		errCh <- runtime.Run(ctx)
-	}()
-
-	require.NoError(t, runtime.RegisterController(&conformance.IntToStrController{
+	require.NoError(t, rt.RegisterController(&conformance.IntToStrController{
 		SourceNamespace: "default",
 		TargetNamespace: "default",
 	}))
@@ -111,19 +108,15 @@ func TestRuntimeWatchOverrun(t *testing.T) {
 	st := state.WrapCore(namespaced.NewState(inmem.Build))
 
 	logger := zaptest.NewLogger(t)
-	runtime, err := runtime.NewRuntime(st, logger)
+	rt, err := runtime.NewRuntime(st, logger)
 	require.NoError(t, err)
 
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	t.Cleanup(cancel)
 
-	errCh := make(chan error)
+	ctx, errCh := future.GoContext(ctx, rt.Run)
 
-	go func() {
-		errCh <- runtime.Run(ctx)
-	}()
-
-	require.NoError(t, runtime.RegisterController(&conformance.IntToStrController{
+	require.NoError(t, rt.RegisterController(&conformance.IntToStrController{
 		SourceNamespace: "default",
 		TargetNamespace: "default",
 	}))

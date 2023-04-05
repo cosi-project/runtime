@@ -19,6 +19,7 @@ import (
 	runtimeclient "github.com/cosi-project/runtime/pkg/controller/protobuf/client"
 	runtimeserver "github.com/cosi-project/runtime/pkg/controller/protobuf/server"
 	"github.com/cosi-project/runtime/pkg/controller/runtime"
+	"github.com/cosi-project/runtime/pkg/future"
 	"github.com/cosi-project/runtime/pkg/logging"
 	"github.com/cosi-project/runtime/pkg/resource/protobuf"
 	"github.com/cosi-project/runtime/pkg/state"
@@ -69,9 +70,19 @@ func TestProtobufConformance(t *testing.T) {
 		v1alpha1.RegisterControllerRuntimeServer(suite.grpcServer, grpcRuntime)
 		v1alpha1.RegisterControllerAdapterServer(suite.grpcServer, grpcRuntime)
 
-		go func() {
-			suite.grpcServer.Serve(l) //nolint:errcheck
-		}()
+		ch := future.Go(func() struct{} {
+			serveErr := suite.grpcServer.Serve(l)
+			if serveErr != nil {
+				// Not much we can do here, suite.ctx isn't used everywhere (for example
+				// controller register uses background context) so canceling it will not lead to
+				// the expected test stop.
+				panic(serveErr)
+			}
+
+			return struct{}{}
+		})
+
+		suite.T().Cleanup(func() { <-ch }) // ensure that gorotuine is stopped
 
 		suite.grpcConn, err = grpc.Dial("unix://"+suite.sock.Name(), grpc.WithTransportCredentials(insecure.NewCredentials()))
 		require.NoError(t, err)

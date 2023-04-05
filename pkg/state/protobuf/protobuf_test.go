@@ -5,6 +5,8 @@
 package protobuf_test
 
 import (
+	"errors"
+	"io/fs"
 	"net"
 	"os"
 	"testing"
@@ -16,6 +18,7 @@ import (
 	"google.golang.org/grpc/credentials/insecure"
 
 	"github.com/cosi-project/runtime/api/v1alpha1"
+	"github.com/cosi-project/runtime/pkg/future"
 	"github.com/cosi-project/runtime/pkg/resource"
 	"github.com/cosi-project/runtime/pkg/resource/protobuf"
 	"github.com/cosi-project/runtime/pkg/state"
@@ -34,7 +37,7 @@ func TestProtobufConformance(t *testing.T) {
 
 	require.NoError(t, os.Remove(sock.Name()))
 
-	defer os.Remove(sock.Name()) //nolint:errcheck
+	defer noError(t, os.Remove, sock.Name(), fs.ErrNotExist)
 
 	l, err := net.Listen("unix", sock.Name())
 	require.NoError(t, err)
@@ -42,16 +45,23 @@ func TestProtobufConformance(t *testing.T) {
 	grpcServer := grpc.NewServer()
 	v1alpha1.RegisterStateServer(grpcServer, server.NewState(state.WrapCore(namespaced.NewState(inmem.Build))))
 
-	go func() {
-		grpcServer.Serve(l) //nolint:errcheck
-	}()
+	ch := future.Go(func() struct{} {
+		serveErr := grpcServer.Serve(l)
+		if serveErr != nil {
+			// Not much we can do here, ctx isn't available yet and many methods do not use it at all.
+			panic(serveErr)
+		}
 
+		return struct{}{}
+	})
+
+	defer func() { <-ch }() // ensure that gorotuine is stopped
 	defer grpcServer.Stop()
 
 	grpcConn, err := grpc.Dial("unix://"+sock.Name(), grpc.WithTransportCredentials(insecure.NewCredentials()))
 	require.NoError(t, err)
 
-	defer grpcConn.Close() //nolint:errcheck
+	defer noError(t, (*grpc.ClientConn).Close, grpcConn, fs.ErrNotExist)
 
 	stateClient := v1alpha1.NewStateClient(grpcConn)
 
@@ -61,4 +71,17 @@ func TestProtobufConformance(t *testing.T) {
 		State:      state.WrapCore(client.NewAdapter(stateClient)),
 		Namespaces: []resource.Namespace{"default", "controller", "system", "runtime"},
 	})
+}
+
+func noError[T any](t *testing.T, fn func(T) error, v T, ignored ...error) {
+	t.Helper()
+
+	err := fn(v)
+	for _, ign := range ignored {
+		if errors.Is(err, ign) {
+			return
+		}
+	}
+
+	require.NoError(t, err)
 }

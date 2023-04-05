@@ -6,6 +6,8 @@ package client_test
 
 import (
 	"context"
+	"errors"
+	"io/fs"
 	"net"
 	"os"
 	"testing"
@@ -18,6 +20,7 @@ import (
 	"google.golang.org/grpc/credentials/insecure"
 
 	"github.com/cosi-project/runtime/api/v1alpha1"
+	"github.com/cosi-project/runtime/pkg/future"
 	"github.com/cosi-project/runtime/pkg/resource"
 	"github.com/cosi-project/runtime/pkg/resource/protobuf"
 	"github.com/cosi-project/runtime/pkg/state"
@@ -36,7 +39,7 @@ func TestProtobufSkipUnmarshal(t *testing.T) {
 
 	require.NoError(t, os.Remove(sock.Name()))
 
-	defer os.Remove(sock.Name()) //nolint:errcheck
+	defer noError(t, os.Remove, sock.Name(), fs.ErrNotExist)
 
 	l, err := net.Listen("unix", sock.Name())
 	require.NoError(t, err)
@@ -46,25 +49,25 @@ func TestProtobufSkipUnmarshal(t *testing.T) {
 	grpcServer := grpc.NewServer()
 	v1alpha1.RegisterStateServer(grpcServer, server.NewState(memState))
 
-	go func() {
-		grpcServer.Serve(l) //nolint:errcheck
-	}()
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	ctx, errCh := future.GoContext(ctx, func(context.Context) error { return grpcServer.Serve(l) })
+
+	t.Cleanup(func() { require.NoError(t, <-errCh) })
 
 	defer grpcServer.Stop()
 
-	grpcConn, err := grpc.Dial("unix://"+sock.Name(), grpc.WithTransportCredentials(insecure.NewCredentials()))
+	grpcConn, err := grpc.DialContext(ctx, "unix://"+sock.Name(), grpc.WithTransportCredentials(insecure.NewCredentials()))
 	require.NoError(t, err)
 
-	defer grpcConn.Close() //nolint:errcheck
+	defer noError(t, (*grpc.ClientConn).Close, grpcConn)
 
 	stateClient := v1alpha1.NewStateClient(grpcConn)
 
 	require.NoError(t, protobuf.RegisterResource(conformance.PathResourceType, &conformance.PathResource{}))
 
 	grpcState := state.WrapCore(client.NewAdapter(stateClient))
-
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
 
 	// put a couple of resources directly to in-memory state
 	path1 := conformance.NewPathResource("1", "/path/1")
@@ -127,4 +130,17 @@ func TestProtobufSkipUnmarshal(t *testing.T) {
 	assert.Equal(t, state.Created, ev.Type)
 	assert.True(t, path1.Metadata().Equal(*ev.Resource.Metadata()))
 	assert.IsType(t, &protobuf.Resource{}, ev.Resource)
+}
+
+func noError[T any](t *testing.T, fn func(T) error, v T, ignored ...error) {
+	t.Helper()
+
+	err := fn(v)
+	for _, ign := range ignored {
+		if errors.Is(err, ign) {
+			return
+		}
+	}
+
+	require.NoError(t, err)
 }
