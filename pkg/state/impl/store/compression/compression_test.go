@@ -5,6 +5,9 @@
 package compression_test
 
 import (
+	"math/rand"
+	"runtime"
+	"runtime/debug"
 	"strings"
 	"testing"
 
@@ -51,7 +54,7 @@ func TestCompressedProtobufMarshaler(t *testing.T) {
 }
 
 func BenchmarkZstd(b *testing.B) {
-	path := conformance.NewPathResource("default", strings.Repeat("var/run", 100))
+	path := conformance.NewPathResource("default", generateString(8191))
 	path.Metadata().Labels().Set("app", "foo")
 	path.Metadata().Annotations().Set("ttl", "1h")
 	path.Metadata().Finalizers().Add("controller1")
@@ -59,10 +62,60 @@ func BenchmarkZstd(b *testing.B) {
 	protoMarshaler := store.ProtobufMarshaler{}
 	marshaler := compression.NewMarshaler(protoMarshaler, compression.ZStd(), 256)
 
+	initialMem := memStats()
+
+	b.ReportAllocs()
+	b.ResetTimer()
+
 	for i := 0; i < b.N; i++ {
 		_, err := marshaler.MarshalResource(path)
 		require.NoError(b, err)
 	}
+
+	b.StopTimer()
+
+	heapDeltaMiB := float64(memStats().HeapAlloc-initialMem.HeapAlloc) / (1024 * 1024)
+	if heapDeltaMiB > 10 {
+		b.Fatalf("Heap memory usage exceeded 10 MiB: %f MiB", heapDeltaMiB)
+	}
+
+	b.Logf("heap delta: %d MiB", int(heapDeltaMiB))
+
+	// We need to call sink to prevent compiler from optimizing out the benchmark and collecting marshaler.
+	sink(marshaler)
+}
+
+//go:noinline
+func sink[T any](_ T) {}
+
+func memStats() runtime.MemStats {
+	// Perform garbage collection before reading stats.
+	runtime.GC()
+	debug.FreeOSMemory()
+
+	var initialMem runtime.MemStats
+
+	runtime.ReadMemStats(&initialMem)
+
+	return initialMem
+}
+
+func generateString(lines int) string {
+	var builder strings.Builder
+
+	for i := 0; i < lines; i++ {
+		if i > 0 {
+			builder.WriteByte('\n')
+		}
+
+		builder.WriteString("    # ")
+
+		for j := 0; j < 128; j++ {
+			builder.WriteByte('0' + byte(rand.Int31n('z'-'0')))
+		}
+	}
+
+	return builder.String()
 }
 
 func init() {

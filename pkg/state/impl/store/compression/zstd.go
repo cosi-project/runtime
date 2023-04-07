@@ -8,7 +8,11 @@ import "github.com/klauspost/compress/zstd"
 
 // ZStd returns zstd compressor.
 func ZStd() Compressor {
-	encoder, err := zstd.NewWriter(nil)
+	encoder, err := zstd.NewWriter(
+		nil,
+		zstd.WithEncoderConcurrency(2),
+		zstd.WithWindowSize(zstd.MinWindowSize),
+	)
 	if err != nil {
 		// should never happen
 		panic(err)
