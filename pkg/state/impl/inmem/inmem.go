@@ -24,7 +24,7 @@ type State struct {
 	ns resource.Namespace
 
 	storeMu sync.Mutex
-	loaded  uint64
+	loaded  atomic.Bool
 
 	initialCapacity, maxCapacity, gap int
 }
@@ -71,7 +71,7 @@ func (st *State) loadStore(ctx context.Context) error {
 		return nil
 	}
 
-	if atomic.LoadUint64(&st.loaded) == 1 {
+	if st.loaded.Load() {
 		return nil
 	}
 
@@ -79,7 +79,7 @@ func (st *State) loadStore(ctx context.Context) error {
 	defer st.storeMu.Unlock()
 
 	// re-check after lock
-	if atomic.LoadUint64(&st.loaded) == 1 {
+	if st.loaded.Load() {
 		return nil
 	}
 
@@ -91,7 +91,7 @@ func (st *State) loadStore(ctx context.Context) error {
 		return err
 	}
 
-	atomic.StoreUint64(&st.loaded, 1)
+	st.loaded.Store(true)
 
 	return nil
 }
