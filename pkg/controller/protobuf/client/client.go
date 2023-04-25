@@ -15,6 +15,7 @@ import (
 	"time"
 
 	"github.com/cenkalti/backoff/v4"
+	"github.com/siderolabs/gen/channel"
 	"github.com/siderolabs/go-retry/retry"
 	"go.uber.org/zap"
 	"google.golang.org/grpc/codes"
@@ -241,10 +242,9 @@ func (ctrlAdapter *controllerAdapter) run(ctx context.Context) {
 
 		logger.Sugar().Infof("restarting controller in %s", interval)
 
-		select {
-		case <-ctx.Done():
+		_, ok := channel.RecvWithContext(ctx, time.After(interval))
+		if !ok {
 			return
-		case <-time.After(interval):
 		}
 
 		// schedule reconcile after restart
@@ -295,9 +295,8 @@ func (ctrlAdapter *controllerAdapter) establishEventChannel() {
 					return err
 				}
 
-				select {
-				case ctrlAdapter.eventCh <- controller.ReconcileEvent{}:
-				case <-ctrlAdapter.ctx.Done():
+				ok := channel.SendWithContext(ctrlAdapter.ctx, ctrlAdapter.eventCh, controller.ReconcileEvent{})
+				if !ok {
 					return ctrlAdapter.ctx.Err()
 				}
 			}
@@ -309,10 +308,9 @@ func (ctrlAdapter *controllerAdapter) establishEventChannel() {
 
 		interval := backoff.NextBackOff()
 
-		select {
-		case <-ctrlAdapter.ctx.Done():
+		_, ok := channel.RecvWithContext(ctrlAdapter.ctx, time.After(interval))
+		if !ok {
 			return
-		case <-time.After(interval):
 		}
 	}
 }

@@ -9,6 +9,7 @@ import (
 	"fmt"
 
 	"github.com/hashicorp/go-multierror"
+	"github.com/siderolabs/gen/channel"
 	"github.com/siderolabs/gen/xerrors"
 	"go.uber.org/zap"
 
@@ -178,10 +179,9 @@ func (ctrl *Controller[Input, Output]) Run(ctx context.Context, r controller.Run
 	)
 
 	for {
-		select {
-		case <-ctx.Done():
+		_, ok := channel.RecvWithContext(ctx, r.EventCh())
+		if !ok {
 			return nil
-		case <-r.EventCh():
 		}
 
 		// controller runs in two phases:

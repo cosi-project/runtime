@@ -14,6 +14,7 @@ import (
 	"time"
 
 	"github.com/cenkalti/backoff/v4"
+	"github.com/siderolabs/gen/channel"
 	"github.com/siderolabs/go-pointer"
 	"go.uber.org/zap"
 	"golang.org/x/time/rate"
@@ -444,10 +445,9 @@ func (adapter *adapter) run(ctx context.Context) {
 
 		logger.Sugar().Debugf("restarting controller in %s", interval)
 
-		select {
-		case <-ctx.Done():
+		_, ok := channel.RecvWithContext(ctx, time.After(interval))
+		if !ok {
 			return
-		case <-time.After(interval):
 		}
 
 		// schedule reconcile after restart

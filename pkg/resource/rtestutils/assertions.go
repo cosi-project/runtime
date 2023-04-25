@@ -8,6 +8,7 @@ import (
 	"context"
 	"testing"
 
+	"github.com/siderolabs/gen/channel"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
@@ -73,13 +74,13 @@ func AssertResources[R ResourceWithRD](
 
 		t.Logf("ok: %d/%d, assertions:\n%s", ok, len(ids), &aggregator)
 
-		select {
-		case <-ctx.Done():
+		ev, evOk := channel.RecvWithContext(ctx, watchCh)
+		if !evOk {
 			require.FailNow("timeout", "assertions:\n%s", &aggregator)
-		case ev := <-watchCh:
-			if ev.Type == state.Errored {
-				require.NoError(ev.Error)
-			}
+		}
+
+		if ev.Type == state.Errored {
+			require.NoError(ev.Error)
 		}
 	}
 }
@@ -108,17 +109,16 @@ func AssertNoResource[R ResourceWithRD](
 	require.NoError(st.Watch(ctx, resource.NewMetadata(namespace, rds.Type, id, resource.VersionUndefined), watchCh))
 
 	for {
-		select {
-		case <-ctx.Done():
+		ev, ok := channel.RecvWithContext(ctx, watchCh)
+		if !ok {
 			require.FailNow("timeout", "resource still exists: %q", id)
-		case ev := <-watchCh:
-			if ev.Type == state.Destroyed {
-				return
-			}
+		}
 
-			if ev.Type == state.Errored {
-				require.NoError(ev.Error)
-			}
+		switch ev.Type { //nolint:exhaustive
+		case state.Destroyed:
+			return
+		case state.Errored:
+			require.NoError(ev.Error)
 		}
 	}
 }

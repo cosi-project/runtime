@@ -8,6 +8,7 @@ import (
 	"context"
 	"testing"
 
+	"github.com/siderolabs/gen/channel"
 	"github.com/siderolabs/gen/slices"
 	"github.com/siderolabs/go-pointer"
 	"github.com/stretchr/testify/require"
@@ -41,7 +42,7 @@ func Destroy[R ResourceWithRD](ctx context.Context, t *testing.T, st state.State
 	idMap := slices.ToSet(ids)
 
 	for len(idMap) > 0 {
-		event, ok := recvWithContext(ctx, watchCh)
+		event, ok := channel.RecvWithContext(ctx, watchCh)
 		if !ok {
 			require.FailNow(t, "timeout", "left: %d %s", len(idMap), rds.Type)
 		}
@@ -92,15 +93,4 @@ func teardown(ctx context.Context, st state.State, ids []string, rds meta.Resour
 	}
 
 	return nil
-}
-
-func recvWithContext[T any](ctx context.Context, ch <-chan T) (T, bool) {
-	select {
-	case <-ctx.Done():
-		var zero T
-
-		return zero, false
-	case val := <-ch:
-		return val, true
-	}
 }

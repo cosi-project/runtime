@@ -9,6 +9,7 @@ import (
 	"context"
 	"sync"
 
+	"github.com/siderolabs/gen/channel"
 	"go.uber.org/zap"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
@@ -183,10 +184,9 @@ func (runtime *Runtime) getBridge(ctx context.Context, controllerToken string) (
 	bridge := b.(*controllerBridge) //nolint:errcheck,forcetypeassert
 
 	// wait for the adapter to be connected
-	select {
-	case <-ctx.Done():
+	_, ok = channel.RecvWithContext(ctx, bridge.adapterWait)
+	if !ok && ctx.Err() != nil {
 		return nil, ctx.Err()
-	case <-bridge.adapterWait:
 	}
 
 	return bridge, nil
@@ -200,19 +200,15 @@ func (runtime *Runtime) ReconcileEvents(req *v1alpha1.ReconcileEventsRequest, sr
 	}
 
 	// send first reconcile event anyways, as after reconnect some event might have been lost
-	select {
-	case <-bridge.adapter.EventCh():
-	default:
-	}
+	channel.TryRecv(bridge.adapter.EventCh())
 
 	if err = srv.Send(&v1alpha1.ReconcileEventsResponse{}); err != nil {
 		return err
 	}
 
 	for {
-		select {
-		case <-bridge.adapter.EventCh():
-		case <-srv.Context().Done():
+		_, ok := channel.RecvWithContext(srv.Context(), bridge.adapter.EventCh())
+		if !ok {
 			return srv.Context().Err()
 		}
 

@@ -8,6 +8,8 @@ import (
 	"context"
 	"fmt"
 
+	"github.com/siderolabs/gen/channel"
+
 	"github.com/cosi-project/runtime/pkg/resource"
 	"github.com/cosi-project/runtime/pkg/state"
 )
@@ -128,14 +130,14 @@ func (wse *WrappedStateEvent[T]) Type() state.EventType {
 
 func watch[T resource.Resource](ctx context.Context, eventCh chan<- WrappedStateEvent[T], untypedEventCh <-chan state.Event) {
 	for {
-		select {
-		case <-ctx.Done():
+		event, ok := channel.RecvWithContext(ctx, untypedEventCh)
+		if !ok {
 			return
-		case event := <-untypedEventCh:
-			select {
-			case <-ctx.Done():
-			case eventCh <- WrappedStateEvent[T]{event: event}:
-			}
+		}
+
+		ok = channel.SendWithContext(ctx, eventCh, WrappedStateEvent[T]{event: event})
+		if !ok {
+			return
 		}
 	}
 }
