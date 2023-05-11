@@ -15,7 +15,7 @@ type Any struct {
 }
 
 type anySpec struct {
-	value interface{}
+	value any
 	yaml  []byte
 }
 
@@ -56,12 +56,12 @@ func (a *Any) Metadata() *Metadata {
 }
 
 // Spec implements resource.Resource.
-func (a *Any) Spec() interface{} {
+func (a *Any) Spec() any {
 	return a.spec
 }
 
 // Value returns decoded value as Go type.
-func (a *Any) Value() interface{} {
+func (a *Any) Value() any {
 	return a.spec.value
 }
 

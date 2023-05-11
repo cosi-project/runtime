@@ -205,7 +205,7 @@ func (db *Database) GetControllerOutputs(controllerName string) ([]controller.Ou
 	txn := db.db.Txn(false)
 	defer txn.Abort()
 
-	result := []controller.Output{}
+	var result []controller.Output
 
 	obj, err := txn.First(tableExclusiveOutputs, "controller", controllerName)
 	if err != nil {

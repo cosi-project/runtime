@@ -47,7 +47,7 @@ func (r *Resource) Metadata() *resource.Metadata {
 }
 
 // Spec of the resource.
-func (r *Resource) Spec() interface{} {
+func (r *Resource) Spec() any {
 	return &r.spec
 }
 

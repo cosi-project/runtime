@@ -19,7 +19,7 @@ func (agg *assertionAggregator) Errorf(format string, args ...any) {
 	errorString := fmt.Sprintf(format, args...)
 
 	if agg.errors == nil {
-		agg.errors = make(map[string]struct{})
+		agg.errors = map[string]struct{}{}
 	}
 
 	agg.errors[errorString] = struct{}{}

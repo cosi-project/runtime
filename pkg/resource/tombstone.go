@@ -35,7 +35,7 @@ func (t *Tombstone) Metadata() *Metadata {
 }
 
 // Spec is not implemented for tobmstones.
-func (t *Tombstone) Spec() interface{} {
+func (t *Tombstone) Spec() any {
 	panic("tombstone doesn't contain spec")
 }
 

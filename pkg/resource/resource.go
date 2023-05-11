@@ -35,7 +35,7 @@ type Resource interface {
 	Metadata() *Metadata
 
 	// Opaque data resource contains.
-	Spec() interface{}
+	Spec() any
 
 	// Deep copy of the resource.
 	DeepCopy() Resource
@@ -50,7 +50,7 @@ func Equal(r1, r2 Resource) bool {
 	spec1, spec2 := r1.Spec(), r2.Spec()
 
 	if equality, ok := spec1.(interface {
-		Equal(interface{}) bool
+		Equal(any) bool
 	}); ok {
 		return equality.Equal(spec2)
 	}
@@ -59,10 +59,10 @@ func Equal(r1, r2 Resource) bool {
 }
 
 // MarshalYAML marshals resource to YAML definition.
-func MarshalYAML(r Resource) (interface{}, error) {
+func MarshalYAML(r Resource) (any, error) {
 	return &struct {
-		Metadata *Metadata   `yaml:"metadata"`
-		Spec     interface{} `yaml:"spec"`
+		Metadata *Metadata `yaml:"metadata"`
+		Spec     any       `yaml:"spec"`
 	}{
 		Metadata: r.Metadata(),
 		Spec:     r.Spec(),

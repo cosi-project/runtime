@@ -26,7 +26,7 @@ func TestNewAnyFromProto(t *testing.T) {
 	r, err := resource.NewAnyFromProto(&protoMd{}, &protoSpec{})
 	assert.NoError(t, err)
 
-	assert.Equal(t, map[string]interface{}{"something": []interface{}{"a", "b", "c"}, "value": "xyz"}, r.Value())
+	assert.Equal(t, map[string]any{"something": []any{"a", "b", "c"}, "value": "xyz"}, r.Value())
 	assert.Equal(t, "aaa", r.Metadata().ID())
 
 	enc, err := resource.MarshalYAML(r)

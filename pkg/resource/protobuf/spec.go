@@ -28,7 +28,7 @@ type ResourceSpec[T any, S Spec[T]] struct {
 
 // MarshalYAML implements yaml.Marshaler interface. We want it to inline `Value` field, without
 // using `inline` tag.
-func (spec *ResourceSpec[T, S]) MarshalYAML() (interface{}, error) {
+func (spec *ResourceSpec[T, S]) MarshalYAML() (any, error) {
 	return spec.Value, nil
 }
 
@@ -79,7 +79,7 @@ func (spec *ResourceSpec[T, S]) GetValue() proto.Message { //nolint:ireturn
 }
 
 // Equal implements spec equality check.
-func (spec *ResourceSpec[T, S]) Equal(other interface{}) bool {
+func (spec *ResourceSpec[T, S]) Equal(other any) bool {
 	otherSpec, ok := other.(*ResourceSpec[T, S])
 	if !ok {
 		return false

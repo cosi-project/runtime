@@ -32,7 +32,7 @@ func (r *Resource[T, S, SS]) Metadata() *resource.Metadata {
 }
 
 // Spec implements resource.Resource.
-func (r *Resource[T, S, SS]) Spec() interface{} {
+func (r *Resource[T, S, SS]) Spec() any {
 	return r.value
 }
 

@@ -62,10 +62,10 @@ func NewRuntime(st state.State, logger *zap.Logger, opt ...Option) (*Runtime, er
 	runtime := &Runtime{
 		state:       st,
 		logger:      logger,
-		controllers: make(map[string]*adapter),
+		controllers: map[string]*adapter{},
 		watchCh:     make(chan []state.Event, watchBuffer),
 		watchErrors: make(chan error, 1),
-		watched:     make(map[watchKey]struct{}),
+		watched:     map[watchKey]struct{}{},
 		options:     DefaultOptions(),
 	}
 

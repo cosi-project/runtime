@@ -41,7 +41,7 @@ func (path *PathResource) Metadata() *resource.Metadata {
 }
 
 // Spec implements resource.Resource.
-func (path *PathResource) Spec() interface{} {
+func (path *PathResource) Spec() any {
 	return pathSpec{}
 }
 

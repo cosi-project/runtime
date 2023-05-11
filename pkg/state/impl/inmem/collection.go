@@ -48,7 +48,7 @@ func NewResourceCollection(ns resource.Namespace, typ resource.Type, initialCapa
 		capacity:    initialCapacity,
 		maxCapacity: maxCapacity,
 		gap:         gap,
-		storage:     make(map[resource.ID]resource.Resource),
+		storage:     map[resource.ID]resource.Resource{},
 		stream:      make([]state.Event, initialCapacity),
 		store:       store,
 	}

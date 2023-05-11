@@ -49,7 +49,7 @@ func (kv *KV) Delete(key string) {
 // Setting the value copies the map, so metadata copies share common storage as long as possible.
 func (kv *KV) Set(key, value string) {
 	if kv.m == nil {
-		kv.m = make(map[string]string)
+		kv.m = map[string]string{}
 	} else {
 		v, ok := kv.m[key]
 		if ok && v == value {
@@ -211,7 +211,7 @@ func (tmp *tempKV) Set(key, value string) {
 
 	if !tmp.dirty {
 		if tmp.m == nil {
-			tmp.m = make(map[string]string)
+			tmp.m = map[string]string{}
 		} else {
 			tmp.m = cloneMap(tmp.m)
 		}

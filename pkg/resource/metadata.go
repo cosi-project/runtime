@@ -187,7 +187,7 @@ func (md Metadata) Equal(other Metadata) bool {
 }
 
 // MarshalYAML implements yaml.Marshaller interface.
-func (md *Metadata) MarshalYAML() (interface{}, error) {
+func (md *Metadata) MarshalYAML() (any, error) {
 	var finalizers []*yaml.Node
 
 	if !md.fins.Empty() {
@@ -400,7 +400,7 @@ func getFinalizers(val *yaml.Node) Finalizers {
 	return fins
 }
 
-func panicFormatf(format string, a ...interface{}) {
+func panicFormatf(format string, a ...any) {
 	panic(&tryError{err: fmt.Errorf(format, a...)})
 }
 
