@@ -15,6 +15,7 @@ import (
 
 	"github.com/cenkalti/backoff/v4"
 	"github.com/siderolabs/gen/channel"
+	"github.com/siderolabs/gen/slices"
 	"github.com/siderolabs/go-pointer"
 	"go.uber.org/zap"
 	"golang.org/x/time/rate"
@@ -153,7 +154,7 @@ func (adapter *adapter) UpdateInputs(deps []controller.Input) error {
 		}
 	}
 
-	adapter.inputs = append([]controller.Input(nil), deps...)
+	adapter.inputs = slices.Clone(deps)
 
 	return nil
 }
@@ -376,7 +377,7 @@ func (adapter *adapter) Destroy(ctx context.Context, resourcePointer resource.Po
 func (adapter *adapter) initialize() error {
 	adapter.name = adapter.ctrl.Name()
 
-	adapter.outputs = append([]controller.Output(nil), adapter.ctrl.Outputs()...)
+	adapter.outputs = slices.Clone(adapter.ctrl.Outputs())
 
 	for _, output := range adapter.outputs {
 		if err := adapter.runtime.depDB.AddControllerOutput(adapter.name, output); err != nil {

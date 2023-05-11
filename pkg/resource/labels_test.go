@@ -10,6 +10,7 @@ import (
 	"github.com/stretchr/testify/assert"
 
 	"github.com/cosi-project/runtime/pkg/resource"
+	"github.com/cosi-project/runtime/pkg/resource/kvutils"
 )
 
 func TestLabels(t *testing.T) {
@@ -81,4 +82,33 @@ func TestLabels(t *testing.T) {
 		Key: "yes",
 		Op:  resource.LabelOpNotExists,
 	}))
+}
+
+func TestLabelsDo(t *testing.T) {
+	var src resource.Labels
+
+	src.Set("a", "b")
+	src.Set("c", "d")
+
+	var dst resource.Labels
+
+	dst.Do(func(temp kvutils.TempKV) {
+		for key, val := range src.Raw() {
+			temp.Set(key, val)
+		}
+	})
+	assert.True(t, dst.Equal(src))
+
+	src.Do(func(temp kvutils.TempKV) { temp.Delete("a") })
+	assert.False(t, dst.Equal(src))
+	assert.EqualValues(t, dst.Keys(), []string{"a", "c"})
+
+	dst.Do(func(temp kvutils.TempKV) { temp.Delete("a") })
+	assert.True(t, dst.Equal(src))
+
+	src.Do(func(temp kvutils.TempKV) { temp.Set("a", "b") })
+	assert.False(t, dst.Equal(src))
+
+	dst.Do(func(temp kvutils.TempKV) { temp.Set("a", "b") })
+	assert.True(t, dst.Equal(src))
 }

@@ -9,6 +9,8 @@ import (
 	"sort"
 
 	"gopkg.in/yaml.v3"
+
+	kvutils "github.com/cosi-project/runtime/pkg/resource/kvutils"
 )
 
 // KV is a set free-form of key-value pairs.
@@ -55,13 +57,7 @@ func (kv *KV) Set(key, value string) {
 			return
 		}
 
-		kvCopy := make(map[string]string, len(kv.m))
-
-		for k, v := range kv.m {
-			kvCopy[k] = v
-		}
-
-		kv.m = kvCopy
+		kv.m = cloneMap(kv.m)
 	}
 
 	kv.m[key] = value
@@ -160,4 +156,74 @@ func (kv KV) ToYAML(label string) []*yaml.Node {
 	}
 
 	return nodes
+}
+
+// Do executes a function with a temporary copy of the map. It copies the map back only if the function modifies it.
+func (kv *KV) Do(ts func(temp kvutils.TempKV)) {
+	temp := &tempKV{m: kv.m}
+
+	ts(temp)
+
+	if temp.dirty {
+		kv.m = temp.m
+	}
+}
+
+func cloneMap(m map[string]string) map[string]string {
+	if m == nil {
+		return nil
+	}
+
+	mCopy := make(map[string]string, len(m))
+
+	for k, v := range m {
+		mCopy[k] = v
+	}
+
+	return mCopy
+}
+
+type tempKV struct {
+	m     map[string]string
+	dirty bool
+}
+
+func (tmp *tempKV) Delete(key string) {
+	if _, ok := tmp.m[key]; !ok {
+		// no change
+		return
+	}
+
+	if !tmp.dirty {
+		tmp.m = cloneMap(tmp.m)
+		tmp.dirty = true
+	}
+
+	delete(tmp.m, key)
+}
+
+func (tmp *tempKV) Set(key, value string) {
+	v, ok := tmp.m[key]
+	if ok && v == value {
+		// no change
+		return
+	}
+
+	if !tmp.dirty {
+		if tmp.m == nil {
+			tmp.m = make(map[string]string)
+		} else {
+			tmp.m = cloneMap(tmp.m)
+		}
+
+		tmp.dirty = true
+	}
+
+	tmp.m[key] = value
+}
+
+func (tmp *tempKV) Get(key string) (string, bool) {
+	value, ok := tmp.m[key]
+
+	return value, ok
 }

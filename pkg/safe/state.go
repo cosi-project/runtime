@@ -10,6 +10,7 @@ import (
 
 	"github.com/siderolabs/gen/channel"
 
+	"github.com/cosi-project/runtime/pkg/controller/generic"
 	"github.com/cosi-project/runtime/pkg/resource"
 	"github.com/cosi-project/runtime/pkg/state"
 )
@@ -38,6 +39,22 @@ func typeAssertOrZero[T resource.Resource](got resource.Resource, err error) (T,
 // StateGet is a type safe wrapper around state.Get.
 func StateGet[T resource.Resource](ctx context.Context, st state.State, ptr resource.Pointer, options ...state.GetOption) (T, error) { //nolint:ireturn
 	got, err := st.Get(ctx, ptr, options...)
+
+	return typeAssertOrZero[T](got, err)
+}
+
+// StateGetByID is a type safe wrapper around state.Get.
+func StateGetByID[T generic.ResourceWithRD](ctx context.Context, st state.State, id resource.ID, options ...state.GetOption) (T, error) { //nolint:ireturn
+	var r T
+
+	md := resource.NewMetadata(
+		r.ResourceDefinition().DefaultNamespace,
+		r.ResourceDefinition().Type,
+		id,
+		resource.VersionUndefined,
+	)
+
+	got, err := st.Get(ctx, md, options...)
 
 	return typeAssertOrZero[T](got, err)
 }
@@ -84,6 +101,20 @@ func StateList[T resource.Resource](ctx context.Context, st state.State, ptr res
 	}
 
 	return NewList[T](got), nil
+}
+
+// StateListAll is a type safe wrapper around state.List that uses default namaespace and type from ResourceDefinitionProvider.
+func StateListAll[T generic.ResourceWithRD](ctx context.Context, st state.State, opts ...state.ListOption) (List[T], error) {
+	var r T
+
+	md := resource.NewMetadata(
+		r.ResourceDefinition().DefaultNamespace,
+		r.ResourceDefinition().Type,
+		"",
+		resource.VersionUndefined,
+	)
+
+	return StateList[T](ctx, st, md, opts...)
 }
 
 // WrappedStateEvent holds a state.Event that can be cast to its original Resource type when accessed with Event().
@@ -195,6 +226,54 @@ func (l *List[T]) Get(index int) T { //nolint:ireturn
 // Len returns the number of items in the list.
 func (l *List[T]) Len() int {
 	return len(l.list.Items)
+}
+
+// ForEachErr iterates over the given list and calls the given function for each element.
+// If the function returns an error, the iteration stops and the error is returned.
+func (l *List[T]) ForEachErr(fn func(T) error) error {
+	for _, r := range l.list.Items {
+		arg, ok := r.(T)
+		if !ok {
+			return typeMismatchErr(arg, r)
+		}
+
+		if err := fn(arg); err != nil {
+			return err
+		}
+	}
+
+	return nil
+}
+
+// ForEach iterates over the given list and calls the given function for each element.
+func (l *List[T]) ForEach(fn func(T)) {
+	for _, r := range l.list.Items {
+		fn(r.(T)) //nolint:forcetypeassert
+	}
+}
+
+// Index returns the index of the given item in the list.
+func (l *List[T]) Index(fn func(T) bool) int {
+	for i, r := range l.list.Items {
+		if fn(r.(T)) { //nolint:forcetypeassert
+			return i
+		}
+	}
+
+	return -1
+}
+
+// Find returns the first item in the list that matches the given predicate.
+func (l *List[T]) Find(fn func(T) bool) (T, bool) {
+	for _, r := range l.list.Items {
+		if actual := r.(T); fn(actual) { //nolint:forcetypeassert,errcheck
+			return actual, true
+		}
+	}
+
+	var zero T
+
+	return zero, false
 }
 
 // ListIterator is a generic iterator over resource.Resource slice.

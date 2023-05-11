@@ -7,6 +7,7 @@ package protobuf
 import (
 	"fmt"
 
+	"github.com/siderolabs/gen/slices"
 	timestamppb "google.golang.org/protobuf/types/known/timestamppb"
 	"gopkg.in/yaml.v3"
 
@@ -57,7 +58,7 @@ func (r *Resource) DeepCopy() resource.Resource { //nolint:ireturn
 	}
 
 	if r.spec.protobuf != nil {
-		specCopy.protobuf = append([]byte(nil), r.spec.protobuf...)
+		specCopy.protobuf = slices.Clone(r.spec.protobuf)
 	}
 
 	return &Resource{

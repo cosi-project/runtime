@@ -525,9 +525,9 @@ func (collection *ResourceCollection) WatchAll(ctx context.Context, singleCh cha
 
 			var events []state.Event
 			if first < last {
-				events = append([]state.Event(nil), collection.stream[first:last]...)
+				events = slices.Clone(collection.stream[first:last])
 			} else {
-				events = append(append([]state.Event(nil), collection.stream[first:]...), collection.stream[:last]...)
+				events = append(slices.Clone(collection.stream[first:]), collection.stream[:last]...)
 			}
 
 			pos = collection.writePos
