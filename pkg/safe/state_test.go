@@ -9,6 +9,7 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 
 	"github.com/cosi-project/runtime/pkg/controller/conformance"
 	"github.com/cosi-project/runtime/pkg/resource"
@@ -110,4 +111,37 @@ func TestStateWatchKind(t *testing.T) {
 	assert.Error(t, err)
 
 	assert.Equal(t, unsafeEvent.Type, safeWrappedEvent.Type())
+}
+
+func TestListFilter(t *testing.T) {
+	ctx, testNamespace, _, _, s, _, _ := setup(t) //nolint:dogsled
+
+	r1 := conformance.NewIntResource(testNamespace, "1", 2)
+	r1.Metadata().Labels().Set("value", "2")
+
+	r2 := conformance.NewIntResource(testNamespace, "2", 2)
+	r2.Metadata().Labels().Set("value", "2")
+
+	r3 := conformance.NewIntResource(testNamespace, "3", 3)
+	r3.Metadata().Labels().Set("value", "3")
+
+	for _, r := range []resource.Resource{r1, r2, r3} {
+		require.NoError(t, s.Create(ctx, r))
+	}
+
+	all, err := safe.StateList[*conformance.IntResource](ctx, s, resource.NewMetadata(testNamespace, conformance.IntResourceType, "", resource.VersionUndefined))
+	require.NoError(t, err)
+
+	assert.Equal(t, 3, all.Len())
+
+	filtered := all.FilterLabelQuery(resource.LabelEqual("value", "2"))
+	assert.Equal(t, 2, filtered.Len())
+
+	filtered = all.FilterLabelQuery(resource.LabelEqual("value", "3"))
+	assert.Equal(t, 1, filtered.Len())
+
+	filtered = all.FilterLabelQuery(resource.LabelEqual("value", "4"))
+	assert.Equal(t, 0, filtered.Len())
+
+	assert.Equal(t, 3, all.Len())
 }

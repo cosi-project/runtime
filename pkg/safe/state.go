@@ -9,6 +9,7 @@ import (
 	"fmt"
 
 	"github.com/siderolabs/gen/channel"
+	"github.com/siderolabs/gen/slices"
 
 	"github.com/cosi-project/runtime/pkg/controller/generic"
 	"github.com/cosi-project/runtime/pkg/resource"
@@ -226,6 +227,26 @@ func (l *List[T]) Get(index int) T { //nolint:ireturn
 // Len returns the number of items in the list.
 func (l *List[T]) Len() int {
 	return len(l.list.Items)
+}
+
+// FilterLabelQuery returns a new list applying the resource label query.
+func (l *List[T]) FilterLabelQuery(opts ...resource.LabelQueryOption) List[T] {
+	var (
+		filteredList resource.List
+		labelQuery   resource.LabelQuery
+	)
+
+	for _, opt := range opts {
+		opt(&labelQuery)
+	}
+
+	filteredList.Items = slices.Filter(l.list.Items,
+		func(r resource.Resource) bool {
+			return labelQuery.Matches(*r.Metadata().Labels())
+		},
+	)
+
+	return NewList[T](filteredList)
 }
 
 // ForEachErr iterates over the given list and calls the given function for each element.
