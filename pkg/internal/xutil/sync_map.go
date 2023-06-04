@@ -16,13 +16,8 @@ type SyncMap[K comparable, V any] struct {
 // present.
 func (m *SyncMap[K, V]) Load(key K) (value V, ok bool) {
 	v, ok := m.m.Load(key)
-	if !ok {
-		return
-	}
 
-	value, ok = v.(V)
-
-	return
+	return castOrZero[V](v), ok
 }
 
 // Store sets the value for a key.
@@ -39,7 +34,7 @@ func (m *SyncMap[K, V]) Delete(key K) {
 // returns false, range stops the iteration.
 func (m *SyncMap[K, V]) Range(f func(key K, value V) bool) {
 	m.m.Range(func(key, value any) bool {
-		return f(key.(K), value.(V)) //nolint:forcetypeassert
+		return f(castOrZero[K](key), castOrZero[V](value))
 	})
 }
 
@@ -48,7 +43,7 @@ func (m *SyncMap[K, V]) Range(f func(key K, value V) bool) {
 func (m *SyncMap[K, V]) Swap(key K, value V) (previous V, loaded bool) {
 	val, loaded := m.m.Swap(key, value)
 
-	return val.(V), loaded //nolint:forcetypeassert
+	return castOrZero[V](val), loaded
 }
 
 // CompareAndSwap swaps the old and new values for key
@@ -73,7 +68,7 @@ func (m *SyncMap[K, V]) CompareAndDelete(key K, old V) (deleted bool) {
 func (m *SyncMap[K, V]) LoadOrStore(key K, value V) (actual V, loaded bool) {
 	val, loaded := m.m.LoadOrStore(key, value)
 
-	return val.(V), loaded //nolint:forcetypeassert
+	return castOrZero[V](val), loaded
 }
 
 // LoadAndDelete deletes the value for a key, returning the previous value if any.
@@ -81,5 +76,15 @@ func (m *SyncMap[K, V]) LoadOrStore(key K, value V) (actual V, loaded bool) {
 func (m *SyncMap[K, V]) LoadAndDelete(key K) (value V, loaded bool) {
 	val, loaded := m.m.LoadAndDelete(key)
 
-	return val.(V), loaded //nolint:forcetypeassert
+	return castOrZero[V](val), loaded
+}
+
+func castOrZero[T any](val any) T {
+	if val == nil {
+		var zero T
+
+		return zero
+	}
+
+	return val.(T) //nolint:forcetypeassert
 }
