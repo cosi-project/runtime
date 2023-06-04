@@ -9,6 +9,7 @@ import (
 	"context"
 	"sync"
 
+	"github.com/puzpuzpuz/xsync/v2"
 	"github.com/siderolabs/gen/channel"
 	"go.uber.org/zap"
 	"google.golang.org/grpc/codes"
@@ -29,7 +30,7 @@ type Runtime struct { //nolint:govet
 
 	engine controller.Engine
 
-	controllers sync.Map
+	controllers *xsync.MapOf[string, *controllerBridge]
 
 	ctxMu            sync.Mutex
 	runtimeCtx       context.Context //nolint:containedctx
@@ -40,7 +41,8 @@ type Runtime struct { //nolint:govet
 // NewRuntime initializes new gRPC wrapper around controller.Engine.
 func NewRuntime(engine controller.Engine) *Runtime {
 	return &Runtime{
-		engine: engine,
+		controllers: xsync.NewMapOf[*controllerBridge](),
+		engine:      engine,
 	}
 }
 
@@ -176,12 +178,10 @@ func (runtime *Runtime) Stop(context.Context, *v1alpha1.StopRequest) (*v1alpha1.
 }
 
 func (runtime *Runtime) getBridge(ctx context.Context, controllerToken string) (*controllerBridge, error) {
-	b, ok := runtime.controllers.Load(controllerToken)
+	bridge, ok := runtime.controllers.Load(controllerToken)
 	if !ok {
 		return nil, status.Error(codes.InvalidArgument, "controller token is not registered")
 	}
-
-	bridge := b.(*controllerBridge) //nolint:errcheck,forcetypeassert
 
 	// wait for the adapter to be connected
 	_, ok = channel.RecvWithContext(ctx, bridge.adapterWait)
