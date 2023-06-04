@@ -10,6 +10,7 @@ import (
 	"sync"
 	"sync/atomic"
 
+	"github.com/cosi-project/runtime/pkg/internal/xutil"
 	"github.com/cosi-project/runtime/pkg/resource"
 	"github.com/cosi-project/runtime/pkg/state"
 )
@@ -18,7 +19,7 @@ var _ state.CoreState = &State{}
 
 // State implements state.CoreState.
 type State struct {
-	collections sync.Map
+	collections xutil.SyncMap[resource.Type, *ResourceCollection]
 	store       BackingStore
 
 	ns resource.Namespace
@@ -53,14 +54,14 @@ func NewStateWithOptions(opts ...StateOption) func(ns resource.Namespace) *State
 
 func (st *State) getCollection(typ resource.Type) *ResourceCollection {
 	if r, ok := st.collections.Load(typ); ok {
-		return r.(*ResourceCollection) //nolint:forcetypeassert
+		return r
 	}
 
 	collection := NewResourceCollection(st.ns, typ, st.initialCapacity, st.maxCapacity, st.gap, st.store)
 
 	r, _ := st.collections.LoadOrStore(typ, collection)
 
-	return r.(*ResourceCollection) //nolint:forcetypeassert
+	return r
 }
 
 // loadStore loads in-memory state from the backing store.
