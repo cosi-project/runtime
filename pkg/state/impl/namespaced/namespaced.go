@@ -7,8 +7,8 @@ package namespaced
 
 import (
 	"context"
-	"sync"
 
+	"github.com/cosi-project/runtime/pkg/internal/xutil"
 	"github.com/cosi-project/runtime/pkg/resource"
 	"github.com/cosi-project/runtime/pkg/state"
 )
@@ -22,7 +22,7 @@ var _ state.CoreState = (*State)(nil)
 type State struct {
 	builder StateBuilder
 
-	namespaces sync.Map
+	namespaces xutil.SyncMap[resource.Namespace, state.CoreState]
 }
 
 // NewState initializes new namespaced State.
@@ -34,12 +34,12 @@ func NewState(builder StateBuilder) *State {
 
 func (st *State) getNamespace(ns resource.Namespace) state.CoreState { //nolint:ireturn
 	if s, ok := st.namespaces.Load(ns); ok {
-		return s.(state.CoreState) //nolint:forcetypeassert
+		return s
 	}
 
 	s, _ := st.namespaces.LoadOrStore(ns, st.builder(ns))
 
-	return s.(state.CoreState) //nolint:forcetypeassert
+	return s
 }
 
 // Get a resource by type and ID.

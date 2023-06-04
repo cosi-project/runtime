@@ -16,6 +16,7 @@ import (
 
 	"github.com/cosi-project/runtime/api/v1alpha1"
 	"github.com/cosi-project/runtime/pkg/controller"
+	"github.com/cosi-project/runtime/pkg/internal/xutil"
 	"github.com/cosi-project/runtime/pkg/resource"
 	"github.com/cosi-project/runtime/pkg/resource/protobuf"
 	"github.com/cosi-project/runtime/pkg/state"
@@ -29,7 +30,7 @@ type Runtime struct { //nolint:govet
 
 	engine controller.Engine
 
-	controllers sync.Map
+	controllers xutil.SyncMap[string, *controllerBridge]
 
 	ctxMu            sync.Mutex
 	runtimeCtx       context.Context //nolint:containedctx
@@ -176,12 +177,10 @@ func (runtime *Runtime) Stop(context.Context, *v1alpha1.StopRequest) (*v1alpha1.
 }
 
 func (runtime *Runtime) getBridge(ctx context.Context, controllerToken string) (*controllerBridge, error) {
-	b, ok := runtime.controllers.Load(controllerToken)
+	bridge, ok := runtime.controllers.Load(controllerToken)
 	if !ok {
 		return nil, status.Error(codes.InvalidArgument, "controller token is not registered")
 	}
-
-	bridge := b.(*controllerBridge) //nolint:errcheck,forcetypeassert
 
 	// wait for the adapter to be connected
 	_, ok = channel.RecvWithContext(ctx, bridge.adapterWait)
