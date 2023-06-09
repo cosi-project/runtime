@@ -6,12 +6,8 @@
 package rtestutils
 
 import (
-	"github.com/cosi-project/runtime/pkg/resource"
 	"github.com/cosi-project/runtime/pkg/resource/meta"
 )
 
-// ResourceWithRD is a resource providing resource definition.
-type ResourceWithRD interface {
-	resource.Resource
-	meta.ResourceDefinitionProvider
-}
+// ResourceWithRD is an alias for meta.ResourceWithRD.
+type ResourceWithRD = meta.ResourceWithRD

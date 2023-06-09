@@ -62,6 +62,14 @@ type ResourceDefinitionProvider interface {
 	ResourceDefinition() ResourceDefinitionSpec
 }
 
+// ResourceWithRD is a resource providing resource definition.
+//
+// ResourceWithRD allows to pull resource namespace and type from the RD.
+type ResourceWithRD interface {
+	ResourceDefinitionProvider
+	resource.Resource
+}
+
 func init() {
 	if err := protobuf.RegisterResource(ResourceDefinitionType, &ResourceDefinition{}); err != nil {
 		panic(err)

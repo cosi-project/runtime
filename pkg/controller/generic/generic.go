@@ -6,17 +6,11 @@
 package generic
 
 import (
-	"github.com/cosi-project/runtime/pkg/resource"
 	"github.com/cosi-project/runtime/pkg/resource/meta"
 )
 
-// ResourceWithRD is a resource providing resource definition.
-//
-// ResourceWithRD allows to pull resource namespace and type from the RD.
-type ResourceWithRD interface {
-	resource.Resource
-	meta.ResourceDefinitionProvider
-}
+// ResourceWithRD is an alias for meta.ResourceWithRD.
+type ResourceWithRD = meta.ResourceWithRD
 
 // NamedController is provides Name() method.
 type NamedController struct {

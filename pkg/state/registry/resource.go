@@ -8,7 +8,6 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/cosi-project/runtime/pkg/resource"
 	"github.com/cosi-project/runtime/pkg/resource/meta"
 	"github.com/cosi-project/runtime/pkg/state"
 )
@@ -27,7 +26,7 @@ func NewResourceRegistry(state state.State) *ResourceRegistry {
 
 // RegisterDefault registers default resource definitions.
 func (registry *ResourceRegistry) RegisterDefault(ctx context.Context) error {
-	for _, r := range []resource.Resource{&meta.ResourceDefinition{}, &meta.Namespace{}} {
+	for _, r := range []meta.ResourceWithRD{&meta.ResourceDefinition{}, &meta.Namespace{}} {
 		if err := registry.Register(ctx, r); err != nil {
 			return err
 		}
@@ -37,15 +36,8 @@ func (registry *ResourceRegistry) RegisterDefault(ctx context.Context) error {
 }
 
 // Register a namespace.
-func (registry *ResourceRegistry) Register(ctx context.Context, r resource.Resource) error {
-	definitionProvider, ok := r.(meta.ResourceDefinitionProvider)
-	if !ok {
-		return fmt.Errorf("value %v doesn't implement core.ResourceDefinitionProvider", r)
-	}
-
-	definition := definitionProvider.ResourceDefinition()
-
-	r, err := meta.NewResourceDefinition(definition)
+func (registry *ResourceRegistry) Register(ctx context.Context, r meta.ResourceWithRD) error {
+	r, err := meta.NewResourceDefinition(r.ResourceDefinition())
 	if err != nil {
 		return fmt.Errorf("error registering resource %s: %w", r, err)
 	}
