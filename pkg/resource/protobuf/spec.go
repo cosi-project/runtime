@@ -34,6 +34,12 @@ func (spec *ResourceSpec[T, S]) MarshalYAML() (any, error) {
 
 // DeepCopy creates a copy of the wrapped proto.Message.
 func (spec ResourceSpec[T, S]) DeepCopy() ResourceSpec[T, S] {
+	if cast, ok := any(spec.Value).(interface{ CloneVT() S }); ok {
+		return ResourceSpec[T, S]{
+			Value: cast.CloneVT(),
+		}
+	}
+
 	return ResourceSpec[T, S]{
 		Value: proto.Clone(spec.Value).(S), //nolint:forcetypeassert
 	}

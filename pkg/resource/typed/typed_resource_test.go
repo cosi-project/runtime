@@ -125,6 +125,17 @@ func (jsonResExtension) ResourceDefinition() meta.ResourceDefinitionSpec {
 	}
 }
 
+type resDefSpec = protobuf.ResourceSpec[v1alpha1.ResourceDefinitionSpec, *v1alpha1.ResourceDefinitionSpec]
+
+type resDefSpecExtension struct{}
+
+// Extension ...
+func (resDefSpecExtension) ResourceDefinition() meta.ResourceDefinitionSpec {
+	return meta.ResourceDefinitionSpec{
+		DisplayType: "test definition",
+	}
+}
+
 func TestUnmarshalJSON(t *testing.T) {
 	res := typed.NewResource[jsonResSpec, jsonResExtension](
 		resource.NewMetadata("default", "type", "1", resource.VersionUndefined),
@@ -134,4 +145,46 @@ func TestUnmarshalJSON(t *testing.T) {
 	assert.NoError(t, json.Unmarshal([]byte(`{"id": "1"}`), res.Spec()))
 	assert.NotNil(t, res.TypedSpec().Value)
 	assert.Equal(t, "1", res.TypedSpec().Value.Id)
+}
+
+var BenchStore resource.Resource
+
+func TestCopyAllocations(t *testing.T) {
+	res := typed.NewResource[resDefSpec, resDefSpecExtension](
+		resource.NewMetadata("default", "type", "1", resource.VersionUndefined),
+		resDefSpec{
+			Value: &v1alpha1.ResourceDefinitionSpec{
+				ResourceType:     "my_resource_type",
+				DisplayType:      "display_type",
+				DefaultNamespace: "default_namaspace",
+				Aliases:          []string{"alias1", "alias2"},
+				AllAliases:       []string{"alias1", "alias2", "alias3"},
+				PrintColumns: []*v1alpha1.ResourceDefinitionSpec_PrintColumn{
+					{
+						Name:     "name",
+						JsonPath: ".metadata.name",
+					},
+					{
+						Name:     "namespace",
+						JsonPath: ".metadata.namespace",
+					},
+				},
+				Sensitivity: v1alpha1.ResourceDefinitionSpec_NON_SENSITIVE,
+			},
+		},
+	)
+
+	benchRes := testing.Benchmark(func(b *testing.B) {
+		for i := 0; i < b.N; i++ {
+			BenchStore = res.DeepCopy()
+		}
+	})
+
+	// Report ns, allocs and bytes per op
+	allocsPerOp := benchRes.AllocsPerOp()
+	if allocsPerOp > 7 {
+		t.Fatal("expected less or equal to 7 allocations, got", allocsPerOp)
+	}
+
+	t.Logf("ns/op: %d, allocs/op: %d, bytes/op: %d", benchRes.NsPerOp(), allocsPerOp, benchRes.AllocedBytesPerOp())
 }

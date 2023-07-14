@@ -20,6 +20,59 @@ const (
 	_ = protoimpl.EnforceVersion(protoimpl.MaxVersion - 20)
 )
 
+func (m *Storage) CloneVT() *Storage {
+	if m == nil {
+		return (*Storage)(nil)
+	}
+	r := &Storage{
+		StorageVersion: m.StorageVersion,
+	}
+	if rhs := m.KeySlots; rhs != nil {
+		tmpContainer := make(map[string]*KeySlot, len(rhs))
+		for k, v := range rhs {
+			tmpContainer[k] = v.CloneVT()
+		}
+		r.KeySlots = tmpContainer
+	}
+	if rhs := m.KeysHmacHash; rhs != nil {
+		tmpBytes := make([]byte, len(rhs))
+		copy(tmpBytes, rhs)
+		r.KeysHmacHash = tmpBytes
+	}
+	if len(m.unknownFields) > 0 {
+		r.unknownFields = make([]byte, len(m.unknownFields))
+		copy(r.unknownFields, m.unknownFields)
+	}
+	return r
+}
+
+func (m *Storage) CloneMessageVT() proto.Message {
+	return m.CloneVT()
+}
+
+func (m *KeySlot) CloneVT() *KeySlot {
+	if m == nil {
+		return (*KeySlot)(nil)
+	}
+	r := &KeySlot{
+		Algorithm: m.Algorithm,
+	}
+	if rhs := m.EncryptedKey; rhs != nil {
+		tmpBytes := make([]byte, len(rhs))
+		copy(tmpBytes, rhs)
+		r.EncryptedKey = tmpBytes
+	}
+	if len(m.unknownFields) > 0 {
+		r.unknownFields = make([]byte, len(m.unknownFields))
+		copy(r.unknownFields, m.unknownFields)
+	}
+	return r
+}
+
+func (m *KeySlot) CloneMessageVT() proto.Message {
+	return m.CloneVT()
+}
+
 func (this *Storage) EqualVT(that *Storage) bool {
 	if this == that {
 		return true

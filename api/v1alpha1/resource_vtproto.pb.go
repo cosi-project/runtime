@@ -21,6 +21,165 @@ const (
 	_ = protoimpl.EnforceVersion(protoimpl.MaxVersion - 20)
 )
 
+func (m *Metadata) CloneVT() *Metadata {
+	if m == nil {
+		return (*Metadata)(nil)
+	}
+	r := &Metadata{
+		Namespace: m.Namespace,
+		Type:      m.Type,
+		Id:        m.Id,
+		Version:   m.Version,
+		Owner:     m.Owner,
+		Phase:     m.Phase,
+	}
+	if rhs := m.Created; rhs != nil {
+		if vtpb, ok := interface{}(rhs).(interface{ CloneVT() *timestamppb.Timestamp }); ok {
+			r.Created = vtpb.CloneVT()
+		} else {
+			r.Created = proto.Clone(rhs).(*timestamppb.Timestamp)
+		}
+	}
+	if rhs := m.Updated; rhs != nil {
+		if vtpb, ok := interface{}(rhs).(interface{ CloneVT() *timestamppb.Timestamp }); ok {
+			r.Updated = vtpb.CloneVT()
+		} else {
+			r.Updated = proto.Clone(rhs).(*timestamppb.Timestamp)
+		}
+	}
+	if rhs := m.Finalizers; rhs != nil {
+		tmpContainer := make([]string, len(rhs))
+		copy(tmpContainer, rhs)
+		r.Finalizers = tmpContainer
+	}
+	if rhs := m.Annotations; rhs != nil {
+		tmpContainer := make(map[string]string, len(rhs))
+		for k, v := range rhs {
+			tmpContainer[k] = v
+		}
+		r.Annotations = tmpContainer
+	}
+	if rhs := m.Labels; rhs != nil {
+		tmpContainer := make(map[string]string, len(rhs))
+		for k, v := range rhs {
+			tmpContainer[k] = v
+		}
+		r.Labels = tmpContainer
+	}
+	if len(m.unknownFields) > 0 {
+		r.unknownFields = make([]byte, len(m.unknownFields))
+		copy(r.unknownFields, m.unknownFields)
+	}
+	return r
+}
+
+func (m *Metadata) CloneMessageVT() proto.Message {
+	return m.CloneVT()
+}
+
+func (m *Spec) CloneVT() *Spec {
+	if m == nil {
+		return (*Spec)(nil)
+	}
+	r := &Spec{
+		YamlSpec: m.YamlSpec,
+	}
+	if rhs := m.ProtoSpec; rhs != nil {
+		tmpBytes := make([]byte, len(rhs))
+		copy(tmpBytes, rhs)
+		r.ProtoSpec = tmpBytes
+	}
+	if len(m.unknownFields) > 0 {
+		r.unknownFields = make([]byte, len(m.unknownFields))
+		copy(r.unknownFields, m.unknownFields)
+	}
+	return r
+}
+
+func (m *Spec) CloneMessageVT() proto.Message {
+	return m.CloneVT()
+}
+
+func (m *Resource) CloneVT() *Resource {
+	if m == nil {
+		return (*Resource)(nil)
+	}
+	r := &Resource{
+		Metadata: m.Metadata.CloneVT(),
+		Spec:     m.Spec.CloneVT(),
+	}
+	if len(m.unknownFields) > 0 {
+		r.unknownFields = make([]byte, len(m.unknownFields))
+		copy(r.unknownFields, m.unknownFields)
+	}
+	return r
+}
+
+func (m *Resource) CloneMessageVT() proto.Message {
+	return m.CloneVT()
+}
+
+func (m *LabelTerm) CloneVT() *LabelTerm {
+	if m == nil {
+		return (*LabelTerm)(nil)
+	}
+	r := &LabelTerm{
+		Key:   m.Key,
+		Op:    m.Op,
+		Value: m.Value,
+	}
+	if len(m.unknownFields) > 0 {
+		r.unknownFields = make([]byte, len(m.unknownFields))
+		copy(r.unknownFields, m.unknownFields)
+	}
+	return r
+}
+
+func (m *LabelTerm) CloneMessageVT() proto.Message {
+	return m.CloneVT()
+}
+
+func (m *LabelQuery) CloneVT() *LabelQuery {
+	if m == nil {
+		return (*LabelQuery)(nil)
+	}
+	r := &LabelQuery{}
+	if rhs := m.Terms; rhs != nil {
+		tmpContainer := make([]*LabelTerm, len(rhs))
+		for k, v := range rhs {
+			tmpContainer[k] = v.CloneVT()
+		}
+		r.Terms = tmpContainer
+	}
+	if len(m.unknownFields) > 0 {
+		r.unknownFields = make([]byte, len(m.unknownFields))
+		copy(r.unknownFields, m.unknownFields)
+	}
+	return r
+}
+
+func (m *LabelQuery) CloneMessageVT() proto.Message {
+	return m.CloneVT()
+}
+
+func (m *IDQuery) CloneVT() *IDQuery {
+	if m == nil {
+		return (*IDQuery)(nil)
+	}
+	r := &IDQuery{
+		Regexp: m.Regexp,
+	}
+	if len(m.unknownFields) > 0 {
+		r.unknownFields = make([]byte, len(m.unknownFields))
+		copy(r.unknownFields, m.unknownFields)
+	}
+	return r
+}
+
+func (m *IDQuery) CloneMessageVT() proto.Message {
+	return m.CloneVT()
+}
+
 func (this *Metadata) EqualVT(that *Metadata) bool {
 	if this == that {
 		return true

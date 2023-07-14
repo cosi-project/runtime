@@ -19,6 +19,81 @@ const (
 	_ = protoimpl.EnforceVersion(protoimpl.MaxVersion - 20)
 )
 
+func (m *NamespaceSpec) CloneVT() *NamespaceSpec {
+	if m == nil {
+		return (*NamespaceSpec)(nil)
+	}
+	r := &NamespaceSpec{
+		Description: m.Description,
+	}
+	if len(m.unknownFields) > 0 {
+		r.unknownFields = make([]byte, len(m.unknownFields))
+		copy(r.unknownFields, m.unknownFields)
+	}
+	return r
+}
+
+func (m *NamespaceSpec) CloneMessageVT() proto.Message {
+	return m.CloneVT()
+}
+
+func (m *ResourceDefinitionSpec_PrintColumn) CloneVT() *ResourceDefinitionSpec_PrintColumn {
+	if m == nil {
+		return (*ResourceDefinitionSpec_PrintColumn)(nil)
+	}
+	r := &ResourceDefinitionSpec_PrintColumn{
+		Name:     m.Name,
+		JsonPath: m.JsonPath,
+	}
+	if len(m.unknownFields) > 0 {
+		r.unknownFields = make([]byte, len(m.unknownFields))
+		copy(r.unknownFields, m.unknownFields)
+	}
+	return r
+}
+
+func (m *ResourceDefinitionSpec_PrintColumn) CloneMessageVT() proto.Message {
+	return m.CloneVT()
+}
+
+func (m *ResourceDefinitionSpec) CloneVT() *ResourceDefinitionSpec {
+	if m == nil {
+		return (*ResourceDefinitionSpec)(nil)
+	}
+	r := &ResourceDefinitionSpec{
+		ResourceType:     m.ResourceType,
+		DisplayType:      m.DisplayType,
+		DefaultNamespace: m.DefaultNamespace,
+		Sensitivity:      m.Sensitivity,
+	}
+	if rhs := m.Aliases; rhs != nil {
+		tmpContainer := make([]string, len(rhs))
+		copy(tmpContainer, rhs)
+		r.Aliases = tmpContainer
+	}
+	if rhs := m.AllAliases; rhs != nil {
+		tmpContainer := make([]string, len(rhs))
+		copy(tmpContainer, rhs)
+		r.AllAliases = tmpContainer
+	}
+	if rhs := m.PrintColumns; rhs != nil {
+		tmpContainer := make([]*ResourceDefinitionSpec_PrintColumn, len(rhs))
+		for k, v := range rhs {
+			tmpContainer[k] = v.CloneVT()
+		}
+		r.PrintColumns = tmpContainer
+	}
+	if len(m.unknownFields) > 0 {
+		r.unknownFields = make([]byte, len(m.unknownFields))
+		copy(r.unknownFields, m.unknownFields)
+	}
+	return r
+}
+
+func (m *ResourceDefinitionSpec) CloneMessageVT() proto.Message {
+	return m.CloneVT()
+}
+
 func (this *NamespaceSpec) EqualVT(that *NamespaceSpec) bool {
 	if this == that {
 		return true

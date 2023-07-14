@@ -19,6 +19,680 @@ const (
 	_ = protoimpl.EnforceVersion(protoimpl.MaxVersion - 20)
 )
 
+func (m *ControllerInput) CloneVT() *ControllerInput {
+	if m == nil {
+		return (*ControllerInput)(nil)
+	}
+	r := &ControllerInput{
+		Kind:      m.Kind,
+		Namespace: m.Namespace,
+		Type:      m.Type,
+	}
+	if rhs := m.Id; rhs != nil {
+		tmpVal := *rhs
+		r.Id = &tmpVal
+	}
+	if len(m.unknownFields) > 0 {
+		r.unknownFields = make([]byte, len(m.unknownFields))
+		copy(r.unknownFields, m.unknownFields)
+	}
+	return r
+}
+
+func (m *ControllerInput) CloneMessageVT() proto.Message {
+	return m.CloneVT()
+}
+
+func (m *ControllerOutput) CloneVT() *ControllerOutput {
+	if m == nil {
+		return (*ControllerOutput)(nil)
+	}
+	r := &ControllerOutput{
+		Type: m.Type,
+		Kind: m.Kind,
+	}
+	if len(m.unknownFields) > 0 {
+		r.unknownFields = make([]byte, len(m.unknownFields))
+		copy(r.unknownFields, m.unknownFields)
+	}
+	return r
+}
+
+func (m *ControllerOutput) CloneMessageVT() proto.Message {
+	return m.CloneVT()
+}
+
+func (m *RegisterControllerRequest) CloneVT() *RegisterControllerRequest {
+	if m == nil {
+		return (*RegisterControllerRequest)(nil)
+	}
+	r := &RegisterControllerRequest{
+		ControllerName: m.ControllerName,
+	}
+	if rhs := m.Inputs; rhs != nil {
+		tmpContainer := make([]*ControllerInput, len(rhs))
+		for k, v := range rhs {
+			tmpContainer[k] = v.CloneVT()
+		}
+		r.Inputs = tmpContainer
+	}
+	if rhs := m.Outputs; rhs != nil {
+		tmpContainer := make([]*ControllerOutput, len(rhs))
+		for k, v := range rhs {
+			tmpContainer[k] = v.CloneVT()
+		}
+		r.Outputs = tmpContainer
+	}
+	if len(m.unknownFields) > 0 {
+		r.unknownFields = make([]byte, len(m.unknownFields))
+		copy(r.unknownFields, m.unknownFields)
+	}
+	return r
+}
+
+func (m *RegisterControllerRequest) CloneMessageVT() proto.Message {
+	return m.CloneVT()
+}
+
+func (m *RegisterControllerResponse) CloneVT() *RegisterControllerResponse {
+	if m == nil {
+		return (*RegisterControllerResponse)(nil)
+	}
+	r := &RegisterControllerResponse{
+		ControllerToken: m.ControllerToken,
+	}
+	if len(m.unknownFields) > 0 {
+		r.unknownFields = make([]byte, len(m.unknownFields))
+		copy(r.unknownFields, m.unknownFields)
+	}
+	return r
+}
+
+func (m *RegisterControllerResponse) CloneMessageVT() proto.Message {
+	return m.CloneVT()
+}
+
+func (m *StartRequest) CloneVT() *StartRequest {
+	if m == nil {
+		return (*StartRequest)(nil)
+	}
+	r := &StartRequest{}
+	if len(m.unknownFields) > 0 {
+		r.unknownFields = make([]byte, len(m.unknownFields))
+		copy(r.unknownFields, m.unknownFields)
+	}
+	return r
+}
+
+func (m *StartRequest) CloneMessageVT() proto.Message {
+	return m.CloneVT()
+}
+
+func (m *StartResponse) CloneVT() *StartResponse {
+	if m == nil {
+		return (*StartResponse)(nil)
+	}
+	r := &StartResponse{}
+	if len(m.unknownFields) > 0 {
+		r.unknownFields = make([]byte, len(m.unknownFields))
+		copy(r.unknownFields, m.unknownFields)
+	}
+	return r
+}
+
+func (m *StartResponse) CloneMessageVT() proto.Message {
+	return m.CloneVT()
+}
+
+func (m *StopRequest) CloneVT() *StopRequest {
+	if m == nil {
+		return (*StopRequest)(nil)
+	}
+	r := &StopRequest{}
+	if len(m.unknownFields) > 0 {
+		r.unknownFields = make([]byte, len(m.unknownFields))
+		copy(r.unknownFields, m.unknownFields)
+	}
+	return r
+}
+
+func (m *StopRequest) CloneMessageVT() proto.Message {
+	return m.CloneVT()
+}
+
+func (m *StopResponse) CloneVT() *StopResponse {
+	if m == nil {
+		return (*StopResponse)(nil)
+	}
+	r := &StopResponse{}
+	if len(m.unknownFields) > 0 {
+		r.unknownFields = make([]byte, len(m.unknownFields))
+		copy(r.unknownFields, m.unknownFields)
+	}
+	return r
+}
+
+func (m *StopResponse) CloneMessageVT() proto.Message {
+	return m.CloneVT()
+}
+
+func (m *ReconcileEventsRequest) CloneVT() *ReconcileEventsRequest {
+	if m == nil {
+		return (*ReconcileEventsRequest)(nil)
+	}
+	r := &ReconcileEventsRequest{
+		ControllerToken: m.ControllerToken,
+	}
+	if len(m.unknownFields) > 0 {
+		r.unknownFields = make([]byte, len(m.unknownFields))
+		copy(r.unknownFields, m.unknownFields)
+	}
+	return r
+}
+
+func (m *ReconcileEventsRequest) CloneMessageVT() proto.Message {
+	return m.CloneVT()
+}
+
+func (m *ReconcileEventsResponse) CloneVT() *ReconcileEventsResponse {
+	if m == nil {
+		return (*ReconcileEventsResponse)(nil)
+	}
+	r := &ReconcileEventsResponse{}
+	if len(m.unknownFields) > 0 {
+		r.unknownFields = make([]byte, len(m.unknownFields))
+		copy(r.unknownFields, m.unknownFields)
+	}
+	return r
+}
+
+func (m *ReconcileEventsResponse) CloneMessageVT() proto.Message {
+	return m.CloneVT()
+}
+
+func (m *QueueReconcileRequest) CloneVT() *QueueReconcileRequest {
+	if m == nil {
+		return (*QueueReconcileRequest)(nil)
+	}
+	r := &QueueReconcileRequest{
+		ControllerToken: m.ControllerToken,
+	}
+	if len(m.unknownFields) > 0 {
+		r.unknownFields = make([]byte, len(m.unknownFields))
+		copy(r.unknownFields, m.unknownFields)
+	}
+	return r
+}
+
+func (m *QueueReconcileRequest) CloneMessageVT() proto.Message {
+	return m.CloneVT()
+}
+
+func (m *QueueReconcileResponse) CloneVT() *QueueReconcileResponse {
+	if m == nil {
+		return (*QueueReconcileResponse)(nil)
+	}
+	r := &QueueReconcileResponse{}
+	if len(m.unknownFields) > 0 {
+		r.unknownFields = make([]byte, len(m.unknownFields))
+		copy(r.unknownFields, m.unknownFields)
+	}
+	return r
+}
+
+func (m *QueueReconcileResponse) CloneMessageVT() proto.Message {
+	return m.CloneVT()
+}
+
+func (m *UpdateInputsRequest) CloneVT() *UpdateInputsRequest {
+	if m == nil {
+		return (*UpdateInputsRequest)(nil)
+	}
+	r := &UpdateInputsRequest{
+		ControllerToken: m.ControllerToken,
+	}
+	if rhs := m.Inputs; rhs != nil {
+		tmpContainer := make([]*ControllerInput, len(rhs))
+		for k, v := range rhs {
+			tmpContainer[k] = v.CloneVT()
+		}
+		r.Inputs = tmpContainer
+	}
+	if len(m.unknownFields) > 0 {
+		r.unknownFields = make([]byte, len(m.unknownFields))
+		copy(r.unknownFields, m.unknownFields)
+	}
+	return r
+}
+
+func (m *UpdateInputsRequest) CloneMessageVT() proto.Message {
+	return m.CloneVT()
+}
+
+func (m *UpdateInputsResponse) CloneVT() *UpdateInputsResponse {
+	if m == nil {
+		return (*UpdateInputsResponse)(nil)
+	}
+	r := &UpdateInputsResponse{}
+	if len(m.unknownFields) > 0 {
+		r.unknownFields = make([]byte, len(m.unknownFields))
+		copy(r.unknownFields, m.unknownFields)
+	}
+	return r
+}
+
+func (m *UpdateInputsResponse) CloneMessageVT() proto.Message {
+	return m.CloneVT()
+}
+
+func (m *RuntimeGetRequest) CloneVT() *RuntimeGetRequest {
+	if m == nil {
+		return (*RuntimeGetRequest)(nil)
+	}
+	r := &RuntimeGetRequest{
+		ControllerToken: m.ControllerToken,
+		Namespace:       m.Namespace,
+		Type:            m.Type,
+		Id:              m.Id,
+	}
+	if len(m.unknownFields) > 0 {
+		r.unknownFields = make([]byte, len(m.unknownFields))
+		copy(r.unknownFields, m.unknownFields)
+	}
+	return r
+}
+
+func (m *RuntimeGetRequest) CloneMessageVT() proto.Message {
+	return m.CloneVT()
+}
+
+func (m *RuntimeGetResponse) CloneVT() *RuntimeGetResponse {
+	if m == nil {
+		return (*RuntimeGetResponse)(nil)
+	}
+	r := &RuntimeGetResponse{
+		Resource: m.Resource.CloneVT(),
+	}
+	if len(m.unknownFields) > 0 {
+		r.unknownFields = make([]byte, len(m.unknownFields))
+		copy(r.unknownFields, m.unknownFields)
+	}
+	return r
+}
+
+func (m *RuntimeGetResponse) CloneMessageVT() proto.Message {
+	return m.CloneVT()
+}
+
+func (m *RuntimeListOptions) CloneVT() *RuntimeListOptions {
+	if m == nil {
+		return (*RuntimeListOptions)(nil)
+	}
+	r := &RuntimeListOptions{
+		LabelQuery: m.LabelQuery.CloneVT(),
+	}
+	if len(m.unknownFields) > 0 {
+		r.unknownFields = make([]byte, len(m.unknownFields))
+		copy(r.unknownFields, m.unknownFields)
+	}
+	return r
+}
+
+func (m *RuntimeListOptions) CloneMessageVT() proto.Message {
+	return m.CloneVT()
+}
+
+func (m *RuntimeListRequest) CloneVT() *RuntimeListRequest {
+	if m == nil {
+		return (*RuntimeListRequest)(nil)
+	}
+	r := &RuntimeListRequest{
+		ControllerToken: m.ControllerToken,
+		Namespace:       m.Namespace,
+		Type:            m.Type,
+		Options:         m.Options.CloneVT(),
+	}
+	if len(m.unknownFields) > 0 {
+		r.unknownFields = make([]byte, len(m.unknownFields))
+		copy(r.unknownFields, m.unknownFields)
+	}
+	return r
+}
+
+func (m *RuntimeListRequest) CloneMessageVT() proto.Message {
+	return m.CloneVT()
+}
+
+func (m *RuntimeListResponse) CloneVT() *RuntimeListResponse {
+	if m == nil {
+		return (*RuntimeListResponse)(nil)
+	}
+	r := &RuntimeListResponse{
+		Resource: m.Resource.CloneVT(),
+	}
+	if len(m.unknownFields) > 0 {
+		r.unknownFields = make([]byte, len(m.unknownFields))
+		copy(r.unknownFields, m.unknownFields)
+	}
+	return r
+}
+
+func (m *RuntimeListResponse) CloneMessageVT() proto.Message {
+	return m.CloneVT()
+}
+
+func (m *RuntimeWatchForRequest) CloneVT() *RuntimeWatchForRequest {
+	if m == nil {
+		return (*RuntimeWatchForRequest)(nil)
+	}
+	r := &RuntimeWatchForRequest{
+		ControllerToken: m.ControllerToken,
+		Namespace:       m.Namespace,
+		Type:            m.Type,
+		Id:              m.Id,
+		FinalizersEmpty: m.FinalizersEmpty.CloneVT(),
+	}
+	if len(m.unknownFields) > 0 {
+		r.unknownFields = make([]byte, len(m.unknownFields))
+		copy(r.unknownFields, m.unknownFields)
+	}
+	return r
+}
+
+func (m *RuntimeWatchForRequest) CloneMessageVT() proto.Message {
+	return m.CloneVT()
+}
+
+func (m *ConditionFinalizersEmpty) CloneVT() *ConditionFinalizersEmpty {
+	if m == nil {
+		return (*ConditionFinalizersEmpty)(nil)
+	}
+	r := &ConditionFinalizersEmpty{}
+	if len(m.unknownFields) > 0 {
+		r.unknownFields = make([]byte, len(m.unknownFields))
+		copy(r.unknownFields, m.unknownFields)
+	}
+	return r
+}
+
+func (m *ConditionFinalizersEmpty) CloneMessageVT() proto.Message {
+	return m.CloneVT()
+}
+
+func (m *RuntimeWatchForResponse) CloneVT() *RuntimeWatchForResponse {
+	if m == nil {
+		return (*RuntimeWatchForResponse)(nil)
+	}
+	r := &RuntimeWatchForResponse{
+		Resource: m.Resource.CloneVT(),
+	}
+	if len(m.unknownFields) > 0 {
+		r.unknownFields = make([]byte, len(m.unknownFields))
+		copy(r.unknownFields, m.unknownFields)
+	}
+	return r
+}
+
+func (m *RuntimeWatchForResponse) CloneMessageVT() proto.Message {
+	return m.CloneVT()
+}
+
+func (m *RuntimeCreateRequest) CloneVT() *RuntimeCreateRequest {
+	if m == nil {
+		return (*RuntimeCreateRequest)(nil)
+	}
+	r := &RuntimeCreateRequest{
+		ControllerToken: m.ControllerToken,
+		Resource:        m.Resource.CloneVT(),
+	}
+	if len(m.unknownFields) > 0 {
+		r.unknownFields = make([]byte, len(m.unknownFields))
+		copy(r.unknownFields, m.unknownFields)
+	}
+	return r
+}
+
+func (m *RuntimeCreateRequest) CloneMessageVT() proto.Message {
+	return m.CloneVT()
+}
+
+func (m *RuntimeCreateResponse) CloneVT() *RuntimeCreateResponse {
+	if m == nil {
+		return (*RuntimeCreateResponse)(nil)
+	}
+	r := &RuntimeCreateResponse{
+		Resource: m.Resource.CloneVT(),
+	}
+	if len(m.unknownFields) > 0 {
+		r.unknownFields = make([]byte, len(m.unknownFields))
+		copy(r.unknownFields, m.unknownFields)
+	}
+	return r
+}
+
+func (m *RuntimeCreateResponse) CloneMessageVT() proto.Message {
+	return m.CloneVT()
+}
+
+func (m *RuntimeUpdateRequest) CloneVT() *RuntimeUpdateRequest {
+	if m == nil {
+		return (*RuntimeUpdateRequest)(nil)
+	}
+	r := &RuntimeUpdateRequest{
+		ControllerToken: m.ControllerToken,
+		NewResource:     m.NewResource.CloneVT(),
+	}
+	if len(m.unknownFields) > 0 {
+		r.unknownFields = make([]byte, len(m.unknownFields))
+		copy(r.unknownFields, m.unknownFields)
+	}
+	return r
+}
+
+func (m *RuntimeUpdateRequest) CloneMessageVT() proto.Message {
+	return m.CloneVT()
+}
+
+func (m *RuntimeUpdateResponse) CloneVT() *RuntimeUpdateResponse {
+	if m == nil {
+		return (*RuntimeUpdateResponse)(nil)
+	}
+	r := &RuntimeUpdateResponse{
+		Resource: m.Resource.CloneVT(),
+	}
+	if len(m.unknownFields) > 0 {
+		r.unknownFields = make([]byte, len(m.unknownFields))
+		copy(r.unknownFields, m.unknownFields)
+	}
+	return r
+}
+
+func (m *RuntimeUpdateResponse) CloneMessageVT() proto.Message {
+	return m.CloneVT()
+}
+
+func (m *RuntimeTeardownRequest) CloneVT() *RuntimeTeardownRequest {
+	if m == nil {
+		return (*RuntimeTeardownRequest)(nil)
+	}
+	r := &RuntimeTeardownRequest{
+		ControllerToken: m.ControllerToken,
+		Namespace:       m.Namespace,
+		Type:            m.Type,
+		Id:              m.Id,
+		Options:         m.Options.CloneVT(),
+	}
+	if len(m.unknownFields) > 0 {
+		r.unknownFields = make([]byte, len(m.unknownFields))
+		copy(r.unknownFields, m.unknownFields)
+	}
+	return r
+}
+
+func (m *RuntimeTeardownRequest) CloneMessageVT() proto.Message {
+	return m.CloneVT()
+}
+
+func (m *Options) CloneVT() *Options {
+	if m == nil {
+		return (*Options)(nil)
+	}
+	r := &Options{}
+	if rhs := m.Owner; rhs != nil {
+		tmpVal := *rhs
+		r.Owner = &tmpVal
+	}
+	if len(m.unknownFields) > 0 {
+		r.unknownFields = make([]byte, len(m.unknownFields))
+		copy(r.unknownFields, m.unknownFields)
+	}
+	return r
+}
+
+func (m *Options) CloneMessageVT() proto.Message {
+	return m.CloneVT()
+}
+
+func (m *RuntimeTeardownResponse) CloneVT() *RuntimeTeardownResponse {
+	if m == nil {
+		return (*RuntimeTeardownResponse)(nil)
+	}
+	r := &RuntimeTeardownResponse{
+		Ready: m.Ready,
+	}
+	if len(m.unknownFields) > 0 {
+		r.unknownFields = make([]byte, len(m.unknownFields))
+		copy(r.unknownFields, m.unknownFields)
+	}
+	return r
+}
+
+func (m *RuntimeTeardownResponse) CloneMessageVT() proto.Message {
+	return m.CloneVT()
+}
+
+func (m *RuntimeDestroyRequest) CloneVT() *RuntimeDestroyRequest {
+	if m == nil {
+		return (*RuntimeDestroyRequest)(nil)
+	}
+	r := &RuntimeDestroyRequest{
+		ControllerToken: m.ControllerToken,
+		Namespace:       m.Namespace,
+		Type:            m.Type,
+		Id:              m.Id,
+		Options:         m.Options.CloneVT(),
+	}
+	if len(m.unknownFields) > 0 {
+		r.unknownFields = make([]byte, len(m.unknownFields))
+		copy(r.unknownFields, m.unknownFields)
+	}
+	return r
+}
+
+func (m *RuntimeDestroyRequest) CloneMessageVT() proto.Message {
+	return m.CloneVT()
+}
+
+func (m *RuntimeDestroyResponse) CloneVT() *RuntimeDestroyResponse {
+	if m == nil {
+		return (*RuntimeDestroyResponse)(nil)
+	}
+	r := &RuntimeDestroyResponse{}
+	if len(m.unknownFields) > 0 {
+		r.unknownFields = make([]byte, len(m.unknownFields))
+		copy(r.unknownFields, m.unknownFields)
+	}
+	return r
+}
+
+func (m *RuntimeDestroyResponse) CloneMessageVT() proto.Message {
+	return m.CloneVT()
+}
+
+func (m *RuntimeAddFinalizerRequest) CloneVT() *RuntimeAddFinalizerRequest {
+	if m == nil {
+		return (*RuntimeAddFinalizerRequest)(nil)
+	}
+	r := &RuntimeAddFinalizerRequest{
+		ControllerToken: m.ControllerToken,
+		Namespace:       m.Namespace,
+		Type:            m.Type,
+		Id:              m.Id,
+	}
+	if rhs := m.Finalizers; rhs != nil {
+		tmpContainer := make([]string, len(rhs))
+		copy(tmpContainer, rhs)
+		r.Finalizers = tmpContainer
+	}
+	if len(m.unknownFields) > 0 {
+		r.unknownFields = make([]byte, len(m.unknownFields))
+		copy(r.unknownFields, m.unknownFields)
+	}
+	return r
+}
+
+func (m *RuntimeAddFinalizerRequest) CloneMessageVT() proto.Message {
+	return m.CloneVT()
+}
+
+func (m *RuntimeAddFinalizerResponse) CloneVT() *RuntimeAddFinalizerResponse {
+	if m == nil {
+		return (*RuntimeAddFinalizerResponse)(nil)
+	}
+	r := &RuntimeAddFinalizerResponse{}
+	if len(m.unknownFields) > 0 {
+		r.unknownFields = make([]byte, len(m.unknownFields))
+		copy(r.unknownFields, m.unknownFields)
+	}
+	return r
+}
+
+func (m *RuntimeAddFinalizerResponse) CloneMessageVT() proto.Message {
+	return m.CloneVT()
+}
+
+func (m *RuntimeRemoveFinalizerRequest) CloneVT() *RuntimeRemoveFinalizerRequest {
+	if m == nil {
+		return (*RuntimeRemoveFinalizerRequest)(nil)
+	}
+	r := &RuntimeRemoveFinalizerRequest{
+		ControllerToken: m.ControllerToken,
+		Namespace:       m.Namespace,
+		Type:            m.Type,
+		Id:              m.Id,
+	}
+	if rhs := m.Finalizers; rhs != nil {
+		tmpContainer := make([]string, len(rhs))
+		copy(tmpContainer, rhs)
+		r.Finalizers = tmpContainer
+	}
+	if len(m.unknownFields) > 0 {
+		r.unknownFields = make([]byte, len(m.unknownFields))
+		copy(r.unknownFields, m.unknownFields)
+	}
+	return r
+}
+
+func (m *RuntimeRemoveFinalizerRequest) CloneMessageVT() proto.Message {
+	return m.CloneVT()
+}
+
+func (m *RuntimeRemoveFinalizerResponse) CloneVT() *RuntimeRemoveFinalizerResponse {
+	if m == nil {
+		return (*RuntimeRemoveFinalizerResponse)(nil)
+	}
+	r := &RuntimeRemoveFinalizerResponse{}
+	if len(m.unknownFields) > 0 {
+		r.unknownFields = make([]byte, len(m.unknownFields))
+		copy(r.unknownFields, m.unknownFields)
+	}
+	return r
+}
+
+func (m *RuntimeRemoveFinalizerResponse) CloneMessageVT() proto.Message {
+	return m.CloneVT()
+}
+
 func (this *ControllerInput) EqualVT(that *ControllerInput) bool {
 	if this == that {
 		return true
