@@ -7,7 +7,7 @@ go 1.20
 replace gopkg.in/yaml.v3 => github.com/unix4ever/yaml v0.0.0-20220527175918-f17b0f05cf2c
 
 require (
-	github.com/ProtonMail/gopenpgp/v2 v2.7.1
+	github.com/ProtonMail/gopenpgp/v2 v2.7.2
 	github.com/cenkalti/backoff/v4 v4.2.1
 	github.com/gertd/go-pluralize v0.2.1
 	github.com/golang/protobuf v1.5.3
@@ -31,7 +31,7 @@ require (
 )
 
 require (
-	github.com/ProtonMail/go-crypto v0.0.0-20230321155629-9a39f2531310 // indirect
+	github.com/ProtonMail/go-crypto v0.0.0-20230717121422-5aa5874ade95 // indirect
 	github.com/ProtonMail/go-mime v0.0.0-20230322103455-7d82a3887f2f // indirect
 	github.com/benbjohnson/clock v1.1.0 // indirect
 	github.com/cloudflare/circl v1.3.3 // indirect
