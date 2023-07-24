@@ -721,6 +721,14 @@ func (ctrlAdapter *controllerAdapter) RemoveFinalizer(ctx context.Context, resou
 	return nil
 }
 
+func (ctrlAdapter *controllerAdapter) StartTrackingOutputs() {
+	panic("output tracking is not implemented")
+}
+
+func (ctrlAdapter *controllerAdapter) CleanupOutputs(context.Context, ...resource.Kind) error {
+	panic("output tracking is not implemented")
+}
+
 func updateResourceMetadata(source *v1alpha1.Resource, targetRes resource.Resource) error {
 	version, err := resource.ParseVersion(source.GetMetadata().GetVersion())
 	if err != nil {

@@ -10,6 +10,7 @@ import (
 
 	"github.com/hashicorp/go-multierror"
 	"github.com/siderolabs/gen/channel"
+	"github.com/siderolabs/gen/optional"
 	"github.com/siderolabs/gen/xerrors"
 	"go.uber.org/zap"
 
@@ -27,7 +28,7 @@ import (
 //     to be fully removed before attempting to delete the output.
 //   - if this controller is configured to set finalizers on its inputs, the finalizer will only be removed when matching output is destroyed.
 type Controller[Input generic.ResourceWithRD, Output generic.ResourceWithRD] struct {
-	mapFunc              func(Input) Output
+	mapFunc              func(Input) optional.Optional[Output]
 	transformFunc        func(context.Context, controller.ReaderWriter, *zap.Logger, Input, Output) error
 	finalizerRemovalFunc func(context.Context, controller.ReaderWriter, *zap.Logger, Input) error
 	generic.NamedController
@@ -42,6 +43,10 @@ type Settings[Input generic.ResourceWithRD, Output generic.ResourceWithRD] struc
 	//
 	// Only Output metadata is important, the spec is ignored.
 	MapMetadataFunc func(Input) Output
+	// MapMetadataOptionalFunc acts like a MapMetadataFunc, but returns optional Output.
+	//
+	// If the Output is not present, the controller will skip the input.
+	MapMetadataOptionalFunc func(Input) optional.Optional[Output]
 	// TransformFunc should modify Output based on Input and any additional resources fetched via Reader.
 	//
 	// If TransformFunc returns error tagged with SkipReconcileTag, the error is ignored and the controller will
@@ -68,6 +73,8 @@ type Settings[Input generic.ResourceWithRD, Output generic.ResourceWithRD] struc
 }
 
 // NewController creates a new TransformController.
+//
+//nolint:gocognit,gocyclo,cyclop
 func NewController[Input generic.ResourceWithRD, Output generic.ResourceWithRD](
 	settings Settings[Input, Output],
 	opts ...ControllerOption,
@@ -79,8 +86,10 @@ func NewController[Input generic.ResourceWithRD, Output generic.ResourceWithRD](
 	}
 
 	switch {
-	case settings.MapMetadataFunc == nil:
-		panic("MapFunc is required")
+	case settings.MapMetadataFunc == nil && settings.MapMetadataOptionalFunc == nil:
+		panic("MapMetadataFunc is required")
+	case settings.MapMetadataFunc != nil && settings.MapMetadataOptionalFunc != nil:
+		panic("MapMetadataFunc and MapMetadataOptionalFunc are mutually exclusive")
 	case settings.TransformFunc == nil && len(options.extraOutputs) == 0:
 		panic("TransformFunc is required")
 	case settings.TransformExtraOutputFunc == nil && len(options.extraOutputs) > 0:
@@ -93,6 +102,13 @@ func NewController[Input generic.ResourceWithRD, Output generic.ResourceWithRD](
 		panic("FinalizerRemovalExtraOutputFunc is required when input finalizers are enabled")
 	case settings.FinalizerRemovalFunc != nil && settings.FinalizerRemovalExtraOutputFunc != nil:
 		panic("FinalizerRemovalFunc and FinalizerRemovalExtraOutputFunc are mutually exclusive")
+	}
+
+	mapFunc := settings.MapMetadataOptionalFunc
+	if mapFunc == nil {
+		mapFunc = func(in Input) optional.Optional[Output] {
+			return optional.Some(settings.MapMetadataFunc(in))
+		}
 	}
 
 	transformFunc := settings.TransformExtraOutputFunc
@@ -113,7 +129,7 @@ func NewController[Input generic.ResourceWithRD, Output generic.ResourceWithRD](
 		NamedController: generic.NamedController{
 			ControllerName: settings.Name,
 		},
-		mapFunc:              settings.MapMetadataFunc,
+		mapFunc:              mapFunc,
 		transformFunc:        transformFunc,
 		finalizerRemovalFunc: finalizerRemovalFunc,
 		options:              options,
@@ -239,7 +255,11 @@ func (ctrl *Controller[Input, Output]) processInputs(
 	for iter := safe.IteratorFromList(inputItems); iter.Next(); {
 		in := iter.Value()
 
-		mappedOut := ctrl.mapFunc(in)
+		mappedOut, present := ctrl.mapFunc(in).Get()
+		if !present {
+			// skip this resource
+			continue
+		}
 
 		if !ctrl.options.ignoreTearingDownInputs && in.Metadata().Phase() == resource.PhaseTearingDown {
 			ctrl.reconcileTearingDownInput(ctx, r, logger, runState, in, mappedOut)

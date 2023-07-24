@@ -24,6 +24,7 @@ type Runtime interface {
 
 	Reader
 	Writer
+	OutputTracker
 }
 
 // InputKind for inputs.
@@ -100,6 +101,18 @@ type Writer interface {
 type ReaderWriter interface {
 	Reader
 	Writer
+}
+
+// OutputTracker provides automatic cleanup of the outputs based on the calls to Modify function.
+//
+// OutputTracker is optional, it is enabled by calling StartTrackingOutputs at the beginning of the reconcile cycle.
+// Every call to Modify will be tracked and the outputs which are not touched will be destroyed.
+// Finalize the cleanup by calling CleanupOutputs at the end of the reconcile cycle, it also automatically calls ResetRestartBackoff.
+//
+// CleanupOutputs doesn't support finalizers on output resources.
+type OutputTracker interface {
+	StartTrackingOutputs()
+	CleanupOutputs(ctx context.Context, outputs ...resource.Kind) error
 }
 
 // Option for operation.

@@ -352,3 +352,75 @@ func (ctrl *FailingController) Run(ctx context.Context, r controller.Runtime, _ 
 
 	return fmt.Errorf("failing here")
 }
+
+// IntDoublerController doubles IntResource.
+type IntDoublerController struct {
+	SourceNamespace resource.Namespace
+	TargetNamespace resource.Namespace
+}
+
+// Name implements controller.Controller interface.
+func (ctrl *IntDoublerController) Name() string {
+	return "IntDoublerController"
+}
+
+// Inputs implements controller.Controller interface.
+func (ctrl *IntDoublerController) Inputs() []controller.Input {
+	return []controller.Input{
+		{
+			Namespace: ctrl.SourceNamespace,
+			Type:      IntResourceType,
+			Kind:      controller.InputStrong,
+		},
+	}
+}
+
+// Outputs implements controller.Controller interface.
+func (ctrl *IntDoublerController) Outputs() []controller.Output {
+	return []controller.Output{
+		{
+			Type: IntResourceType,
+			Kind: controller.OutputShared,
+		},
+	}
+}
+
+// Run implements controller.Controller interface.
+func (ctrl *IntDoublerController) Run(ctx context.Context, r controller.Runtime, _ *zap.Logger) error {
+	sourceMd := resource.NewMetadata(ctrl.SourceNamespace, IntResourceType, "", resource.VersionUndefined)
+
+	for {
+		_, ok := channel.RecvWithContext(ctx, r.EventCh())
+		if !ok {
+			return nil
+		}
+
+		r.StartTrackingOutputs()
+
+		intList, err := safe.ReaderList[interface {
+			IntegerResource
+			resource.Resource
+		}](ctx, r, sourceMd)
+		if err != nil {
+			return fmt.Errorf("error listing objects: %w", err)
+		}
+
+		for iter := safe.IteratorFromList(intList); iter.Next(); {
+			intRes := iter.Value()
+
+			outRes := NewIntResource(ctrl.TargetNamespace, intRes.Metadata().ID(), 0)
+
+			if err = safe.WriterModify(ctx, r, outRes, func(r *IntResource) error {
+				r.SetValue(intRes.Value() * 2)
+
+				return nil
+			}); err != nil {
+				return fmt.Errorf("error updating objects: %w", err)
+			}
+		}
+
+		if err = r.CleanupOutputs(ctx, resource.NewMetadata(ctrl.TargetNamespace, IntResourceType, "", resource.VersionUndefined)); err != nil {
+			return fmt.Errorf("error cleaning up outputs: %w", err)
+		}
+	}
+}

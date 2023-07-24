@@ -15,6 +15,7 @@ import (
 
 	"github.com/cenkalti/backoff/v4"
 	"github.com/siderolabs/gen/channel"
+	"github.com/siderolabs/gen/pair/ordered"
 	"github.com/siderolabs/gen/slices"
 	"github.com/siderolabs/go-pointer"
 	"go.uber.org/zap"
@@ -26,6 +27,8 @@ import (
 	"github.com/cosi-project/runtime/pkg/resource"
 	"github.com/cosi-project/runtime/pkg/state"
 )
+
+type outputTrackingID = ordered.Triple[resource.Namespace, resource.Type, resource.ID]
 
 // adapter is presented to the Controller as Runtime interface implementation.
 type adapter struct {
@@ -40,6 +43,11 @@ type adapter struct {
 	watchFilters map[watchKey]watchFilter
 
 	name string
+
+	// output tracker (optional)
+	//
+	// if nil, tracking is not enabled
+	outputTracker map[outputTrackingID]struct{}
 
 	inputs  []controller.Input
 	outputs []controller.Output
@@ -252,6 +260,10 @@ func (adapter *adapter) Create(ctx context.Context, r resource.Resource) error {
 			r.Metadata().Namespace(), r.Metadata().Type(), adapter.name, r.Metadata().ID())
 	}
 
+	if adapter.outputTracker != nil {
+		adapter.outputTracker[makeOutputTrackingID(r.Metadata())] = struct{}{}
+	}
+
 	return adapter.runtime.state.Create(ctx, r, state.WithCreateOwner(adapter.name))
 }
 
@@ -266,6 +278,10 @@ func (adapter *adapter) Update(ctx context.Context, newResource resource.Resourc
 			newResource.Metadata().Namespace(), newResource.Metadata().Type(), adapter.name, newResource.Metadata().ID())
 	}
 
+	if adapter.outputTracker != nil {
+		adapter.outputTracker[makeOutputTrackingID(newResource.Metadata())] = struct{}{}
+	}
+
 	return adapter.runtime.state.Update(ctx, newResource, state.WithUpdateOwner(adapter.name))
 }
 
@@ -278,6 +294,10 @@ func (adapter *adapter) Modify(ctx context.Context, emptyResource resource.Resou
 	if !adapter.isOutput(emptyResource.Metadata().Type()) {
 		return fmt.Errorf("resource %q/%q is not an output for controller %q, update attempted on %q",
 			emptyResource.Metadata().Namespace(), emptyResource.Metadata().Type(), adapter.name, emptyResource.Metadata().ID())
+	}
+
+	if adapter.outputTracker != nil {
+		adapter.outputTracker[makeOutputTrackingID(emptyResource.Metadata())] = struct{}{}
 	}
 
 	_, err := adapter.runtime.state.Get(ctx, emptyResource.Metadata())
@@ -467,6 +487,9 @@ func (adapter *adapter) runOnce(ctx context.Context, logger *zap.Logger) (err er
 		} else {
 			logger.Debug("controller finished")
 		}
+
+		// clean up output tracker on any exit from Run method
+		adapter.outputTracker = nil
 	}()
 
 	defer func() {
@@ -478,4 +501,54 @@ func (adapter *adapter) runOnce(ctx context.Context, logger *zap.Logger) (err er
 	logger.Debug("controller starting")
 
 	return adapter.ctrl.Run(ctx, adapter, logger)
+}
+
+func makeOutputTrackingID(md *resource.Metadata) outputTrackingID {
+	return ordered.MakeTriple(md.Namespace(), md.Type(), md.ID())
+}
+
+func (adapter *adapter) StartTrackingOutputs() {
+	if adapter.outputTracker != nil {
+		panic("output tracking already enabled")
+	}
+
+	adapter.outputTracker = adapter.runtime.trackingOutputPool.Get()
+}
+
+func (adapter *adapter) CleanupOutputs(ctx context.Context, outputs ...resource.Kind) error {
+	if adapter.outputTracker == nil {
+		panic("output tracking not enabled")
+	}
+
+	for _, outputKind := range outputs {
+		list, err := adapter.List(ctx, outputKind)
+		if err != nil {
+			return fmt.Errorf("error listing output resources: %w", err)
+		}
+
+		for _, resource := range list.Items {
+			if resource.Metadata().Owner() != adapter.name {
+				// skip resources not owned by this controller
+				continue
+			}
+
+			trackingID := makeOutputTrackingID(resource.Metadata())
+
+			if _, touched := adapter.outputTracker[trackingID]; touched {
+				// skip touched resources
+				continue
+			}
+
+			if err = adapter.Destroy(ctx, resource.Metadata()); err != nil {
+				return fmt.Errorf("error destroying resource %s: %w", resource.Metadata(), err)
+			}
+		}
+	}
+
+	adapter.runtime.trackingOutputPool.Put(adapter.outputTracker)
+	adapter.outputTracker = nil
+
+	adapter.ResetRestartBackoff()
+
+	return nil
 }

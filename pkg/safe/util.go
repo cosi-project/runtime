@@ -5,8 +5,11 @@
 package safe
 
 import (
+	"context"
+
 	"github.com/cosi-project/runtime/pkg/controller"
 	"github.com/cosi-project/runtime/pkg/controller/generic"
+	"github.com/cosi-project/runtime/pkg/resource"
 )
 
 // Map applies the given function to each element of the list and returns a new list with the results.
@@ -34,4 +37,18 @@ func Input[R generic.ResourceWithRD](kind controller.InputKind) controller.Input
 		Type:      r.ResourceDefinition().Type,
 		Kind:      kind,
 	}
+}
+
+// CleanupOutputs wraps the controller.OutputTracker.CleanupOutputs method.
+func CleanupOutputs[R generic.ResourceWithRD](ctx context.Context, tracker controller.OutputTracker) error {
+	var r R
+
+	return tracker.CleanupOutputs(ctx,
+		resource.NewMetadata(
+			r.ResourceDefinition().DefaultNamespace,
+			r.ResourceDefinition().Type,
+			"",
+			resource.VersionUndefined,
+		),
+	)
 }

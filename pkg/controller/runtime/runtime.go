@@ -36,6 +36,8 @@ type Runtime struct { //nolint:govet
 	watchedMu   sync.Mutex
 	watched     map[watchKey]struct{}
 
+	trackingOutputPool trackingOutputPool
+
 	controllersMu      sync.RWMutex
 	controllersCond    *sync.Cond
 	controllersRunning int

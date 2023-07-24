@@ -13,6 +13,7 @@ import (
 	"time"
 
 	"github.com/siderolabs/gen/channel"
+	"github.com/siderolabs/gen/optional"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"go.uber.org/goleak"
@@ -37,8 +38,12 @@ func NewABController(reconcileTeardownCh <-chan struct{}, opts ...transform.Cont
 	return transform.NewController(
 		transform.Settings[*A, *B]{
 			Name: "TransformABController",
-			MapMetadataFunc: func(in *A) *B {
-				return NewB("transformed-"+in.Metadata().ID(), BSpec{})
+			MapMetadataOptionalFunc: func(in *A) optional.Optional[*B] {
+				if in.Metadata().ID() == "skip-me" {
+					return optional.None[*B]()
+				}
+
+				return optional.Some(NewB("transformed-"+in.Metadata().ID(), BSpec{}))
 			},
 			TransformFunc: func(ctx context.Context, r controller.Reader, l *zap.Logger, in *A, out *B) error {
 				if in.TypedSpec().Int < 0 {
@@ -109,6 +114,31 @@ func TestSimpleMap(t *testing.T) {
 				assert.Equal(`"foobar"-4`, r.TypedSpec().Out)
 			}
 		})
+	})
+}
+
+func TestMapWithMissing(t *testing.T) {
+	setup(t, func(ctx context.Context, st state.State, runtime *runtime.Runtime) {
+		require.NoError(t, runtime.RegisterController(NewABController(nil)))
+
+		for _, a := range []*A{
+			NewA("1", ASpec{Str: "foo", Int: 1}),
+			NewA("2", ASpec{Str: "bar", Int: 2}),
+			NewA("skip-me", ASpec{Str: "baz", Int: 3}), // should be skipped
+		} {
+			require.NoError(t, st.Create(ctx, a))
+		}
+
+		rtestutils.AssertResources(ctx, t, st, []resource.ID{"transformed-1", "transformed-2"}, func(r *B, assert *assert.Assertions) {
+			switch r.Metadata().ID() {
+			case "transformed-1":
+				assert.Equal(`"foo"-1`, r.TypedSpec().Out)
+			case "transformed-2":
+				assert.Equal(`"bar"-2`, r.TypedSpec().Out)
+			}
+		})
+
+		rtestutils.AssertNoResource[*B](ctx, t, st, "transformed-skip-me")
 	})
 }
 

@@ -29,6 +29,8 @@ type RuntimeSuite struct { //nolint:govet
 	SetupRuntime    func()
 	TearDownRuntime func()
 
+	OutputTrackerNotImplemented bool
+
 	wg sync.WaitGroup
 
 	ctx       context.Context //nolint:containedctx
@@ -415,4 +417,36 @@ func (suite *RuntimeSuite) TestPanickingController() {
 
 	suite.Assert().NoError(retry.Constant(5*time.Second, retry.WithUnits(10*time.Millisecond)).
 		Retry(suite.assertIntObjects([]string{"0", "1"}, []int{0, 1})))
+}
+
+// TestIntDoublerController ...
+func (suite *RuntimeSuite) TestIntDoublerController() {
+	if suite.OutputTrackerNotImplemented {
+		suite.T().Skip("OutputTracker not implemented")
+	}
+
+	suite.Require().NoError(suite.Runtime.RegisterController(&IntDoublerController{
+		SourceNamespace: "default",
+		TargetNamespace: "target",
+	}))
+
+	suite.Assert().NoError(suite.State.Create(suite.ctx, NewIntResource("default", "one", 1)))
+
+	suite.startRuntime()
+
+	suite.Assert().NoError(suite.State.Create(suite.ctx, NewIntResource("default", "two", 2)))
+
+	suite.Assert().NoError(retry.Constant(10*time.Second, retry.WithUnits(10*time.Millisecond)).
+		Retry(suite.assertIntObjects([]string{"one", "two"}, []int{2, 4})))
+
+	three := NewIntResource("default", "three", 3)
+	suite.Assert().NoError(suite.State.Create(suite.ctx, three))
+
+	suite.Assert().NoError(retry.Constant(10*time.Second, retry.WithUnits(10*time.Millisecond)).
+		Retry(suite.assertIntObjects([]string{"one", "two", "three"}, []int{2, 4, 6})))
+
+	suite.Assert().NoError(suite.State.Destroy(suite.ctx, three.Metadata()))
+
+	suite.Assert().NoError(retry.Constant(10*time.Second, retry.WithUnits(10*time.Millisecond)).
+		Retry(suite.assertIntObjects([]string{"one", "two"}, []int{2, 4})))
 }

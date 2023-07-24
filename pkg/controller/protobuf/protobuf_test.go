@@ -42,7 +42,11 @@ func TestProtobufConformance(t *testing.T) {
 	require.NoError(t, protobuf.RegisterResource(conformance.StrResourceType, &conformance.StrResource{}))
 	require.NoError(t, protobuf.RegisterResource(conformance.SentenceResourceType, &conformance.SentenceResource{}))
 
-	suite := &ProtobufConformanceSuite{}
+	suite := &ProtobufConformanceSuite{
+		RuntimeSuite: conformance.RuntimeSuite{
+			OutputTrackerNotImplemented: true,
+		},
+	}
 
 	suite.SetupRuntime = func() {
 		var err error
