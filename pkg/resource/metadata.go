@@ -9,7 +9,7 @@ import (
 	"sort"
 	"time"
 
-	timestamp "github.com/golang/protobuf/ptypes/timestamp"
+	"google.golang.org/protobuf/types/known/timestamppb"
 	"gopkg.in/yaml.v3"
 )
 
@@ -415,8 +415,8 @@ type MetadataProto interface { //nolint:interfacebloat
 	GetPhase() string
 	GetOwner() string
 	GetFinalizers() []string
-	GetCreated() *timestamp.Timestamp
-	GetUpdated() *timestamp.Timestamp
+	GetCreated() *timestamppb.Timestamp
+	GetUpdated() *timestamppb.Timestamp
 	GetAnnotations() map[string]string
 	GetLabels() map[string]string
 }

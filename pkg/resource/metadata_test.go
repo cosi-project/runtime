@@ -9,7 +9,6 @@ import (
 	"testing"
 	"time"
 
-	timestamp "github.com/golang/protobuf/ptypes/timestamp"
 	"github.com/stretchr/testify/assert"
 	timestamppb "google.golang.org/protobuf/types/known/timestamppb"
 	"gopkg.in/yaml.v3"
@@ -227,11 +226,11 @@ func (p *protoMd) GetFinalizers() []string {
 	return []string{"resource1", "resource2"}
 }
 
-func (p *protoMd) GetCreated() *timestamp.Timestamp {
+func (p *protoMd) GetCreated() *timestamppb.Timestamp {
 	return timestamppb.New(ts)
 }
 
-func (p *protoMd) GetUpdated() *timestamp.Timestamp {
+func (p *protoMd) GetUpdated() *timestamppb.Timestamp {
 	return timestamppb.New(ts)
 }
 
