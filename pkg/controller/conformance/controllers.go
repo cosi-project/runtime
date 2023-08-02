@@ -9,7 +9,6 @@ import (
 	"fmt"
 	"strconv"
 
-	"github.com/siderolabs/gen/channel"
 	"go.uber.org/zap"
 
 	"github.com/cosi-project/runtime/pkg/controller"
@@ -62,8 +61,7 @@ func (ctrl *IntToStrController) Run(ctx context.Context, r controller.Runtime, _
 	sourceMd := resource.NewMetadata(ctrl.SourceNamespace, IntResourceType, "", resource.VersionUndefined)
 
 	for {
-		_, ok := channel.RecvWithContext(ctx, r.EventCh())
-		if !ok {
+		if !r.EventCh().Recv(ctx) {
 			return nil
 		}
 
@@ -169,8 +167,7 @@ func (ctrl *StrToSentenceController) Run(ctx context.Context, r controller.Runti
 	sourceMd := resource.NewMetadata(ctrl.SourceNamespace, StrResourceType, "", resource.VersionUndefined)
 
 	for {
-		_, ok := channel.RecvWithContext(ctx, r.EventCh())
-		if !ok {
+		if !r.EventCh().Recv(ctx) {
 			return nil
 		}
 
@@ -270,8 +267,7 @@ func (ctrl *SumController) Run(ctx context.Context, r controller.Runtime, _ *zap
 	sourceMd := resource.NewMetadata(ctrl.SourceNamespace, IntResourceType, "", resource.VersionUndefined)
 
 	for {
-		_, ok := channel.RecvWithContext(ctx, r.EventCh())
-		if !ok {
+		if !r.EventCh().Recv(ctx) {
 			return nil
 		}
 
@@ -331,8 +327,7 @@ func (ctrl *FailingController) Outputs() []controller.Output {
 
 // Run implements controller.Controller interface.
 func (ctrl *FailingController) Run(ctx context.Context, r controller.Runtime, _ *zap.Logger) error {
-	_, ok := channel.RecvWithContext(ctx, r.EventCh())
-	if !ok {
+	if !r.EventCh().Recv(ctx) {
 		return nil
 	}
 
@@ -390,8 +385,7 @@ func (ctrl *IntDoublerController) Run(ctx context.Context, r controller.Runtime,
 	sourceMd := resource.NewMetadata(ctrl.SourceNamespace, IntResourceType, "", resource.VersionUndefined)
 
 	for {
-		_, ok := channel.RecvWithContext(ctx, r.EventCh())
-		if !ok {
+		if !r.EventCh().Recv(ctx) {
 			return nil
 		}
 

@@ -315,7 +315,7 @@ func (ctrlAdapter *controllerAdapter) establishEventChannel() {
 	}
 }
 
-func (ctrlAdapter *controllerAdapter) EventCh() <-chan controller.ReconcileEvent {
+func (ctrlAdapter *controllerAdapter) EventCh() controller.ReconcileEventCh {
 	return ctrlAdapter.eventCh
 }
 

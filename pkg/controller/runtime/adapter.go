@@ -78,7 +78,7 @@ func reduceMetadata(md *resource.Metadata) reducedMetadata {
 type watchFilter func(*reducedMetadata) bool
 
 // EventCh implements controller.Runtime interface.
-func (adapter *adapter) EventCh() <-chan controller.ReconcileEvent {
+func (adapter *adapter) EventCh() controller.ReconcileEventCh {
 	return adapter.ch
 }
 

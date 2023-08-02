@@ -14,9 +14,23 @@ import (
 // ReconcileEvent is a signal for controller to reconcile its resources.
 type ReconcileEvent struct{}
 
+// ReconcileEventCh is a channel for receiving reconcile events.
+type ReconcileEventCh <-chan ReconcileEvent
+
+// Recv is a helper method for waiting the reconcile event. Because we promise that the
+// channel is never closed, we only return false if the context was canceled.
+func (ch ReconcileEventCh) Recv(ctx context.Context) bool {
+	select {
+	case <-ctx.Done():
+		return false
+	case <-ch:
+		return true
+	}
+}
+
 // Runtime interface as presented to the controller.
 type Runtime interface {
-	EventCh() <-chan ReconcileEvent
+	EventCh() ReconcileEventCh
 	QueueReconcile()
 	ResetRestartBackoff()
 

@@ -206,8 +206,7 @@ func (runtime *Runtime) ReconcileEvents(req *v1alpha1.ReconcileEventsRequest, sr
 	}
 
 	for {
-		_, ok := channel.RecvWithContext(srv.Context(), bridge.adapter.EventCh())
-		if !ok {
+		if !bridge.adapter.EventCh().Recv(srv.Context()) {
 			return srv.Context().Err()
 		}
 
