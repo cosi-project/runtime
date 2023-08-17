@@ -2,18 +2,18 @@
 
 # THIS FILE WAS AUTOMATICALLY GENERATED, PLEASE DO NOT EDIT.
 #
-# Generated on 2023-08-01T09:02:34Z by kres latest.
+# Generated on 2023-08-18T12:21:21Z by kres latest.
 
 ARG TOOLCHAIN
 
-FROM ghcr.io/siderolabs/ca-certificates:v1.4.1 AS image-ca-certificates
+FROM ghcr.io/siderolabs/ca-certificates:v1.5.0 AS image-ca-certificates
 
-FROM ghcr.io/siderolabs/fhs:v1.4.1 AS image-fhs
+FROM ghcr.io/siderolabs/fhs:v1.5.0 AS image-fhs
 
 # runs markdownlint
 FROM docker.io/node:20.5.0-alpine3.18 AS lint-markdown
 WORKDIR /src
-RUN npm i -g markdownlint-cli@0.34.0
+RUN npm i -g markdownlint-cli@0.35.0
 RUN npm i sentences-per-line@0.2.1
 COPY .markdownlint.json .
 COPY ./README.md ./README.md
@@ -21,10 +21,10 @@ RUN markdownlint --ignore "CHANGELOG.md" --ignore "**/node_modules/**" --ignore 
 
 # collects proto specs
 FROM scratch AS proto-specs
-ADD https://raw.githubusercontent.com/cosi-project/specification/c90c30f215daf0b87cc4a0cbbd4801c37aa2b27f/proto/v1alpha1/resource.proto /api/v1alpha1/
-ADD https://raw.githubusercontent.com/cosi-project/specification/c90c30f215daf0b87cc4a0cbbd4801c37aa2b27f/proto/v1alpha1/state.proto /api/v1alpha1/
-ADD https://raw.githubusercontent.com/cosi-project/specification/c90c30f215daf0b87cc4a0cbbd4801c37aa2b27f/proto/v1alpha1/runtime.proto /api/v1alpha1/
-ADD https://raw.githubusercontent.com/cosi-project/specification/c90c30f215daf0b87cc4a0cbbd4801c37aa2b27f/proto/v1alpha1/meta.proto /api/v1alpha1/
+ADD https://raw.githubusercontent.com/cosi-project/specification/18d458e2fd215ecf6a67d20dd385884546136643/proto/v1alpha1/resource.proto /api/v1alpha1/
+ADD https://raw.githubusercontent.com/cosi-project/specification/18d458e2fd215ecf6a67d20dd385884546136643/proto/v1alpha1/state.proto /api/v1alpha1/
+ADD https://raw.githubusercontent.com/cosi-project/specification/18d458e2fd215ecf6a67d20dd385884546136643/proto/v1alpha1/runtime.proto /api/v1alpha1/
+ADD https://raw.githubusercontent.com/cosi-project/specification/18d458e2fd215ecf6a67d20dd385884546136643/proto/v1alpha1/meta.proto /api/v1alpha1/
 ADD api/key_storage/key_storage.proto /api/key_storage/
 
 # base toolchain image
@@ -36,6 +36,10 @@ FROM --platform=${BUILDPLATFORM} toolchain AS tools
 ENV GO111MODULE on
 ARG CGO_ENABLED
 ENV CGO_ENABLED ${CGO_ENABLED}
+ARG GOTOOLCHAIN
+ENV GOTOOLCHAIN ${GOTOOLCHAIN}
+ARG GOEXPERIMENT
+ENV GOEXPERIMENT ${GOEXPERIMENT}
 ENV GOPATH /go
 ARG PROTOBUF_GO_VERSION
 RUN --mount=type=cache,target=/root/.cache/go-build --mount=type=cache,target=/go/pkg go install google.golang.org/protobuf/cmd/protoc-gen-go@v${PROTOBUF_GO_VERSION}

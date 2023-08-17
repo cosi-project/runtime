@@ -1,6 +1,6 @@
 # THIS FILE WAS AUTOMATICALLY GENERATED, PLEASE DO NOT EDIT.
 #
-# Generated on 2023-07-10T12:56:20Z by kres latest.
+# Generated on 2023-08-18T12:21:21Z by kres latest.
 
 # common variables
 
@@ -16,16 +16,18 @@ USERNAME ?= cosi-project
 REGISTRY_AND_USERNAME ?= $(REGISTRY)/$(USERNAME)
 PROTOBUF_GO_VERSION ?= 1.28.1
 GRPC_GO_VERSION ?= 1.3.0
-GRPC_GATEWAY_VERSION ?= 2.16.0
+GRPC_GATEWAY_VERSION ?= 2.16.2
 VTPROTOBUF_VERSION ?= 0.4.0
 DEEPCOPY_VERSION ?= v0.5.5
-GOLANGCILINT_VERSION ?= v1.53.3
+GOLANGCILINT_VERSION ?= v1.54.0
 GOFUMPT_VERSION ?= v0.5.0
-GO_VERSION ?= 1.20
-GOIMPORTS_VERSION ?= v0.11.0
+GO_VERSION ?= 1.21
+GOIMPORTS_VERSION ?= v0.12.0
 GO_BUILDFLAGS ?=
 GO_LDFLAGS ?=
 CGO_ENABLED ?= 0
+GOTOOLCHAIN ?= local
+GOEXPERIMENT ?= loopvar
 TESTPKGS ?= ./...
 KRES_IMAGE ?= ghcr.io/siderolabs/kres:latest
 CONFORMANCE_IMAGE ?= ghcr.io/siderolabs/conform:latest
@@ -51,6 +53,8 @@ COMMON_ARGS += --build-arg=TOOLCHAIN="$(TOOLCHAIN)"
 COMMON_ARGS += --build-arg=CGO_ENABLED="$(CGO_ENABLED)"
 COMMON_ARGS += --build-arg=GO_BUILDFLAGS="$(GO_BUILDFLAGS)"
 COMMON_ARGS += --build-arg=GO_LDFLAGS="$(GO_LDFLAGS)"
+COMMON_ARGS += --build-arg=GOTOOLCHAIN="$(GOTOOLCHAIN)"
+COMMON_ARGS += --build-arg=GOEXPERIMENT="$(GOEXPERIMENT)"
 COMMON_ARGS += --build-arg=PROTOBUF_GO_VERSION="$(PROTOBUF_GO_VERSION)"
 COMMON_ARGS += --build-arg=GRPC_GO_VERSION="$(GRPC_GO_VERSION)"
 COMMON_ARGS += --build-arg=GRPC_GATEWAY_VERSION="$(GRPC_GATEWAY_VERSION)"
@@ -60,7 +64,7 @@ COMMON_ARGS += --build-arg=GOLANGCILINT_VERSION="$(GOLANGCILINT_VERSION)"
 COMMON_ARGS += --build-arg=GOIMPORTS_VERSION="$(GOIMPORTS_VERSION)"
 COMMON_ARGS += --build-arg=GOFUMPT_VERSION="$(GOFUMPT_VERSION)"
 COMMON_ARGS += --build-arg=TESTPKGS="$(TESTPKGS)"
-TOOLCHAIN ?= docker.io/golang:1.20-alpine
+TOOLCHAIN ?= docker.io/golang:1.21-alpine
 
 # help menu
 
@@ -131,7 +135,8 @@ lint-gofumpt:  ## Runs gofumpt linter.
 .PHONY: fmt
 fmt:  ## Formats the source code
 	@docker run --rm -it -v $(PWD):/src -w /src golang:$(GO_VERSION) \
-		bash -c "export GO111MODULE=on; export GOPROXY=https://proxy.golang.org; \
+		bash -c "export GOEXPERIMENT=loopvar; export GOTOOLCHAIN=local; \
+		export GO111MODULE=on; export GOPROXY=https://proxy.golang.org; \
 		go install mvdan.cc/gofumpt@$(GOFUMPT_VERSION) && \
 		gofumpt -w ."
 

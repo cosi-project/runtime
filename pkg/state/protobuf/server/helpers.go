@@ -19,13 +19,29 @@ func ConvertLabelQuery(terms []*v1alpha1.LabelTerm) ([]resource.LabelQueryOption
 	labelOpts := make([]resource.LabelQueryOption, 0, len(terms))
 
 	for _, term := range terms {
+		var opts []resource.TermOption
+
+		if term.Invert {
+			opts = append(opts, resource.NotMatches)
+		}
+
 		switch term.Op {
 		case v1alpha1.LabelTerm_EQUAL:
-			labelOpts = append(labelOpts, resource.LabelEqual(term.Key, term.Value))
+			labelOpts = append(labelOpts, resource.LabelEqual(term.Key, term.Value[0], opts...))
 		case v1alpha1.LabelTerm_EXISTS:
-			labelOpts = append(labelOpts, resource.LabelExists(term.Key))
-		case v1alpha1.LabelTerm_NOT_EXISTS:
-			labelOpts = append(labelOpts, resource.LabelNotExists(term.Key))
+			labelOpts = append(labelOpts, resource.LabelExists(term.Key, opts...))
+		case v1alpha1.LabelTerm_NOT_EXISTS: //nolint:staticcheck
+			labelOpts = append(labelOpts, resource.LabelExists(term.Key, resource.NotMatches))
+		case v1alpha1.LabelTerm_IN:
+			labelOpts = append(labelOpts, resource.LabelIn(term.Key, term.Value, opts...))
+		case v1alpha1.LabelTerm_LT:
+			labelOpts = append(labelOpts, resource.LabelLT(term.Key, term.Value[0], opts...))
+		case v1alpha1.LabelTerm_LTE:
+			labelOpts = append(labelOpts, resource.LabelLTE(term.Key, term.Value[0], opts...))
+		case v1alpha1.LabelTerm_LT_NUMERIC:
+			labelOpts = append(labelOpts, resource.LabelLTNumeric(term.Key, term.Value[0], opts...))
+		case v1alpha1.LabelTerm_LTE_NUMERIC:
+			labelOpts = append(labelOpts, resource.LabelLTENumeric(term.Key, term.Value[0], opts...))
 		default:
 			return nil, status.Errorf(codes.Unimplemented, "unsupported label query operator: %v", term.Op)
 		}

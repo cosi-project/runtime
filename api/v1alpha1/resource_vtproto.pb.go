@@ -124,9 +124,14 @@ func (m *LabelTerm) CloneVT() *LabelTerm {
 		return (*LabelTerm)(nil)
 	}
 	r := &LabelTerm{
-		Key:   m.Key,
-		Op:    m.Op,
-		Value: m.Value,
+		Key:    m.Key,
+		Op:     m.Op,
+		Invert: m.Invert,
+	}
+	if rhs := m.Value; rhs != nil {
+		tmpContainer := make([]string, len(rhs))
+		copy(tmpContainer, rhs)
+		r.Value = tmpContainer
 	}
 	if len(m.unknownFields) > 0 {
 		r.unknownFields = make([]byte, len(m.unknownFields))
@@ -321,7 +326,16 @@ func (this *LabelTerm) EqualVT(that *LabelTerm) bool {
 	if this.Op != that.Op {
 		return false
 	}
-	if this.Value != that.Value {
+	if len(this.Value) != len(that.Value) {
+		return false
+	}
+	for i, vx := range this.Value {
+		vy := that.Value[i]
+		if vx != vy {
+			return false
+		}
+	}
+	if this.Invert != that.Invert {
 		return false
 	}
 	return string(this.unknownFields) == string(that.unknownFields)
@@ -682,12 +696,24 @@ func (m *LabelTerm) MarshalToSizedBufferVT(dAtA []byte) (int, error) {
 		i -= len(m.unknownFields)
 		copy(dAtA[i:], m.unknownFields)
 	}
-	if len(m.Value) > 0 {
-		i -= len(m.Value)
-		copy(dAtA[i:], m.Value)
-		i = encodeVarint(dAtA, i, uint64(len(m.Value)))
+	if m.Invert {
 		i--
-		dAtA[i] = 0x1a
+		if m.Invert {
+			dAtA[i] = 1
+		} else {
+			dAtA[i] = 0
+		}
+		i--
+		dAtA[i] = 0x28
+	}
+	if len(m.Value) > 0 {
+		for iNdEx := len(m.Value) - 1; iNdEx >= 0; iNdEx-- {
+			i -= len(m.Value[iNdEx])
+			copy(dAtA[i:], m.Value[iNdEx])
+			i = encodeVarint(dAtA, i, uint64(len(m.Value[iNdEx])))
+			i--
+			dAtA[i] = 0x1a
+		}
 	}
 	if m.Op != 0 {
 		i = encodeVarint(dAtA, i, uint64(m.Op))
@@ -925,9 +951,14 @@ func (m *LabelTerm) SizeVT() (n int) {
 	if m.Op != 0 {
 		n += 1 + sov(uint64(m.Op))
 	}
-	l = len(m.Value)
-	if l > 0 {
-		n += 1 + l + sov(uint64(l))
+	if len(m.Value) > 0 {
+		for _, s := range m.Value {
+			l = len(s)
+			n += 1 + l + sov(uint64(l))
+		}
+	}
+	if m.Invert {
+		n += 2
 	}
 	n += len(m.unknownFields)
 	return n
@@ -1936,8 +1967,28 @@ func (m *LabelTerm) UnmarshalVT(dAtA []byte) error {
 			if postIndex > l {
 				return io.ErrUnexpectedEOF
 			}
-			m.Value = string(dAtA[iNdEx:postIndex])
+			m.Value = append(m.Value, string(dAtA[iNdEx:postIndex]))
 			iNdEx = postIndex
+		case 5:
+			if wireType != 0 {
+				return fmt.Errorf("proto: wrong wireType = %d for field Invert", wireType)
+			}
+			var v int
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflow
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				v |= int(b&0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			m.Invert = bool(v != 0)
 		default:
 			iNdEx = preIndex
 			skippy, err := skip(dAtA[iNdEx:])

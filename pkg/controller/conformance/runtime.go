@@ -311,7 +311,7 @@ func (suite *RuntimeSuite) TestSumControllersFiltered() {
 				{
 					Op:    resource.LabelOpEqual,
 					Key:   "app",
-					Value: "app1",
+					Value: []string{"app1"},
 				},
 			},
 		},

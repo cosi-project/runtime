@@ -17,6 +17,8 @@ func TestLabelTerm(t *testing.T) {
 
 	labels.Set("a", "b")
 	labels.Set("e", "d")
+	labels.Set("disk", "4GB")
+	labels.Set("mem", "5GiB")
 
 	assert.True(t, labels.Matches(
 		resource.LabelTerm{
@@ -34,15 +36,17 @@ func TestLabelTerm(t *testing.T) {
 
 	assert.True(t, labels.Matches(
 		resource.LabelTerm{
-			Key: "c",
-			Op:  resource.LabelOpNotExists,
+			Key:    "c",
+			Op:     resource.LabelOpExists,
+			Invert: true,
 		},
 	))
 
 	assert.False(t, labels.Matches(
 		resource.LabelTerm{
-			Key: "a",
-			Op:  resource.LabelOpNotExists,
+			Key:    "a",
+			Op:     resource.LabelOpExists,
+			Invert: true,
 		},
 	))
 
@@ -50,7 +54,7 @@ func TestLabelTerm(t *testing.T) {
 		resource.LabelTerm{
 			Key:   "a",
 			Op:    resource.LabelOpEqual,
-			Value: "b",
+			Value: []string{"b"},
 		},
 	))
 
@@ -58,7 +62,7 @@ func TestLabelTerm(t *testing.T) {
 		resource.LabelTerm{
 			Key:   "a",
 			Op:    resource.LabelOpEqual,
-			Value: "c",
+			Value: []string{"c"},
 		},
 	))
 
@@ -66,12 +70,60 @@ func TestLabelTerm(t *testing.T) {
 		resource.LabelTerm{
 			Key:   "e",
 			Op:    resource.LabelOpEqual,
-			Value: "b",
+			Value: []string{"b"},
+		},
+	))
+
+	assert.True(t, labels.Matches(
+		resource.LabelTerm{
+			Key:   "e",
+			Op:    resource.LabelOpIn,
+			Value: []string{"d", "c"},
+		},
+	))
+
+	assert.False(t, labels.Matches(
+		resource.LabelTerm{
+			Key:   "e",
+			Op:    resource.LabelOpIn,
+			Value: []string{"e", "c"},
+		},
+	))
+
+	assert.True(t, labels.Matches(
+		resource.LabelTerm{
+			Key:   "disk",
+			Op:    resource.LabelOpLTENumeric,
+			Value: []string{"4000000000"},
+		},
+	))
+
+	assert.False(t, labels.Matches(
+		resource.LabelTerm{
+			Key:   "disk",
+			Op:    resource.LabelOpLTENumeric,
+			Value: []string{"3999999999"},
+		},
+	))
+
+	assert.False(t, labels.Matches(
+		resource.LabelTerm{
+			Key:   "mem",
+			Op:    resource.LabelOpLTNumeric,
+			Value: []string{"5368709120"},
+		},
+	))
+
+	assert.True(t, labels.Matches(
+		resource.LabelTerm{
+			Key:   "mem",
+			Op:    resource.LabelOpLTNumeric,
+			Value: []string{"5368709121"},
 		},
 	))
 }
 
-func TestLabelQuer(t *testing.T) {
+func TestLabelQuery(t *testing.T) {
 	var labels resource.Labels
 
 	labels.Set("a", "b")
@@ -82,7 +134,7 @@ func TestLabelQuer(t *testing.T) {
 			{
 				Key:   "a",
 				Op:    resource.LabelOpEqual,
-				Value: "b",
+				Value: []string{"b"},
 			},
 			{
 				Key: "e",
@@ -100,7 +152,7 @@ func TestLabelQuer(t *testing.T) {
 			{
 				Key:   "a",
 				Op:    resource.LabelOpEqual,
-				Value: "c",
+				Value: []string{"c"},
 			},
 		},
 	}.Matches(labels))
@@ -114,7 +166,7 @@ func TestLabelQuer(t *testing.T) {
 			{
 				Key:   "e",
 				Op:    resource.LabelOpEqual,
-				Value: "f",
+				Value: []string{"f"},
 			},
 		},
 	}.Matches(labels))

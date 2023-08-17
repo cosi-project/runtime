@@ -6,7 +6,9 @@ package resource
 
 import (
 	"fmt"
+	"slices"
 
+	"github.com/cosi-project/runtime/pkg/resource/internal/compare"
 	"github.com/cosi-project/runtime/pkg/resource/internal/kv"
 )
 
@@ -27,27 +29,55 @@ func (labels Labels) Equal(other Labels) bool {
 
 // Matches if labels match the LabelTerm.
 func (labels Labels) Matches(term LabelTerm) bool {
-	if labels.KV.Empty() {
-		return term.Op == LabelOpNotExists
+	matches := labels.matches(term)
+
+	if term.Invert {
+		return !matches
+	}
+
+	return matches
+}
+
+func (labels Labels) matches(term LabelTerm) bool {
+	if labels.KV.Empty() && term.Op == LabelOpExists {
+		return false
+	}
+
+	value, ok := labels.Get(term.Key)
+
+	if !ok {
+		return false
+	}
+
+	if term.Op != LabelOpExists && len(term.Value) == 0 {
+		return false
 	}
 
 	switch term.Op {
-	case LabelOpNotExists:
-		_, ok := labels.Get(term.Key)
-
-		return !ok
 	case LabelOpExists:
-		_, ok := labels.Get(term.Key)
-
-		return ok
+		return true
 	case LabelOpEqual:
-		value, ok := labels.Get(term.Key)
-
+		return value == term.Value[0]
+	case LabelOpIn:
+		return slices.Contains(term.Value, value)
+	case LabelOpLTE:
+		return value <= term.Value[0]
+	case LabelOpLT:
+		return value < term.Value[0]
+	case LabelOpLTNumeric:
+		left, right, ok := compare.GetNumbers(value, term.Value[0])
 		if !ok {
 			return false
 		}
 
-		return value == term.Value
+		return left < right
+	case LabelOpLTENumeric:
+		left, right, ok := compare.GetNumbers(value, term.Value[0])
+		if !ok {
+			return false
+		}
+
+		return left <= right
 	default:
 		panic(fmt.Sprintf("unsupported label term operator: %v", term.Op))
 	}

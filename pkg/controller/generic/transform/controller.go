@@ -74,7 +74,7 @@ type Settings[Input generic.ResourceWithRD, Output generic.ResourceWithRD] struc
 
 // NewController creates a new TransformController.
 //
-//nolint:gocognit,gocyclo,cyclop
+//nolint:gocyclo,cyclop
 func NewController[Input generic.ResourceWithRD, Output generic.ResourceWithRD](
 	settings Settings[Input, Output],
 	opts ...ControllerOption,

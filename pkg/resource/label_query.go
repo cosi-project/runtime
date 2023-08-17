@@ -4,6 +4,8 @@
 
 package resource
 
+import "slices"
+
 // LabelOp is a match operation on labels.
 type LabelOp int
 
@@ -13,15 +15,24 @@ const (
 	LabelOpExists LabelOp = iota
 	// Label with the key matches the value.
 	LabelOpEqual
-	// Label with the key doesn't exist.
-	LabelOpNotExists
+	// Label value is in the set.
+	LabelOpIn
+	// Label value is less.
+	LabelOpLT
+	// Label value is less or equal.
+	LabelOpLTE
+	// Label value is less than number.
+	LabelOpLTNumeric
+	// Label value is less or equal numeric.
+	LabelOpLTENumeric
 )
 
 // LabelTerm describes a filter on metadata labels.
 type LabelTerm struct {
-	Key   string
-	Value string
-	Op    LabelOp
+	Key    string
+	Value  []string
+	Op     LabelOp
+	Invert bool
 }
 
 // LabelQuery is a set of LabelTerms applied with AND semantics.
@@ -47,33 +58,97 @@ func (query LabelQuery) Matches(labels Labels) bool {
 // LabelQueryOption allows to build a LabelQuery with functional parameters.
 type LabelQueryOption func(*LabelQuery)
 
-// LabelExists checks that the label is set.
-func LabelExists(label string) LabelQueryOption {
-	return func(q *LabelQuery) {
-		q.Terms = append(q.Terms, LabelTerm{
-			Key: label,
-			Op:  LabelOpExists,
-		})
-	}
+// TermOption defines additional term options.
+type TermOption int
+
+const (
+	// NotMatches the condition.
+	NotMatches TermOption = iota
+)
+
+func getInvert(opts []TermOption) bool {
+	return slices.Contains(opts, NotMatches)
 }
 
-// LabelNotExists checks that the label isn't set.
-func LabelNotExists(label string) LabelQueryOption {
+// LabelExists checks that the label is set.
+func LabelExists(label string, opts ...TermOption) LabelQueryOption {
 	return func(q *LabelQuery) {
 		q.Terms = append(q.Terms, LabelTerm{
-			Key: label,
-			Op:  LabelOpNotExists,
+			Key:    label,
+			Op:     LabelOpExists,
+			Invert: getInvert(opts),
 		})
 	}
 }
 
 // LabelEqual checks that the label is set to the specified value.
-func LabelEqual(label, value string) LabelQueryOption {
+func LabelEqual(label, value string, opts ...TermOption) LabelQueryOption {
 	return func(q *LabelQuery) {
 		q.Terms = append(q.Terms, LabelTerm{
-			Key:   label,
-			Value: value,
-			Op:    LabelOpEqual,
+			Key:    label,
+			Value:  []string{value},
+			Op:     LabelOpEqual,
+			Invert: getInvert(opts),
+		})
+	}
+}
+
+// LabelIn checks that the label value is in the provided set.
+func LabelIn(label string, set []string, opts ...TermOption) LabelQueryOption {
+	return func(q *LabelQuery) {
+		q.Terms = append(q.Terms, LabelTerm{
+			Key:    label,
+			Value:  set,
+			Op:     LabelOpIn,
+			Invert: getInvert(opts),
+		})
+	}
+}
+
+// LabelLT checks that the label value is less than value, peforms string comparison.
+func LabelLT(label, value string, opts ...TermOption) LabelQueryOption {
+	return func(q *LabelQuery) {
+		q.Terms = append(q.Terms, LabelTerm{
+			Key:    label,
+			Value:  []string{value},
+			Op:     LabelOpLT,
+			Invert: getInvert(opts),
+		})
+	}
+}
+
+// LabelLTE checks that the label value is less or equal to value, peforms string comparison.
+func LabelLTE(label, value string, opts ...TermOption) LabelQueryOption {
+	return func(q *LabelQuery) {
+		q.Terms = append(q.Terms, LabelTerm{
+			Key:    label,
+			Value:  []string{value},
+			Op:     LabelOpLTE,
+			Invert: getInvert(opts),
+		})
+	}
+}
+
+// LabelLTNumeric checks that the label value is less than value, peforms numeric comparison, if possible.
+func LabelLTNumeric(label, value string, opts ...TermOption) LabelQueryOption {
+	return func(q *LabelQuery) {
+		q.Terms = append(q.Terms, LabelTerm{
+			Key:    label,
+			Value:  []string{value},
+			Op:     LabelOpLTNumeric,
+			Invert: getInvert(opts),
+		})
+	}
+}
+
+// LabelLTENumeric checks that the label value is less or equal to value, peforms numeric comparison, if possible.
+func LabelLTENumeric(label, value string, opts ...TermOption) LabelQueryOption {
+	return func(q *LabelQuery) {
+		q.Terms = append(q.Terms, LabelTerm{
+			Key:    label,
+			Value:  []string{value},
+			Op:     LabelOpLTENumeric,
+			Invert: getInvert(opts),
 		})
 	}
 }

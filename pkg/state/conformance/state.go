@@ -936,10 +936,12 @@ func (suite *StateSuite) TestLabels() {
 	path1 := NewPathResource(ns, "labeled/app1")
 	path1.Metadata().Labels().Set("app", "app1")
 	path1.Metadata().Labels().Set("frozen", "")
+	path1.Metadata().Labels().Set("weight", "10kg")
 
 	path2 := NewPathResource(ns, "labeled/app2")
 	path2.Metadata().Labels().Set("app", "app2")
 	path2.Metadata().Labels().Set("frozen", "")
+	path2.Metadata().Labels().Set("weight", "20kg")
 
 	path3 := NewPathResource(ns, "labeled/app3")
 	path3.Metadata().Labels().Set("app", "app3")
@@ -989,6 +991,39 @@ func (suite *StateSuite) TestLabels() {
 
 	suite.Require().Equal(1, list.Len())
 	suite.Assert().True(resourceEqualIgnoreVersion(path3, list.Get(0)))
+
+	list, err = safe.StateList[*PathResource](ctx, suite.State, path1.Metadata(), state.WithLabelQuery(resource.LabelIn("app", []string{"app2", "app3"})))
+	suite.Require().NoError(err)
+
+	suite.Require().Equal(2, list.Len())
+	suite.Assert().True(resourceEqualIgnoreVersion(path2, list.Get(0)))
+	suite.Assert().True(resourceEqualIgnoreVersion(path3, list.Get(1)))
+
+	list, err = safe.StateList[*PathResource](ctx, suite.State, path1.Metadata(), state.WithLabelQuery(resource.LabelLTNumeric("weight", "12000")))
+	suite.Require().NoError(err)
+
+	suite.Require().Equal(1, list.Len())
+	suite.Assert().True(resourceEqualIgnoreVersion(path1, list.Get(0)))
+
+	list, err = safe.StateList[*PathResource](ctx, suite.State, path1.Metadata(), state.WithLabelQuery(resource.LabelLTENumeric("weight", "20000")))
+	suite.Require().NoError(err)
+
+	suite.Require().Equal(2, list.Len())
+	suite.Assert().True(resourceEqualIgnoreVersion(path1, list.Get(0)))
+	suite.Assert().True(resourceEqualIgnoreVersion(path2, list.Get(1)))
+
+	list, err = safe.StateList[*PathResource](ctx, suite.State, path1.Metadata(), state.WithLabelQuery(resource.LabelLTE("app", "app2")))
+	suite.Require().NoError(err)
+
+	suite.Require().Equal(2, list.Len())
+	suite.Assert().True(resourceEqualIgnoreVersion(path1, list.Get(0)))
+	suite.Assert().True(resourceEqualIgnoreVersion(path2, list.Get(1)))
+
+	list, err = safe.StateList[*PathResource](ctx, suite.State, path1.Metadata(), state.WithLabelQuery(resource.LabelLT("app", "app2")))
+	suite.Require().NoError(err)
+
+	suite.Require().Equal(1, list.Len())
+	suite.Assert().True(resourceEqualIgnoreVersion(path1, list.Get(0)))
 }
 
 // TestIDQuery verifies ID query for List and WatchKind operations.

@@ -392,19 +392,51 @@ func (ctrlAdapter *controllerAdapter) List(ctx context.Context, resourceKind res
 			switch term.Op {
 			case resource.LabelOpEqual:
 				labelQuery.Terms = append(labelQuery.Terms, &v1alpha1.LabelTerm{
-					Key:   term.Key,
-					Value: term.Value,
-					Op:    v1alpha1.LabelTerm_EQUAL,
+					Key:    term.Key,
+					Value:  term.Value,
+					Op:     v1alpha1.LabelTerm_EQUAL,
+					Invert: term.Invert,
 				})
 			case resource.LabelOpExists:
 				labelQuery.Terms = append(labelQuery.Terms, &v1alpha1.LabelTerm{
-					Key: term.Key,
-					Op:  v1alpha1.LabelTerm_EXISTS,
+					Key:    term.Key,
+					Op:     v1alpha1.LabelTerm_EXISTS,
+					Invert: term.Invert,
 				})
-			case resource.LabelOpNotExists:
+			case resource.LabelOpIn:
 				labelQuery.Terms = append(labelQuery.Terms, &v1alpha1.LabelTerm{
-					Key: term.Key,
-					Op:  v1alpha1.LabelTerm_NOT_EXISTS,
+					Key:    term.Key,
+					Value:  term.Value,
+					Op:     v1alpha1.LabelTerm_IN,
+					Invert: term.Invert,
+				})
+			case resource.LabelOpLT:
+				labelQuery.Terms = append(labelQuery.Terms, &v1alpha1.LabelTerm{
+					Key:    term.Key,
+					Value:  term.Value,
+					Op:     v1alpha1.LabelTerm_LT,
+					Invert: term.Invert,
+				})
+			case resource.LabelOpLTE:
+				labelQuery.Terms = append(labelQuery.Terms, &v1alpha1.LabelTerm{
+					Key:    term.Key,
+					Value:  term.Value,
+					Op:     v1alpha1.LabelTerm_LTE,
+					Invert: term.Invert,
+				})
+			case resource.LabelOpLTNumeric:
+				labelQuery.Terms = append(labelQuery.Terms, &v1alpha1.LabelTerm{
+					Key:    term.Key,
+					Value:  term.Value,
+					Op:     v1alpha1.LabelTerm_LT_NUMERIC,
+					Invert: term.Invert,
+				})
+			case resource.LabelOpLTENumeric:
+				labelQuery.Terms = append(labelQuery.Terms, &v1alpha1.LabelTerm{
+					Key:    term.Key,
+					Value:  term.Value,
+					Op:     v1alpha1.LabelTerm_LTE_NUMERIC,
+					Invert: term.Invert,
 				})
 			default:
 				return resource.List{}, fmt.Errorf("unsupporter label term %q", term.Op)
