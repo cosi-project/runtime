@@ -9,14 +9,13 @@ import (
 	"errors"
 	"fmt"
 	"runtime/debug"
+	"slices"
 	"sort"
 	"sync"
 	"time"
 
 	"github.com/cenkalti/backoff/v4"
-	"github.com/siderolabs/gen/channel"
 	"github.com/siderolabs/gen/pair/ordered"
-	"github.com/siderolabs/gen/slices"
 	"github.com/siderolabs/go-pointer"
 	"go.uber.org/zap"
 	"golang.org/x/time/rate"
@@ -466,9 +465,10 @@ func (adapter *adapter) run(ctx context.Context) {
 
 		logger.Sugar().Debugf("restarting controller in %s", interval)
 
-		_, ok := channel.RecvWithContext(ctx, time.After(interval))
-		if !ok {
+		select {
+		case <-ctx.Done():
 			return
+		case <-time.After(interval):
 		}
 
 		// schedule reconcile after restart

@@ -9,7 +9,6 @@ import (
 	"fmt"
 	"strconv"
 
-	"github.com/siderolabs/gen/channel"
 	"go.uber.org/zap"
 
 	"github.com/cosi-project/runtime/pkg/controller"
@@ -62,9 +61,10 @@ func (ctrl *IntToStrController) Run(ctx context.Context, r controller.Runtime, _
 	sourceMd := resource.NewMetadata(ctrl.SourceNamespace, IntResourceType, "", resource.VersionUndefined)
 
 	for {
-		_, ok := channel.RecvWithContext(ctx, r.EventCh())
-		if !ok {
+		select {
+		case <-ctx.Done():
 			return nil
+		case <-r.EventCh():
 		}
 
 		intList, err := safe.ReaderList[interface {
@@ -169,9 +169,10 @@ func (ctrl *StrToSentenceController) Run(ctx context.Context, r controller.Runti
 	sourceMd := resource.NewMetadata(ctrl.SourceNamespace, StrResourceType, "", resource.VersionUndefined)
 
 	for {
-		_, ok := channel.RecvWithContext(ctx, r.EventCh())
-		if !ok {
+		select {
+		case <-ctx.Done():
 			return nil
+		case <-r.EventCh():
 		}
 
 		strList, err := safe.ReaderList[interface {
@@ -270,9 +271,10 @@ func (ctrl *SumController) Run(ctx context.Context, r controller.Runtime, _ *zap
 	sourceMd := resource.NewMetadata(ctrl.SourceNamespace, IntResourceType, "", resource.VersionUndefined)
 
 	for {
-		_, ok := channel.RecvWithContext(ctx, r.EventCh())
-		if !ok {
+		select {
+		case <-ctx.Done():
 			return nil
+		case <-r.EventCh():
 		}
 
 		intList, err := safe.ReaderList[interface {
@@ -331,9 +333,10 @@ func (ctrl *FailingController) Outputs() []controller.Output {
 
 // Run implements controller.Controller interface.
 func (ctrl *FailingController) Run(ctx context.Context, r controller.Runtime, _ *zap.Logger) error {
-	_, ok := channel.RecvWithContext(ctx, r.EventCh())
-	if !ok {
+	select {
+	case <-ctx.Done():
 		return nil
+	case <-r.EventCh():
 	}
 
 	if err := safe.WriterModify(ctx, r, NewIntResource(ctrl.TargetNamespace, strconv.Itoa(ctrl.count), 0), func(r *IntResource) error {
@@ -390,9 +393,10 @@ func (ctrl *IntDoublerController) Run(ctx context.Context, r controller.Runtime,
 	sourceMd := resource.NewMetadata(ctrl.SourceNamespace, IntResourceType, "", resource.VersionUndefined)
 
 	for {
-		_, ok := channel.RecvWithContext(ctx, r.EventCh())
-		if !ok {
+		select {
+		case <-ctx.Done():
 			return nil
+		case <-r.EventCh():
 		}
 
 		r.StartTrackingOutputs()

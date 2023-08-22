@@ -242,9 +242,10 @@ func (ctrlAdapter *controllerAdapter) run(ctx context.Context) {
 
 		logger.Sugar().Infof("restarting controller in %s", interval)
 
-		_, ok := channel.RecvWithContext(ctx, time.After(interval))
-		if !ok {
+		select {
+		case <-ctx.Done():
 			return
+		case <-time.After(interval):
 		}
 
 		// schedule reconcile after restart
@@ -308,9 +309,10 @@ func (ctrlAdapter *controllerAdapter) establishEventChannel() {
 
 		interval := backoff.NextBackOff()
 
-		_, ok := channel.RecvWithContext(ctrlAdapter.ctx, time.After(interval))
-		if !ok {
+		select {
+		case <-ctrlAdapter.ctx.Done():
 			return
+		case <-time.After(interval):
 		}
 	}
 }

@@ -8,6 +8,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/siderolabs/gen/ensure"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
@@ -49,7 +50,5 @@ func BenchmarkProto(b *testing.B) {
 }
 
 func init() {
-	if err := protobuf.RegisterResource(conformance.PathResourceType, &conformance.PathResource{}); err != nil {
-		panic(err)
-	}
+	ensure.NoError(protobuf.RegisterResource(conformance.PathResourceType, &conformance.PathResource{}))
 }

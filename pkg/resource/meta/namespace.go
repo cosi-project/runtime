@@ -5,6 +5,8 @@
 package meta
 
 import (
+	"github.com/siderolabs/gen/ensure"
+
 	"github.com/cosi-project/runtime/api/v1alpha1"
 	"github.com/cosi-project/runtime/pkg/resource"
 	"github.com/cosi-project/runtime/pkg/resource/protobuf"
@@ -72,7 +74,5 @@ func (n *NamespaceSpec) UnmarshalProto(protoBytes []byte) error {
 }
 
 func init() {
-	if err := protobuf.RegisterResource(NamespaceType, &Namespace{}); err != nil {
-		panic(err)
-	}
+	ensure.NoError(protobuf.RegisterResource(NamespaceType, &Namespace{}))
 }

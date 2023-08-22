@@ -11,9 +11,7 @@ import (
 	"crypto/rand"
 	"fmt"
 	"io"
-
-	"github.com/siderolabs/gen/pair"
-	"github.com/siderolabs/gen/xsync"
+	"sync"
 
 	"github.com/cosi-project/runtime/pkg/resource"
 	"github.com/cosi-project/runtime/pkg/state/impl/store"
@@ -57,49 +55,41 @@ func (m *Marshaler) UnmarshalResource(b []byte) (resource.Resource, error) { //n
 
 // Cipher provides encryption and decryption.
 type Cipher struct {
-	keyProvider KeyProvider
-	once        xsync.Once[pair.Pair[cipher.AEAD, error]]
+	cipher func() (cipher.AEAD, error)
 }
 
 // NewCipher creates new Cipher.
 func NewCipher(provider KeyProvider) *Cipher {
-	return &Cipher{keyProvider: provider}
-}
+	return &Cipher{
+		cipher: sync.OnceValues(func() (cipher.AEAD, error) {
+			// According to https://github.com/golang/go/issues/25882 cipher.AEAD is safe to share between goroutines.
+			key, err := provider.ProvideKey()
+			if err != nil {
+				return nil, fmt.Errorf("failed to provide key: %w", err)
+			}
 
-func (c *Cipher) init() (cipher.AEAD, error) {
-	res := c.once.Do(func() pair.Pair[cipher.AEAD, error] {
-		key, err := c.keyProvider.ProvideKey()
-		if err != nil {
-			return pair.MakePair[cipher.AEAD, error](nil, fmt.Errorf("failed to provide key: %w", err))
-		}
+			if len(key) != 32 {
+				return nil, fmt.Errorf("key length is not 32 bytes")
+			}
 
-		if len(key) != 32 {
-			return pair.MakePair[cipher.AEAD, error](nil, fmt.Errorf("key length is not 32 bytes"))
-		}
+			block, err := aes.NewCipher(key)
+			if err != nil {
+				return nil, fmt.Errorf("failed to create cipher: %w", err)
+			}
 
-		block, err := aes.NewCipher(key)
-		if err != nil {
-			return pair.MakePair[cipher.AEAD, error](nil, fmt.Errorf("failed to create cipher: %w", err))
-		}
+			aead, err := cipher.NewGCM(block)
+			if err != nil {
+				return nil, fmt.Errorf("failed to create GCM: %w", err)
+			}
 
-		aead, err := cipher.NewGCM(block)
-		if err != nil {
-			return pair.MakePair[cipher.AEAD, error](nil, fmt.Errorf("failed to create GCM: %w", err))
-		}
-
-		return pair.MakePair[cipher.AEAD, error](aead, nil)
-	})
-	if res.F2 != nil {
-		return nil, res.F2
+			return aead, nil
+		}),
 	}
-
-	// According to https://github.com/golang/go/issues/25882 cipher.AEAD is safe to share between goroutines.
-	return res.F1, nil
 }
 
 // Encrypt encrypts data.
 func (c *Cipher) Encrypt(b []byte) ([]byte, error) {
-	aead, err := c.init()
+	aead, err := c.cipher()
 	if err != nil {
 		return nil, fmt.Errorf("failed to init cipher: %w", err)
 	}
@@ -120,7 +110,7 @@ func (c *Cipher) Encrypt(b []byte) ([]byte, error) {
 
 // Decrypt decrypts data.
 func (c *Cipher) Decrypt(b []byte) ([]byte, error) {
-	aead, err := c.init()
+	aead, err := c.cipher()
 	if err != nil {
 		return nil, fmt.Errorf("failed to init cipher: %w", err)
 	}

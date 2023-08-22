@@ -12,7 +12,6 @@ import (
 	"testing"
 	"time"
 
-	"github.com/siderolabs/gen/channel"
 	"github.com/siderolabs/gen/optional"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -59,12 +58,12 @@ func NewABController(reconcileTeardownCh <-chan struct{}, opts ...transform.Cont
 					return fmt.Errorf("not allowed to reconcile teardown")
 				}
 
-				_, ok := channel.RecvWithContext(ctx, reconcileTeardownCh)
-				if !ok {
+				select {
+				case <-reconcileTeardownCh:
+					return nil
+				case <-ctx.Done():
 					return ctx.Err()
 				}
-
-				return nil
 			},
 		},
 		opts...,

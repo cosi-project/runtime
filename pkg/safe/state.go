@@ -9,7 +9,7 @@ import (
 	"fmt"
 
 	"github.com/siderolabs/gen/channel"
-	"github.com/siderolabs/gen/slices"
+	"github.com/siderolabs/gen/xslices"
 
 	"github.com/cosi-project/runtime/pkg/controller/generic"
 	"github.com/cosi-project/runtime/pkg/resource"
@@ -162,13 +162,15 @@ func (wse *WrappedStateEvent[T]) Type() state.EventType {
 
 func watch[T resource.Resource](ctx context.Context, eventCh chan<- WrappedStateEvent[T], untypedEventCh <-chan state.Event) {
 	for {
-		event, ok := channel.RecvWithContext(ctx, untypedEventCh)
-		if !ok {
+		var event state.Event
+
+		select {
+		case <-ctx.Done():
 			return
+		case event = <-untypedEventCh:
 		}
 
-		ok = channel.SendWithContext(ctx, eventCh, WrappedStateEvent[T]{event: event})
-		if !ok {
+		if !channel.SendWithContext(ctx, eventCh, WrappedStateEvent[T]{event: event}) {
 			return
 		}
 	}
@@ -240,7 +242,7 @@ func (l *List[T]) FilterLabelQuery(opts ...resource.LabelQueryOption) List[T] {
 		opt(&labelQuery)
 	}
 
-	filteredList.Items = slices.Filter(l.list.Items,
+	filteredList.Items = xslices.Filter(l.list.Items,
 		func(r resource.Resource) bool {
 			return labelQuery.Matches(*r.Metadata().Labels())
 		},

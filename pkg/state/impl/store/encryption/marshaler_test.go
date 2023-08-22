@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"testing"
 
+	"github.com/siderolabs/gen/ensure"
 	"github.com/stretchr/testify/require"
 
 	"github.com/cosi-project/runtime/pkg/resource"
@@ -18,10 +19,7 @@ import (
 )
 
 func init() {
-	err := protobuf.RegisterResource(conformance.PathResourceType, &conformance.PathResource{})
-	if err != nil {
-		panic(err)
-	}
+	ensure.NoError(protobuf.RegisterResource(conformance.PathResourceType, &conformance.PathResource{}))
 }
 
 func TestMarshaler_Key(t *testing.T) {

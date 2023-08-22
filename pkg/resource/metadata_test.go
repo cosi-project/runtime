@@ -9,6 +9,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/siderolabs/gen/ensure"
 	"github.com/stretchr/testify/assert"
 	timestamppb "google.golang.org/protobuf/types/known/timestamppb"
 	"gopkg.in/yaml.v3"
@@ -186,14 +187,7 @@ finalizers:
 	assert.True(t, md.Equal(in))
 }
 
-var ts = func() time.Time {
-	t, err := time.Parse(time.RFC3339, "2021-06-23T19:22:29Z")
-	if err != nil {
-		panic(err)
-	}
-
-	return t
-}()
+var ts = ensure.Value(time.Parse(time.RFC3339, "2021-06-23T19:22:29Z"))
 
 type protoMd struct{}
 

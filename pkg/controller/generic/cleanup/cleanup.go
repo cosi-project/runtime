@@ -11,7 +11,6 @@ import (
 	"fmt"
 
 	"github.com/hashicorp/go-multierror"
-	"github.com/siderolabs/gen/channel"
 	"github.com/siderolabs/gen/xerrors"
 	"go.uber.org/zap"
 
@@ -86,9 +85,10 @@ func (ctrl *Controller[I]) Outputs() []controller.Output {
 // Run implements controller.Controller interface.
 func (ctrl *Controller[I]) Run(ctx context.Context, r controller.Runtime, logger *zap.Logger) error {
 	for {
-		_, ok := channel.RecvWithContext(ctx, r.EventCh())
-		if !ok {
+		select {
+		case <-ctx.Done():
 			return nil
+		case <-r.EventCh():
 		}
 
 		var (

@@ -6,8 +6,8 @@ package protobuf
 
 import (
 	"fmt"
+	"slices"
 
-	"github.com/siderolabs/gen/slices"
 	timestamppb "google.golang.org/protobuf/types/known/timestamppb"
 	"gopkg.in/yaml.v3"
 

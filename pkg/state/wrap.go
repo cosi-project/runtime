@@ -7,8 +7,6 @@ package state
 import (
 	"context"
 
-	"github.com/siderolabs/gen/channel"
-
 	"github.com/cosi-project/runtime/pkg/resource"
 )
 
@@ -85,9 +83,12 @@ func (state coreWrapper) WatchFor(ctx context.Context, pointer resource.Pointer,
 	}
 
 	for {
-		event, ok := channel.RecvWithContext(ctx, ch)
-		if !ok {
+		var event Event
+
+		select {
+		case <-ctx.Done():
 			return nil, ctx.Err()
+		case event = <-ch:
 		}
 
 		matches, err := condition.Matches(event)

@@ -9,6 +9,8 @@ import (
 	"testing"
 	"time"
 
+	"github.com/siderolabs/gen/ensure"
+	"github.com/siderolabs/gen/xtesting/must"
 	"github.com/stretchr/testify/require"
 	"google.golang.org/protobuf/proto"
 	"gopkg.in/yaml.v3"
@@ -154,7 +156,7 @@ func TestYAMLResourceEquality(t *testing.T) {
 		}),
 	)
 
-	out := must(yaml.Marshal(original.Spec()))(t)
+	out := must.Value(yaml.Marshal(original.Spec()))(t)
 
 	result := typed.NewResource[resourceDefinition, resourceDefinitionExtension](
 		resource.NewMetadata("default", "testResourceYAML", "bbb", resource.VersionUndefined),
@@ -167,8 +169,8 @@ func TestYAMLResourceEquality(t *testing.T) {
 	*result.Metadata() = *original.Metadata()
 
 	if !resource.Equal(original, result) {
-		t.Log("original ->", must(yaml.Marshal(original.Spec()))(t))
-		t.Log("result ->", must(yaml.Marshal(result.Spec()))(t))
+		t.Log("original ->", must.Value(yaml.Marshal(original.Spec()))(t))
+		t.Log("result ->", must.Value(yaml.Marshal(result.Spec()))(t))
 		t.FailNow()
 	}
 }
@@ -224,20 +226,7 @@ func ExampleResource_testInline() {
 	//     sensitivity: 0
 }
 
-func must[T any](val T, err error) func(*testing.T) T {
-	return func(t *testing.T) T {
-		require.NoError(t, err)
-
-		return val
-	}
-}
-
 func init() {
-	if err := protobuf.RegisterResource("testResource", &testResource{}); err != nil {
-		panic(err)
-	}
-
-	if err := protobuf.RegisterDynamic[ReflectSpec]("reflectResource", &reflectResource{}); err != nil {
-		panic(err)
-	}
+	ensure.NoError(protobuf.RegisterResource("testResource", &testResource{}))
+	ensure.NoError(protobuf.RegisterDynamic[ReflectSpec]("reflectResource", &reflectResource{}))
 }

@@ -4,29 +4,20 @@
 
 package compression
 
-import "github.com/klauspost/compress/zstd"
+import (
+	"github.com/klauspost/compress/zstd"
+	"github.com/siderolabs/gen/ensure"
+)
 
 // ZStd returns zstd compressor.
 func ZStd() Compressor {
-	encoder, err := zstd.NewWriter(
-		nil,
-		zstd.WithEncoderConcurrency(2),
-		zstd.WithWindowSize(zstd.MinWindowSize),
-	)
-	if err != nil {
-		// should never happen
-		panic(err)
-	}
-
-	decoder, err := zstd.NewReader(nil, zstd.WithDecoderConcurrency(0))
-	if err != nil {
-		// should never happen
-		panic(err)
-	}
-
 	return &zstdCompressor{
-		encoder: encoder,
-		decoder: decoder,
+		encoder: ensure.Value(zstd.NewWriter(
+			nil,
+			zstd.WithEncoderConcurrency(2),
+			zstd.WithWindowSize(zstd.MinWindowSize),
+		)),
+		decoder: ensure.Value(zstd.NewReader(nil, zstd.WithDecoderConcurrency(0))),
 	}
 }
 

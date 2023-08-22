@@ -7,12 +7,13 @@ package inmem
 import (
 	"context"
 	"fmt"
+	"slices"
 	"sort"
 	"sync"
 	"time"
 
 	"github.com/siderolabs/gen/channel"
-	"github.com/siderolabs/gen/slices"
+	"github.com/siderolabs/gen/xslices"
 
 	"github.com/cosi-project/runtime/pkg/resource"
 	"github.com/cosi-project/runtime/pkg/state"
@@ -459,7 +460,7 @@ func (collection *ResourceCollection) WatchAll(ctx context.Context, singleCh cha
 					return
 				}
 			case aggCh != nil:
-				events := slices.Map(bootstrapList, func(r resource.Resource) state.Event {
+				events := xslices.Map(bootstrapList, func(r resource.Resource) state.Event {
 					return state.Event{
 						Type:     state.Created,
 						Resource: r,

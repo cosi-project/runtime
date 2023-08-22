@@ -185,8 +185,11 @@ func (runtime *Runtime) Run(ctx context.Context) error {
 		return err
 	}
 
-	watchErr, ok := channel.RecvWithContext(ctx, runtime.watchErrors)
-	if ok {
+	var watchErr error
+
+	select {
+	case <-runtime.runCtx.Done():
+	case watchErr = <-runtime.watchErrors:
 		watchErr = fmt.Errorf("controller runtime watch error: %w", watchErr)
 	}
 
@@ -286,10 +289,13 @@ func (runtime *Runtime) processWatched() {
 // deduplicateWatchEvents deduplicates events from the watch channel into the map sent to the channel ch.
 func (runtime *Runtime) deduplicateWatchEvents(ch chan dedup, empty <-chan dedup) {
 	for {
+		var events []state.Event
+
 		// wait for an event
-		events, ok := channel.RecvWithContext(runtime.runCtx, runtime.watchCh)
-		if !ok {
+		select {
+		case <-runtime.runCtx.Done():
 			return
+		case events = <-runtime.watchCh:
 		}
 
 		// acquire a map
@@ -347,8 +353,11 @@ func (runtime *Runtime) deduplicateWatchEvents(ch chan dedup, empty <-chan dedup
 func (runtime *Runtime) deliverDeduplicatedEvents(ch chan dedup, empty chan<- dedup) {
 	for {
 		// wait for a map
-		m, ok := channel.RecvWithContext(runtime.runCtx, ch)
-		if !ok {
+		var m dedup
+
+		select {
+		case m = <-ch:
+		case <-runtime.runCtx.Done():
 			return
 		}
 

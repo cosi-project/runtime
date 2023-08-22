@@ -1,6 +1,6 @@
 # THIS FILE WAS AUTOMATICALLY GENERATED, PLEASE DO NOT EDIT.
 #
-# Generated on 2023-08-18T12:21:21Z by kres latest.
+# Generated on 2023-08-22T11:01:15Z by kres latest.
 
 # common variables
 
@@ -19,7 +19,7 @@ GRPC_GO_VERSION ?= 1.3.0
 GRPC_GATEWAY_VERSION ?= 2.16.2
 VTPROTOBUF_VERSION ?= 0.4.0
 DEEPCOPY_VERSION ?= v0.5.5
-GOLANGCILINT_VERSION ?= v1.54.0
+GOLANGCILINT_VERSION ?= v1.54.2
 GOFUMPT_VERSION ?= v0.5.0
 GO_VERSION ?= 1.21
 GOIMPORTS_VERSION ?= v0.12.0
@@ -40,6 +40,7 @@ PROGRESS ?= auto
 PUSH ?= false
 CI_ARGS ?=
 COMMON_ARGS = --file=Dockerfile
+COMMON_ARGS += --provenance=false
 COMMON_ARGS += --progress=$(PROGRESS)
 COMMON_ARGS += --platform=$(PLATFORM)
 COMMON_ARGS += --push=$(PUSH)

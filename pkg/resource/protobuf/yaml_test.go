@@ -7,6 +7,7 @@ package protobuf_test
 import (
 	"testing"
 
+	"github.com/siderolabs/gen/ensure"
 	"github.com/siderolabs/go-pointer"
 	"github.com/stretchr/testify/require"
 	"gopkg.in/yaml.v3"
@@ -19,10 +20,7 @@ import (
 )
 
 func init() {
-	err := protobuf.RegisterResource(TestType, &TestResource{})
-	if err != nil {
-		panic(err)
-	}
+	ensure.NoError(protobuf.RegisterResource(TestType, &TestResource{}))
 }
 
 // TestNamespaceName is the namespace of Test resource.

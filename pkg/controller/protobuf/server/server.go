@@ -183,9 +183,10 @@ func (runtime *Runtime) getBridge(ctx context.Context, controllerToken string) (
 	}
 
 	// wait for the adapter to be connected
-	_, ok = channel.RecvWithContext(ctx, bridge.adapterWait)
-	if !ok && ctx.Err() != nil {
+	select {
+	case <-ctx.Done():
 		return nil, ctx.Err()
+	case <-bridge.adapterWait:
 	}
 
 	return bridge, nil
@@ -206,9 +207,10 @@ func (runtime *Runtime) ReconcileEvents(req *v1alpha1.ReconcileEventsRequest, sr
 	}
 
 	for {
-		_, ok := channel.RecvWithContext(srv.Context(), bridge.adapter.EventCh())
-		if !ok {
+		select {
+		case <-srv.Context().Done():
 			return srv.Context().Err()
+		case <-bridge.adapter.EventCh():
 		}
 
 		if err = srv.Send(&v1alpha1.ReconcileEventsResponse{}); err != nil {

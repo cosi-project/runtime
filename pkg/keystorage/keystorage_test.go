@@ -10,6 +10,8 @@ import (
 	"testing"
 
 	"github.com/siderolabs/gen/xerrors"
+	"github.com/siderolabs/gen/xtesting"
+	"github.com/siderolabs/gen/xtesting/check"
 	"github.com/stretchr/testify/require"
 
 	"github.com/cosi-project/runtime/pkg/keystorage"
@@ -38,7 +40,7 @@ func TestKeyStorage_Initialize(t *testing.T) {
 	}
 
 	tests := map[string]struct {
-		testErr func(*testing.T, error)
+		testErr check.Check
 		args    args
 	}{
 		"empty master key": {
@@ -47,7 +49,7 @@ func TestKeyStorage_Initialize(t *testing.T) {
 				slotID:        slotID,
 				slotPublicKey: "slot-public-key",
 			},
-			testErr: regexpTest("master key can only be 32 bytes long"),
+			testErr: check.ErrorContains("master key can only be 32 bytes long"),
 		},
 		"empty slot id": {
 			args: args{
@@ -55,7 +57,7 @@ func TestKeyStorage_Initialize(t *testing.T) {
 				slotID:        "",
 				slotPublicKey: "slot-public-key",
 			},
-			testErr: regexpTest("slot id cannot be empty"),
+			testErr: check.ErrorContains("slot id cannot be empty"),
 		},
 		"empty slot public key": {
 			args: args{
@@ -63,7 +65,7 @@ func TestKeyStorage_Initialize(t *testing.T) {
 				slotID:        slotID,
 				slotPublicKey: "",
 			},
-			testErr: regexpTest("slot public key cannot be empty"),
+			testErr: check.ErrorContains("slot public key cannot be empty"),
 		},
 		"small public key": {
 			args: args{
@@ -71,7 +73,7 @@ func TestKeyStorage_Initialize(t *testing.T) {
 				slotID:        slotID,
 				slotPublicKey: publicKey[:32],
 			},
-			testErr: tagTest[keystorage.KeyEncryptionFailureTag](),
+			testErr: check.ErrorTagIs[keystorage.KeyEncryptionFailureTag](),
 		},
 		"proper key": {
 			args: args{
@@ -79,6 +81,7 @@ func TestKeyStorage_Initialize(t *testing.T) {
 				slotID:        slotID,
 				slotPublicKey: publicKey,
 			},
+			testErr: check.NoError(),
 		},
 	}
 
@@ -90,9 +93,7 @@ func TestKeyStorage_Initialize(t *testing.T) {
 
 			var ks keystorage.KeyStorage
 
-			if err := ks.Initialize(tt.args.masterKey, tt.args.slotID, tt.args.slotPublicKey); err != nil || tt.testErr != nil {
-				tt.testErr(t, err)
-			}
+			tt.testErr(t, ks.Initialize(tt.args.masterKey, tt.args.slotID, tt.args.slotPublicKey))
 		})
 	}
 }
@@ -141,16 +142,16 @@ func TestKeyStorage_DeleteMasterKeySlot(t *testing.T) {
 	// execution order is important here
 	tests := []struct {
 		name    string
-		testErr func(*testing.T, error)
+		testErr func(xtesting.T, error)
 		args    args
 	}{
 		{
-			name:    "non-existing slot",
-			testErr: tagTest[keystorage.SlotNotFoundTag](),
+			name: "non-existing slot",
 			args: args{
 				slotID:         "slot-id-3",
 				slotPrivateKey: privateKey,
 			},
+			testErr: check.ErrorTagIs[keystorage.SlotNotFoundTag](),
 		},
 		{
 			name: "existing slot",
@@ -158,6 +159,7 @@ func TestKeyStorage_DeleteMasterKeySlot(t *testing.T) {
 				slotID:         "slot-id-2",
 				slotPrivateKey: privateKey,
 			},
+			testErr: check.NoError(),
 		},
 		{
 			name: "proper last slot",
@@ -165,7 +167,7 @@ func TestKeyStorage_DeleteMasterKeySlot(t *testing.T) {
 				slotID:         "slot-id",
 				slotPrivateKey: privateKey,
 			},
-			testErr: tagTest[keystorage.LastKeyTag](),
+			testErr: check.ErrorTagIs[keystorage.LastKeyTag](),
 		},
 	}
 
@@ -178,9 +180,7 @@ func TestKeyStorage_DeleteMasterKeySlot(t *testing.T) {
 
 	for _, tt := range tests {
 		if !t.Run(tt.name, func(t *testing.T) {
-			if err := ks.DeleteKeySlot(tt.args.slotID, tt.args.slotPrivateKey); err != nil || tt.testErr != nil {
-				tt.testErr(t, err)
-			}
+			tt.testErr(t, ks.DeleteKeySlot(tt.args.slotID, tt.args.slotPrivateKey))
 		}) {
 			t.FailNow()
 		}
@@ -239,7 +239,7 @@ func TestKeyStorage_Set(t *testing.T) {
 	}
 
 	tests := map[string]struct {
-		testErr func(*testing.T, error)
+		testErr check.Check
 		args    args
 	}{
 		"empty slot id": {
@@ -248,7 +248,7 @@ func TestKeyStorage_Set(t *testing.T) {
 				slotPublicKey: "slot-public-key",
 				newSlotID:     "new-slot-id",
 			},
-			testErr: regexpTest("slot id cannot be empty"),
+			testErr: check.ErrorContains("slot id cannot be empty"),
 		},
 		"empty new slot id": {
 			args: args{
@@ -256,7 +256,7 @@ func TestKeyStorage_Set(t *testing.T) {
 				slotPublicKey: "slot-public-key",
 				newSlotID:     "",
 			},
-			testErr: regexpTest("slot id cannot be empty"),
+			testErr: check.ErrorContains("slot id cannot be empty"),
 		},
 		"empty slot public key": {
 			args: args{
@@ -264,7 +264,7 @@ func TestKeyStorage_Set(t *testing.T) {
 				slotPublicKey: "",
 				newSlotID:     "new-slot-id",
 			},
-			testErr: regexpTest("slot public key cannot be empty"),
+			testErr: check.ErrorContains("slot public key cannot be empty"),
 		},
 		"small public key": {
 			args: args{
@@ -272,7 +272,7 @@ func TestKeyStorage_Set(t *testing.T) {
 				slotPublicKey: publicKey[:32],
 				newSlotID:     "new-slot-id",
 			},
-			testErr: tagTest[keystorage.KeyDecryptionFailureTag](),
+			testErr: check.ErrorTagIs[keystorage.KeyDecryptionFailureTag](),
 		},
 		"proper key": {
 			args: args{
@@ -280,6 +280,7 @@ func TestKeyStorage_Set(t *testing.T) {
 				slotPublicKey: publicKey,
 				newSlotID:     "new-slot-id",
 			},
+			testErr: check.NoError(),
 		},
 	}
 
@@ -293,10 +294,7 @@ func TestKeyStorage_Set(t *testing.T) {
 
 			require.NoError(t, ks.Initialize([]byte(masterKey), slotID, publicKey))
 
-			err := ks.AddKeySlot(tt.args.newSlotID, tt.args.slotPublicKey, tt.args.slotID, tt.args.slotPublicKey)
-			if err != nil || tt.testErr != nil {
-				tt.testErr(t, err)
-			}
+			tt.testErr(t, ks.AddKeySlot(tt.args.newSlotID, tt.args.slotPublicKey, tt.args.slotID, tt.args.slotPublicKey))
 		})
 	}
 }
@@ -314,19 +312,4 @@ func setSlice[T any](s []T, i int, v ...T) {
 	}
 
 	copy(s[i:i+len(v)], v)
-}
-
-func regexpTest(re string) func(t *testing.T, err error) {
-	return func(t *testing.T, err error) {
-		require.Error(t, err)
-		require.NotZero(t, re)
-		require.Regexp(t, re, err.Error())
-	}
-}
-
-func tagTest[T xerrors.Tag]() func(t *testing.T, err error) {
-	return func(t *testing.T, err error) {
-		require.Error(t, err)
-		require.True(t, xerrors.TagIs[T](err))
-	}
 }

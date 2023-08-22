@@ -7,6 +7,8 @@ package meta
 import (
 	"fmt"
 
+	"github.com/siderolabs/gen/ensure"
+
 	"github.com/cosi-project/runtime/pkg/resource"
 	"github.com/cosi-project/runtime/pkg/resource/meta/spec"
 	"github.com/cosi-project/runtime/pkg/resource/protobuf"
@@ -71,7 +73,5 @@ type ResourceWithRD interface {
 }
 
 func init() {
-	if err := protobuf.RegisterResource(ResourceDefinitionType, &ResourceDefinition{}); err != nil {
-		panic(err)
-	}
+	ensure.NoError(protobuf.RegisterResource(ResourceDefinitionType, &ResourceDefinition{}))
 }
