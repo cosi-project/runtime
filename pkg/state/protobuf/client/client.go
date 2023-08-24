@@ -80,22 +80,22 @@ func (adapter *Adapter) List(ctx context.Context, resourceKind resource.Kind, op
 		o(&opts)
 	}
 
-	var labelQuery *v1alpha1.LabelQuery
+	labelQueries := make([]*v1alpha1.LabelQuery, 0, len(opts.LabelQueries))
 
-	if len(opts.LabelQuery.Terms) > 0 {
-		var err error
-
-		labelQuery, err = transformLabelQuery(opts.LabelQuery)
+	for _, query := range opts.LabelQueries {
+		labelQuery, err := transformLabelQuery(query)
 		if err != nil {
 			return resource.List{}, err
 		}
+
+		labelQueries = append(labelQueries, labelQuery)
 	}
 
 	cli, err := adapter.client.List(ctx, &v1alpha1.ListRequest{
 		Namespace: resourceKind.Namespace(),
 		Type:      resourceKind.Type(),
 		Options: &v1alpha1.ListOptions{
-			LabelQuery: labelQuery,
+			LabelQuery: labelQueries,
 			IdQuery:    transformIDQuery(opts.IDQuery),
 		},
 	})
@@ -317,15 +317,15 @@ func (adapter *Adapter) WatchKind(ctx context.Context, resourceKind resource.Kin
 		o(&opts)
 	}
 
-	var labelQuery *v1alpha1.LabelQuery
+	labelQueries := make([]*v1alpha1.LabelQuery, 0, len(opts.LabelQueries))
 
-	if len(opts.LabelQuery.Terms) > 0 {
-		var err error
-
-		labelQuery, err = transformLabelQuery(opts.LabelQuery)
+	for _, query := range opts.LabelQueries {
+		labelQuery, err := transformLabelQuery(query)
 		if err != nil {
 			return err
 		}
+
+		labelQueries = append(labelQueries, labelQuery)
 	}
 
 	cli, err := adapter.client.Watch(ctx, &v1alpha1.WatchRequest{
@@ -334,7 +334,7 @@ func (adapter *Adapter) WatchKind(ctx context.Context, resourceKind resource.Kin
 		Options: &v1alpha1.WatchOptions{
 			BootstrapContents: opts.BootstrapContents,
 			TailEvents:        int32(opts.TailEvents),
-			LabelQuery:        labelQuery,
+			LabelQuery:        labelQueries,
 			IdQuery:           transformIDQuery(opts.IDQuery),
 		},
 		ApiVersion: 1,
@@ -362,15 +362,15 @@ func (adapter *Adapter) WatchKindAggregated(ctx context.Context, resourceKind re
 		o(&opts)
 	}
 
-	var labelQuery *v1alpha1.LabelQuery
+	labelQueries := make([]*v1alpha1.LabelQuery, 0, len(opts.LabelQueries))
 
-	if len(opts.LabelQuery.Terms) > 0 {
-		var err error
-
-		labelQuery, err = transformLabelQuery(opts.LabelQuery)
+	for _, query := range opts.LabelQueries {
+		labelQuery, err := transformLabelQuery(query)
 		if err != nil {
 			return err
 		}
+
+		labelQueries = append(labelQueries, labelQuery)
 	}
 
 	cli, err := adapter.client.Watch(ctx, &v1alpha1.WatchRequest{
@@ -379,7 +379,7 @@ func (adapter *Adapter) WatchKindAggregated(ctx context.Context, resourceKind re
 		Options: &v1alpha1.WatchOptions{
 			BootstrapContents: opts.BootstrapContents,
 			TailEvents:        int32(opts.TailEvents),
-			LabelQuery:        labelQuery,
+			LabelQuery:        labelQueries,
 			IdQuery:           transformIDQuery(opts.IDQuery),
 			Aggregated:        true,
 		},

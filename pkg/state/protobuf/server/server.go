@@ -65,15 +65,13 @@ func (server *State) List(req *v1alpha1.ListRequest, srv v1alpha1.State_ListServ
 	var opts []state.ListOption
 
 	if req.GetOptions() != nil {
-		if req.GetOptions().GetLabelQuery() != nil {
-			if req.Options.GetLabelQuery() != nil {
-				labelOpts, err := ConvertLabelQuery(req.Options.GetLabelQuery().GetTerms())
-				if err != nil {
-					return err
-				}
-
-				opts = append(opts, state.WithLabelQuery(labelOpts...))
+		for _, query := range req.GetOptions().GetLabelQuery() {
+			labelOpts, err := ConvertLabelQuery(query.GetTerms())
+			if err != nil {
+				return err
 			}
+
+			opts = append(opts, state.WithLabelQuery(labelOpts...))
 		}
 
 		if req.Options.GetIdQuery() != nil {
@@ -274,10 +272,10 @@ func (server *State) Watch(req *v1alpha1.WatchRequest, srv v1alpha1.State_WatchS
 			opts = append(opts, state.WithKindTailEvents(int(req.Options.TailEvents)))
 		}
 
-		if req.Options.GetLabelQuery() != nil {
+		for _, query := range req.GetOptions().GetLabelQuery() {
 			var labelOpts []resource.LabelQueryOption
 
-			labelOpts, err = ConvertLabelQuery(req.Options.GetLabelQuery().GetTerms())
+			labelOpts, err = ConvertLabelQuery(query.GetTerms())
 			if err != nil {
 				return err
 			}

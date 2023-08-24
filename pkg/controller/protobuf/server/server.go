@@ -286,10 +286,10 @@ func (runtime *Runtime) List(req *v1alpha1.RuntimeListRequest, srv v1alpha1.Cont
 	var opts []state.ListOption
 
 	if req.GetOptions() != nil {
-		if req.GetOptions().GetLabelQuery() != nil {
+		for _, query := range req.GetOptions().GetLabelQuery() {
 			var queryOpts []resource.LabelQueryOption
 
-			queryOpts, err = server.ConvertLabelQuery(req.GetOptions().GetLabelQuery().GetTerms())
+			queryOpts, err = server.ConvertLabelQuery(query.GetTerms())
 			if err != nil {
 				return err
 			}

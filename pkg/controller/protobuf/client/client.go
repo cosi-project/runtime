@@ -383,14 +383,14 @@ func (ctrlAdapter *controllerAdapter) List(ctx context.Context, resourceKind res
 		opt(&options)
 	}
 
-	var labelQuery *v1alpha1.LabelQuery
+	labelQueries := make([]*v1alpha1.LabelQuery, 0, len(options.LabelQueries))
 
-	if len(options.LabelQuery.Terms) > 0 {
-		labelQuery = &v1alpha1.LabelQuery{
-			Terms: make([]*v1alpha1.LabelTerm, 0, len(options.LabelQuery.Terms)),
+	for _, query := range options.LabelQueries {
+		labelQuery := &v1alpha1.LabelQuery{
+			Terms: make([]*v1alpha1.LabelTerm, 0, len(query.Terms)),
 		}
 
-		for _, term := range options.LabelQuery.Terms {
+		for _, term := range query.Terms {
 			switch term.Op {
 			case resource.LabelOpEqual:
 				labelQuery.Terms = append(labelQuery.Terms, &v1alpha1.LabelTerm{
@@ -444,6 +444,8 @@ func (ctrlAdapter *controllerAdapter) List(ctx context.Context, resourceKind res
 				return resource.List{}, fmt.Errorf("unsupporter label term %q", term.Op)
 			}
 		}
+
+		labelQueries = append(labelQueries, labelQuery)
 	}
 
 	cli, err := ctrlAdapter.adapter.client.List(ctx, &v1alpha1.RuntimeListRequest{
@@ -452,7 +454,7 @@ func (ctrlAdapter *controllerAdapter) List(ctx context.Context, resourceKind res
 		Namespace: resourceKind.Namespace(),
 		Type:      resourceKind.Type(),
 		Options: &v1alpha1.RuntimeListOptions{
-			LabelQuery: labelQuery,
+			LabelQuery: labelQueries,
 		},
 	})
 	if err != nil {

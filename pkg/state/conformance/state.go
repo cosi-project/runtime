@@ -405,6 +405,7 @@ func (suite *StateSuite) TestWatchKindAggregatedWithLabels() {
 	suite.testWatchKindWithLabels(true)
 }
 
+//nolint:gocyclo,cyclop
 func (suite *StateSuite) testWatchKindWithLabels(useAggregated bool) {
 	ns := suite.getNamespace()
 
@@ -430,6 +431,7 @@ func (suite *StateSuite) testWatchKindWithLabels(useAggregated bool) {
 
 	chLabel1 := make(chan state.Event)
 	chCommonApp := make(chan state.Event)
+	chOrLabel := make(chan state.Event)
 
 	// watch with label == label1
 	suite.Require().NoError(watchAggregateAdapter(
@@ -453,6 +455,18 @@ func (suite *StateSuite) testWatchKindWithLabels(useAggregated bool) {
 		state.WatchWithLabelQuery(resource.LabelExists(labelCommon)),
 	))
 
+	// watch with label == label2 || label == label3
+	suite.Require().NoError(watchAggregateAdapter(
+		ctx,
+		useAggregated,
+		suite.State,
+		path1.Metadata(),
+		chOrLabel,
+		state.WithBootstrapContents(true),
+		state.WatchWithLabelQuery(resource.LabelEqual(labelLabel, "label2")),
+		state.WatchWithLabelQuery(resource.LabelEqual(labelLabel, "label3")),
+	))
+
 	suite.Require().NoError(suite.State.Create(ctx, path2))
 	suite.Require().NoError(suite.State.Create(ctx, path3))
 
@@ -474,7 +488,7 @@ func (suite *StateSuite) testWatchKindWithLabels(useAggregated bool) {
 		suite.FailNow("timed out waiting for event")
 	}
 
-	for _, ch := range []chan state.Event{chLabel1, chCommonApp} {
+	for _, ch := range []chan state.Event{chLabel1, chCommonApp, chOrLabel} {
 		select {
 		case event := <-ch:
 			suite.Assert().Equal(state.Bootstrapped, event.Type)
@@ -489,6 +503,16 @@ func (suite *StateSuite) testWatchKindWithLabels(useAggregated bool) {
 		suite.Assert().Equal(resource.String(path2), resource.String(event.Resource))
 	case <-time.After(time.Second):
 		suite.FailNow("timed out waiting for event")
+	}
+
+	for _, res := range []*PathResource{path2, path3} {
+		select {
+		case event := <-chOrLabel:
+			suite.Require().Equal(state.Created, event.Type)
+			suite.Assert().Equal(resource.String(res), resource.String(event.Resource))
+		case <-time.After(time.Second):
+			suite.FailNow("timed out waiting for event")
+		}
 	}
 
 	// modify path3 so that it matches common
@@ -1024,6 +1048,16 @@ func (suite *StateSuite) TestLabels() {
 
 	suite.Require().Equal(1, list.Len())
 	suite.Assert().True(resourceEqualIgnoreVersion(path1, list.Get(0)))
+
+	list, err = safe.StateList[*PathResource](ctx, suite.State, path1.Metadata(),
+		state.WithLabelQuery(resource.LabelEqual("app", "app2")),
+		state.WithLabelQuery(resource.LabelEqual("app", "app3")),
+	)
+	suite.Require().NoError(err)
+
+	suite.Require().Equal(2, list.Len())
+	suite.Assert().True(resourceEqualIgnoreVersion(path2, list.Get(0)))
+	suite.Assert().True(resourceEqualIgnoreVersion(path3, list.Get(1)))
 }
 
 // TestIDQuery verifies ID query for List and WatchKind operations.

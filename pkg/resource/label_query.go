@@ -4,7 +4,9 @@
 
 package resource
 
-import "slices"
+import (
+	"slices"
+)
 
 // LabelOp is a match operation on labels.
 type LabelOp int
@@ -33,6 +35,24 @@ type LabelTerm struct {
 	Value  []string
 	Op     LabelOp
 	Invert bool
+}
+
+// LabelQueries is the list of label queries.
+type LabelQueries []LabelQuery
+
+// Matches iterates through the list of label queries and matches the labels using OR condition.
+func (queries LabelQueries) Matches(labels Labels) bool {
+	if len(queries) == 0 {
+		return true
+	}
+
+	for _, query := range queries {
+		if query.Matches(labels) {
+			return true
+		}
+	}
+
+	return false
 }
 
 // LabelQuery is a set of LabelTerms applied with AND semantics.

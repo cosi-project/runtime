@@ -106,7 +106,7 @@ func (collection *ResourceCollection) List(options *state.ListOptions) (resource
 			continue
 		}
 
-		if !options.LabelQuery.Matches(*res.Metadata().Labels()) {
+		if !options.LabelQueries.Matches(*res.Metadata().Labels()) {
 			continue
 		}
 
@@ -396,7 +396,7 @@ func (collection *ResourceCollection) WatchAll(ctx context.Context, singleCh cha
 	}
 
 	matches := func(res resource.Resource) bool {
-		return options.IDQuery.Matches(*res.Metadata()) && options.LabelQuery.Matches(*res.Metadata().Labels())
+		return options.IDQuery.Matches(*res.Metadata()) && options.LabelQueries.Matches(*res.Metadata().Labels())
 	}
 
 	collection.mu.Lock()

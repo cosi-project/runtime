@@ -26,7 +26,7 @@ func WithGetUnmarshalOptions(opt ...UnmarshalOption) GetOption {
 // ListOptions for the CoreState.List function.
 type ListOptions struct {
 	IDQuery          resource.IDQuery
-	LabelQuery       resource.LabelQuery
+	LabelQueries     resource.LabelQueries
 	UnmarshalOptions UnmarshalOptions
 }
 
@@ -36,9 +36,13 @@ type ListOption func(*ListOptions)
 // WithLabelQuery appends a label query to the list options.
 func WithLabelQuery(opt ...resource.LabelQueryOption) ListOption {
 	return func(opts *ListOptions) {
+		var query resource.LabelQuery
+
 		for _, o := range opt {
-			o(&opts.LabelQuery)
+			o(&query)
 		}
+
+		opts.LabelQueries = append(opts.LabelQueries, query)
 	}
 }
 
@@ -176,7 +180,7 @@ func WithWatchUnmarshalOptions(opt ...UnmarshalOption) WatchOption {
 // WatchKindOptions for the CoreState.WatchKind function.
 type WatchKindOptions struct {
 	IDQuery           resource.IDQuery
-	LabelQuery        resource.LabelQuery
+	LabelQueries      resource.LabelQueries
 	UnmarshalOptions  UnmarshalOptions
 	BootstrapContents bool
 	TailEvents        int
@@ -211,9 +215,13 @@ func WithWatchKindUnmarshalOptions(opt ...UnmarshalOption) WatchKindOption {
 // WatchWithLabelQuery appends a label query to the watch options.
 func WatchWithLabelQuery(opt ...resource.LabelQueryOption) WatchKindOption {
 	return func(opts *WatchKindOptions) {
+		var query resource.LabelQuery
+
 		for _, o := range opt {
-			o(&opts.LabelQuery)
+			o(&query)
 		}
+
+		opts.LabelQueries = append(opts.LabelQueries, query)
 	}
 }
 

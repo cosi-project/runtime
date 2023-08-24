@@ -328,8 +328,13 @@ func (m *RuntimeListOptions) CloneVT() *RuntimeListOptions {
 	if m == nil {
 		return (*RuntimeListOptions)(nil)
 	}
-	r := &RuntimeListOptions{
-		LabelQuery: m.LabelQuery.CloneVT(),
+	r := &RuntimeListOptions{}
+	if rhs := m.LabelQuery; rhs != nil {
+		tmpContainer := make([]*LabelQuery, len(rhs))
+		for k, v := range rhs {
+			tmpContainer[k] = v.CloneVT()
+		}
+		r.LabelQuery = tmpContainer
 	}
 	if len(m.unknownFields) > 0 {
 		r.unknownFields = make([]byte, len(m.unknownFields))
@@ -1054,8 +1059,22 @@ func (this *RuntimeListOptions) EqualVT(that *RuntimeListOptions) bool {
 	} else if this == nil || that == nil {
 		return false
 	}
-	if !this.LabelQuery.EqualVT(that.LabelQuery) {
+	if len(this.LabelQuery) != len(that.LabelQuery) {
 		return false
+	}
+	for i, vx := range this.LabelQuery {
+		vy := that.LabelQuery[i]
+		if p, q := vx, vy; p != q {
+			if p == nil {
+				p = &LabelQuery{}
+			}
+			if q == nil {
+				q = &LabelQuery{}
+			}
+			if !p.EqualVT(q) {
+				return false
+			}
+		}
 	}
 	return string(this.unknownFields) == string(that.unknownFields)
 }
@@ -2189,15 +2208,17 @@ func (m *RuntimeListOptions) MarshalToSizedBufferVT(dAtA []byte) (int, error) {
 		i -= len(m.unknownFields)
 		copy(dAtA[i:], m.unknownFields)
 	}
-	if m.LabelQuery != nil {
-		size, err := m.LabelQuery.MarshalToSizedBufferVT(dAtA[:i])
-		if err != nil {
-			return 0, err
+	if len(m.LabelQuery) > 0 {
+		for iNdEx := len(m.LabelQuery) - 1; iNdEx >= 0; iNdEx-- {
+			size, err := m.LabelQuery[iNdEx].MarshalToSizedBufferVT(dAtA[:i])
+			if err != nil {
+				return 0, err
+			}
+			i -= size
+			i = encodeVarint(dAtA, i, uint64(size))
+			i--
+			dAtA[i] = 0xa
 		}
-		i -= size
-		i = encodeVarint(dAtA, i, uint64(size))
-		i--
-		dAtA[i] = 0xa
 	}
 	return len(dAtA) - i, nil
 }
@@ -3352,9 +3373,11 @@ func (m *RuntimeListOptions) SizeVT() (n int) {
 	}
 	var l int
 	_ = l
-	if m.LabelQuery != nil {
-		l = m.LabelQuery.SizeVT()
-		n += 1 + l + sov(uint64(l))
+	if len(m.LabelQuery) > 0 {
+		for _, e := range m.LabelQuery {
+			l = e.SizeVT()
+			n += 1 + l + sov(uint64(l))
+		}
 	}
 	n += len(m.unknownFields)
 	return n
@@ -5166,10 +5189,8 @@ func (m *RuntimeListOptions) UnmarshalVT(dAtA []byte) error {
 			if postIndex > l {
 				return io.ErrUnexpectedEOF
 			}
-			if m.LabelQuery == nil {
-				m.LabelQuery = &LabelQuery{}
-			}
-			if err := m.LabelQuery.UnmarshalVT(dAtA[iNdEx:postIndex]); err != nil {
+			m.LabelQuery = append(m.LabelQuery, &LabelQuery{})
+			if err := m.LabelQuery[len(m.LabelQuery)-1].UnmarshalVT(dAtA[iNdEx:postIndex]); err != nil {
 				return err
 			}
 			iNdEx = postIndex

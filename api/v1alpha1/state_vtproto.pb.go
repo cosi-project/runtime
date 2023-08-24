@@ -123,8 +123,14 @@ func (m *ListOptions) CloneVT() *ListOptions {
 		return (*ListOptions)(nil)
 	}
 	r := &ListOptions{
-		LabelQuery: m.LabelQuery.CloneVT(),
-		IdQuery:    m.IdQuery.CloneVT(),
+		IdQuery: m.IdQuery.CloneVT(),
+	}
+	if rhs := m.LabelQuery; rhs != nil {
+		tmpContainer := make([]*LabelQuery, len(rhs))
+		for k, v := range rhs {
+			tmpContainer[k] = v.CloneVT()
+		}
+		r.LabelQuery = tmpContainer
 	}
 	if len(m.unknownFields) > 0 {
 		r.unknownFields = make([]byte, len(m.unknownFields))
@@ -356,9 +362,15 @@ func (m *WatchOptions) CloneVT() *WatchOptions {
 	r := &WatchOptions{
 		BootstrapContents: m.BootstrapContents,
 		TailEvents:        m.TailEvents,
-		LabelQuery:        m.LabelQuery.CloneVT(),
 		IdQuery:           m.IdQuery.CloneVT(),
 		Aggregated:        m.Aggregated,
+	}
+	if rhs := m.LabelQuery; rhs != nil {
+		tmpContainer := make([]*LabelQuery, len(rhs))
+		for k, v := range rhs {
+			tmpContainer[k] = v.CloneVT()
+		}
+		r.LabelQuery = tmpContainer
 	}
 	if len(m.unknownFields) > 0 {
 		r.unknownFields = make([]byte, len(m.unknownFields))
@@ -516,8 +528,22 @@ func (this *ListOptions) EqualVT(that *ListOptions) bool {
 	} else if this == nil || that == nil {
 		return false
 	}
-	if !this.LabelQuery.EqualVT(that.LabelQuery) {
+	if len(this.LabelQuery) != len(that.LabelQuery) {
 		return false
+	}
+	for i, vx := range this.LabelQuery {
+		vy := that.LabelQuery[i]
+		if p, q := vx, vy; p != q {
+			if p == nil {
+				p = &LabelQuery{}
+			}
+			if q == nil {
+				q = &LabelQuery{}
+			}
+			if !p.EqualVT(q) {
+				return false
+			}
+		}
 	}
 	if !this.IdQuery.EqualVT(that.IdQuery) {
 		return false
@@ -780,8 +806,22 @@ func (this *WatchOptions) EqualVT(that *WatchOptions) bool {
 	if this.TailEvents != that.TailEvents {
 		return false
 	}
-	if !this.LabelQuery.EqualVT(that.LabelQuery) {
+	if len(this.LabelQuery) != len(that.LabelQuery) {
 		return false
+	}
+	for i, vx := range this.LabelQuery {
+		vy := that.LabelQuery[i]
+		if p, q := vx, vy; p != q {
+			if p == nil {
+				p = &LabelQuery{}
+			}
+			if q == nil {
+				q = &LabelQuery{}
+			}
+			if !p.EqualVT(q) {
+				return false
+			}
+		}
 	}
 	if !this.IdQuery.EqualVT(that.IdQuery) {
 		return false
@@ -1134,15 +1174,17 @@ func (m *ListOptions) MarshalToSizedBufferVT(dAtA []byte) (int, error) {
 		i--
 		dAtA[i] = 0x12
 	}
-	if m.LabelQuery != nil {
-		size, err := m.LabelQuery.MarshalToSizedBufferVT(dAtA[:i])
-		if err != nil {
-			return 0, err
+	if len(m.LabelQuery) > 0 {
+		for iNdEx := len(m.LabelQuery) - 1; iNdEx >= 0; iNdEx-- {
+			size, err := m.LabelQuery[iNdEx].MarshalToSizedBufferVT(dAtA[:i])
+			if err != nil {
+				return 0, err
+			}
+			i -= size
+			i = encodeVarint(dAtA, i, uint64(size))
+			i--
+			dAtA[i] = 0xa
 		}
-		i -= size
-		i = encodeVarint(dAtA, i, uint64(size))
-		i--
-		dAtA[i] = 0xa
 	}
 	return len(dAtA) - i, nil
 }
@@ -1725,15 +1767,17 @@ func (m *WatchOptions) MarshalToSizedBufferVT(dAtA []byte) (int, error) {
 		i--
 		dAtA[i] = 0x22
 	}
-	if m.LabelQuery != nil {
-		size, err := m.LabelQuery.MarshalToSizedBufferVT(dAtA[:i])
-		if err != nil {
-			return 0, err
+	if len(m.LabelQuery) > 0 {
+		for iNdEx := len(m.LabelQuery) - 1; iNdEx >= 0; iNdEx-- {
+			size, err := m.LabelQuery[iNdEx].MarshalToSizedBufferVT(dAtA[:i])
+			if err != nil {
+				return 0, err
+			}
+			i -= size
+			i = encodeVarint(dAtA, i, uint64(size))
+			i--
+			dAtA[i] = 0x1a
 		}
-		i -= size
-		i = encodeVarint(dAtA, i, uint64(size))
-		i--
-		dAtA[i] = 0x1a
 	}
 	if m.TailEvents != 0 {
 		i = encodeVarint(dAtA, i, uint64(m.TailEvents))
@@ -1901,9 +1945,11 @@ func (m *ListOptions) SizeVT() (n int) {
 	}
 	var l int
 	_ = l
-	if m.LabelQuery != nil {
-		l = m.LabelQuery.SizeVT()
-		n += 1 + l + sov(uint64(l))
+	if len(m.LabelQuery) > 0 {
+		for _, e := range m.LabelQuery {
+			l = e.SizeVT()
+			n += 1 + l + sov(uint64(l))
+		}
 	}
 	if m.IdQuery != nil {
 		l = m.IdQuery.SizeVT()
@@ -2114,9 +2160,11 @@ func (m *WatchOptions) SizeVT() (n int) {
 	if m.TailEvents != 0 {
 		n += 1 + sov(uint64(m.TailEvents))
 	}
-	if m.LabelQuery != nil {
-		l = m.LabelQuery.SizeVT()
-		n += 1 + l + sov(uint64(l))
+	if len(m.LabelQuery) > 0 {
+		for _, e := range m.LabelQuery {
+			l = e.SizeVT()
+			n += 1 + l + sov(uint64(l))
+		}
 	}
 	if m.IdQuery != nil {
 		l = m.IdQuery.SizeVT()
@@ -2850,10 +2898,8 @@ func (m *ListOptions) UnmarshalVT(dAtA []byte) error {
 			if postIndex > l {
 				return io.ErrUnexpectedEOF
 			}
-			if m.LabelQuery == nil {
-				m.LabelQuery = &LabelQuery{}
-			}
-			if err := m.LabelQuery.UnmarshalVT(dAtA[iNdEx:postIndex]); err != nil {
+			m.LabelQuery = append(m.LabelQuery, &LabelQuery{})
+			if err := m.LabelQuery[len(m.LabelQuery)-1].UnmarshalVT(dAtA[iNdEx:postIndex]); err != nil {
 				return err
 			}
 			iNdEx = postIndex
@@ -4238,10 +4284,8 @@ func (m *WatchOptions) UnmarshalVT(dAtA []byte) error {
 			if postIndex > l {
 				return io.ErrUnexpectedEOF
 			}
-			if m.LabelQuery == nil {
-				m.LabelQuery = &LabelQuery{}
-			}
-			if err := m.LabelQuery.UnmarshalVT(dAtA[iNdEx:postIndex]); err != nil {
+			m.LabelQuery = append(m.LabelQuery, &LabelQuery{})
+			if err := m.LabelQuery[len(m.LabelQuery)-1].UnmarshalVT(dAtA[iNdEx:postIndex]); err != nil {
 				return err
 			}
 			iNdEx = postIndex
