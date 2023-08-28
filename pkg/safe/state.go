@@ -38,14 +38,14 @@ func typeAssertOrZero[T resource.Resource](got resource.Resource, err error) (T,
 }
 
 // StateGet is a type safe wrapper around state.Get.
-func StateGet[T resource.Resource](ctx context.Context, st state.State, ptr resource.Pointer, options ...state.GetOption) (T, error) { //nolint:ireturn
+func StateGet[T resource.Resource](ctx context.Context, st state.CoreState, ptr resource.Pointer, options ...state.GetOption) (T, error) { //nolint:ireturn
 	got, err := st.Get(ctx, ptr, options...)
 
 	return typeAssertOrZero[T](got, err)
 }
 
 // StateGetByID is a type safe wrapper around state.Get.
-func StateGetByID[T generic.ResourceWithRD](ctx context.Context, st state.State, id resource.ID, options ...state.GetOption) (T, error) { //nolint:ireturn
+func StateGetByID[T generic.ResourceWithRD](ctx context.Context, st state.CoreState, id resource.ID, options ...state.GetOption) (T, error) { //nolint:ireturn
 	var r T
 
 	md := resource.NewMetadata(
@@ -61,7 +61,7 @@ func StateGetByID[T generic.ResourceWithRD](ctx context.Context, st state.State,
 }
 
 // StateGetResource is a type safe wrapper around state.Get which accepts typed resource.Resource and gets the metadata from it.
-func StateGetResource[T resource.Resource](ctx context.Context, st state.State, r T, options ...state.GetOption) (T, error) { //nolint:ireturn
+func StateGetResource[T resource.Resource](ctx context.Context, st state.CoreState, r T, options ...state.GetOption) (T, error) { //nolint:ireturn
 	return StateGet[T](ctx, st, r.Metadata(), options...)
 }
 
@@ -80,7 +80,7 @@ func StateUpdateWithConflicts[T resource.Resource](ctx context.Context, st state
 }
 
 // StateList is a type safe wrapper around state.List.
-func StateList[T resource.Resource](ctx context.Context, st state.State, ptr resource.Pointer, options ...state.ListOption) (List[T], error) {
+func StateList[T resource.Resource](ctx context.Context, st state.CoreState, ptr resource.Pointer, options ...state.ListOption) (List[T], error) {
 	got, err := st.List(ctx, ptr, options...)
 	if err != nil {
 		var zero List[T]
@@ -105,7 +105,7 @@ func StateList[T resource.Resource](ctx context.Context, st state.State, ptr res
 }
 
 // StateListAll is a type safe wrapper around state.List that uses default namaespace and type from ResourceDefinitionProvider.
-func StateListAll[T generic.ResourceWithRD](ctx context.Context, st state.State, opts ...state.ListOption) (List[T], error) {
+func StateListAll[T generic.ResourceWithRD](ctx context.Context, st state.CoreState, opts ...state.ListOption) (List[T], error) {
 	var r T
 
 	md := resource.NewMetadata(
@@ -299,6 +299,11 @@ func (l *List[T]) Find(fn func(T) bool) (T, bool) {
 	return zero, false
 }
 
+// Iterator returns a new iterator over the list.
+func (l *List[T]) Iterator() ListIterator[T] {
+	return ListIterator[T]{pos: 0, list: *l}
+}
+
 // ListIterator is a generic iterator over resource.Resource slice.
 type ListIterator[T any] struct {
 	list List[T]
@@ -306,6 +311,8 @@ type ListIterator[T any] struct {
 }
 
 // IteratorFromList returns a new iterator over the given list.
+//
+// Deprecated: use [List.Iterator] instead.
 func IteratorFromList[T any](list List[T]) ListIterator[T] {
 	return ListIterator[T]{pos: 0, list: list}
 }

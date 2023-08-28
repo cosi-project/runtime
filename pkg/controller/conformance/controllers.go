@@ -75,7 +75,7 @@ func (ctrl *IntToStrController) Run(ctx context.Context, r controller.Runtime, _
 			return fmt.Errorf("error listing objects: %w", err)
 		}
 
-		for iter := safe.IteratorFromList(intList); iter.Next(); {
+		for iter := intList.Iterator(); iter.Next(); {
 			intRes := iter.Value()
 
 			strRes := NewStrResource(ctrl.TargetNamespace, intRes.Metadata().ID(), "")
@@ -183,7 +183,7 @@ func (ctrl *StrToSentenceController) Run(ctx context.Context, r controller.Runti
 			return fmt.Errorf("error listing objects: %w", err)
 		}
 
-		for iter := safe.IteratorFromList(strList); iter.Next(); {
+		for iter := strList.Iterator(); iter.Next(); {
 			strRes := iter.Value()
 
 			sentenceRes := NewSentenceResource(ctrl.TargetNamespace, strRes.Metadata().ID(), "")
@@ -287,7 +287,7 @@ func (ctrl *SumController) Run(ctx context.Context, r controller.Runtime, _ *zap
 
 		var sum int
 
-		for iter := safe.IteratorFromList(intList); iter.Next(); {
+		for iter := intList.Iterator(); iter.Next(); {
 			sum += iter.Value().Value()
 		}
 
@@ -409,7 +409,7 @@ func (ctrl *IntDoublerController) Run(ctx context.Context, r controller.Runtime,
 			return fmt.Errorf("error listing objects: %w", err)
 		}
 
-		for iter := safe.IteratorFromList(intList); iter.Next(); {
+		for iter := intList.Iterator(); iter.Next(); {
 			intRes := iter.Value()
 
 			outRes := NewIntResource(ctrl.TargetNamespace, intRes.Metadata().ID(), 0)

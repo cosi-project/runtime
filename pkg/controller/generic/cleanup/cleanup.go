@@ -104,7 +104,7 @@ func (ctrl *Controller[I]) Run(ctx context.Context, r controller.Runtime, logger
 
 		var multiErr error
 
-		for iter := safe.IteratorFromList(inputList); iter.Next(); {
+		for iter := inputList.Iterator(); iter.Next(); {
 			err := ctrl.processInput(ctx, r, logger, iter.Value())
 			if err != nil {
 				multiErr = multierror.Append(multiErr, err)
@@ -283,7 +283,7 @@ func RemoveOutputs[O generic.ResourceWithRD, I generic.ResourceWithRD](
 
 			var inTearDown int
 
-			for iter := safe.IteratorFromList(list); iter.Next(); {
+			for iter := list.Iterator(); iter.Next(); {
 				out := iter.Value()
 
 				if out.Metadata().Owner() != "" {

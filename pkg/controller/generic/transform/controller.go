@@ -252,7 +252,7 @@ func (ctrl *Controller[Input, Output]) processInputs(
 	}
 
 	// create outputs based on inputs
-	for iter := safe.IteratorFromList(inputItems); iter.Next(); {
+	for iter := inputItems.Iterator(); iter.Next(); {
 		in := iter.Value()
 
 		mappedOut, present := ctrl.mapFunc(in).Get()
@@ -358,7 +358,7 @@ func (ctrl *Controller[Input, Output]) cleanupOutputs(
 		return fmt.Errorf("error listing output resources: %w", err)
 	}
 
-	for iter := safe.IteratorFromList(outputItems); iter.Next(); {
+	for iter := outputItems.Iterator(); iter.Next(); {
 		out := iter.Value()
 
 		// output not owned by this controller, skip it
