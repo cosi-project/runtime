@@ -8,6 +8,8 @@ import (
 	"fmt"
 	"slices"
 
+	"github.com/siderolabs/go-pointer"
+
 	"github.com/cosi-project/runtime/pkg/resource/internal/compare"
 	"github.com/cosi-project/runtime/pkg/resource/internal/kv"
 )
@@ -31,53 +33,59 @@ func (labels Labels) Equal(other Labels) bool {
 func (labels Labels) Matches(term LabelTerm) bool {
 	matches := labels.matches(term)
 
-	if term.Invert {
-		return !matches
+	if matches == nil {
+		return false
 	}
 
-	return matches
+	m := *matches
+
+	if term.Invert {
+		return !m
+	}
+
+	return m
 }
 
-func (labels Labels) matches(term LabelTerm) bool {
+func (labels Labels) matches(term LabelTerm) *bool {
 	if labels.KV.Empty() && term.Op == LabelOpExists {
-		return false
+		return pointer.To(false)
 	}
 
 	value, ok := labels.Get(term.Key)
 
 	if !ok {
-		return false
+		return pointer.To(false)
 	}
 
 	if term.Op != LabelOpExists && len(term.Value) == 0 {
-		return false
+		return pointer.To(false)
 	}
 
 	switch term.Op {
 	case LabelOpExists:
-		return true
+		return pointer.To(true)
 	case LabelOpEqual:
-		return value == term.Value[0]
+		return pointer.To(value == term.Value[0])
 	case LabelOpIn:
-		return slices.Contains(term.Value, value)
+		return pointer.To(slices.Contains(term.Value, value))
 	case LabelOpLTE:
-		return value <= term.Value[0]
+		return pointer.To(value <= term.Value[0])
 	case LabelOpLT:
-		return value < term.Value[0]
+		return pointer.To(value < term.Value[0])
 	case LabelOpLTNumeric:
 		left, right, ok := compare.GetNumbers(value, term.Value[0])
 		if !ok {
-			return false
+			return nil
 		}
 
-		return left < right
+		return pointer.To(left < right)
 	case LabelOpLTENumeric:
 		left, right, ok := compare.GetNumbers(value, term.Value[0])
 		if !ok {
-			return false
+			return nil
 		}
 
-		return left <= right
+		return pointer.To(left <= right)
 	default:
 		panic(fmt.Sprintf("unsupported label term operator: %v", term.Op))
 	}

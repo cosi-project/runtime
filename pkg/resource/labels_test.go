@@ -84,6 +84,22 @@ func TestLabels(t *testing.T) {
 		Op:     resource.LabelOpExists,
 		Invert: true,
 	}))
+
+	termTests.Set("num", "100")
+
+	assert.False(t, termTests.Matches(resource.LabelTerm{
+		Key:    "num",
+		Op:     resource.LabelOpLTNumeric,
+		Value:  []string{"NaN"},
+		Invert: true,
+	}))
+
+	assert.False(t, termTests.Matches(resource.LabelTerm{
+		Key:    "num",
+		Op:     resource.LabelOpLTENumeric,
+		Value:  []string{"NaN"},
+		Invert: true,
+	}))
 }
 
 func TestLabelsDo(t *testing.T) {
