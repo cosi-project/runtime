@@ -100,6 +100,13 @@ func TestLabels(t *testing.T) {
 		Value:  []string{"NaN"},
 		Invert: true,
 	}))
+
+	assert.False(t, termTests.Matches(resource.LabelTerm{
+		Key:    "nm",
+		Op:     resource.LabelOpLTENumeric,
+		Value:  []string{"NaN"},
+		Invert: true,
+	}))
 }
 
 func TestLabelsDo(t *testing.T) {

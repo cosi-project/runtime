@@ -29,6 +29,20 @@ const (
 	LabelOpLTENumeric
 )
 
+func (l LabelOp) isComparison() bool {
+	//nolint:exhaustive
+	switch l {
+	case LabelOpLT:
+	case LabelOpLTE:
+	case LabelOpLTNumeric:
+	case LabelOpLTENumeric:
+	default:
+		return false
+	}
+
+	return true
+}
+
 // LabelTerm describes a filter on metadata labels.
 type LabelTerm struct {
 	Key    string

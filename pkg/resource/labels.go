@@ -54,6 +54,10 @@ func (labels Labels) matches(term LabelTerm) *bool {
 	value, ok := labels.Get(term.Key)
 
 	if !ok {
+		if term.Op.isComparison() {
+			return nil
+		}
+
 		return pointer.To(false)
 	}
 
