@@ -198,6 +198,7 @@ func (ctrl *Controller[Input, Output]) Run(ctx context.Context, r controller.Run
 		case <-ctx.Done():
 			return nil
 		case <-r.EventCh():
+		case <-ctrl.options.extraEventCh:
 		}
 
 		// controller runs in two phases:

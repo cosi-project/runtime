@@ -11,6 +11,7 @@ import (
 
 // ControllerOptions configures TransformController.
 type ControllerOptions struct {
+	extraEventCh            <-chan struct{}
 	inputListOptions        []state.ListOption
 	extraInputs             []controller.Input
 	extraOutputs            []controller.Output
@@ -21,9 +22,9 @@ type ControllerOptions struct {
 // ControllerOption is an option for TransformController.
 type ControllerOption func(*ControllerOptions)
 
-// WithInputListOptions adds an filter on input resource list.
+// WithInputListOptions adds a filter on input resource list.
 //
-// E.g. query only resources with specific labels.
+// E.g., query only resources with specific labels.
 func WithInputListOptions(opts ...state.ListOption) ControllerOption {
 	return func(o *ControllerOptions) {
 		o.inputListOptions = append(o.inputListOptions, opts...)
@@ -68,5 +69,15 @@ func WithIgnoreTearingDownInputs() ControllerOption {
 		}
 
 		o.ignoreTearingDownInputs = true
+	}
+}
+
+// WithExtraEventChannel adds an extra event channel to the controller.
+//
+// When this channel receives data, the controller will run the transform function.
+// This is useful to wake up the controller from a goroutine.
+func WithExtraEventChannel(extraEventCh <-chan struct{}) ControllerOption {
+	return func(o *ControllerOptions) {
+		o.extraEventCh = extraEventCh
 	}
 }

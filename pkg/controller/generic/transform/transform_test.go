@@ -12,6 +12,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/siderolabs/gen/channel"
 	"github.com/siderolabs/gen/optional"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -50,6 +51,7 @@ func NewABController(reconcileTeardownCh <-chan struct{}, opts ...transform.Cont
 				}
 
 				out.TypedSpec().Out = fmt.Sprintf("%q-%d", in.TypedSpec().Str, in.TypedSpec().Int)
+				out.TypedSpec().TransformCount++
 
 				return nil
 			},
@@ -440,7 +442,7 @@ func TestDestroyFinalizersRecreateInput(t *testing.T) {
 	})
 }
 
-func TestWithIgnoreTearingdDownInputs(t *testing.T) {
+func TestWithIgnoreTearingDownInputs(t *testing.T) {
 	setup(t, func(ctx context.Context, st state.State, runtime *runtime.Runtime) {
 		require.NoError(t, runtime.RegisterController(NewABController(nil, transform.WithIgnoreTearingDownInputs())))
 
@@ -480,6 +482,34 @@ func TestWithIgnoreTearingdDownInputs(t *testing.T) {
 
 		// the output should be removed
 		rtestutils.AssertNoResource[*B](ctx, t, st, "transformed-1")
+	})
+}
+
+func TestWithExtraChannel(t *testing.T) {
+	setup(t, func(ctx context.Context, st state.State, runtime *runtime.Runtime) {
+		extraCh := make(chan struct{})
+
+		require.NoError(t, runtime.RegisterController(NewABController(nil, transform.WithExtraEventChannel(extraCh))))
+
+		for _, a := range []*A{
+			NewA("1", ASpec{Str: "foo", Int: 1}),
+			NewA("2", ASpec{Str: "bar", Int: 2}),
+			NewA("3", ASpec{Str: "baz", Int: 3}),
+		} {
+			require.NoError(t, st.Create(ctx, a))
+		}
+
+		rtestutils.AssertResources(ctx, t, st, []resource.ID{"transformed-1", "transformed-2", "transformed-3"}, func(r *B, assert *assert.Assertions) {
+			assert.Equalf(1, r.TypedSpec().TransformCount, "transform count should be 1")
+		})
+
+		if !channel.SendWithContext(ctx, extraCh, struct{}{}) {
+			t.FailNow()
+		}
+
+		rtestutils.AssertResources(ctx, t, st, []resource.ID{"transformed-1", "transformed-2", "transformed-3"}, func(r *B, assert *assert.Assertions) {
+			assert.Equalf(2, r.TypedSpec().TransformCount, "transform count should be 2")
+		})
 	})
 }
 

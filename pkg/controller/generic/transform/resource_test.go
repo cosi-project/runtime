@@ -79,7 +79,8 @@ func (BE) ResourceDefinition() meta.ResourceDefinitionSpec {
 
 // BSpec provides B definition.
 type BSpec struct {
-	Out string
+	Out            string
+	TransformCount int
 }
 
 // DeepCopy generates a deep copy of BSpec.
