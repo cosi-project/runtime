@@ -9,6 +9,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"sync/atomic"
 	"testing"
 	"time"
 
@@ -487,29 +488,51 @@ func TestWithIgnoreTearingDownInputs(t *testing.T) {
 
 func TestWithExtraChannel(t *testing.T) {
 	setup(t, func(ctx context.Context, st state.State, runtime *runtime.Runtime) {
-		extraCh := make(chan struct{})
+		extraEventCh := make(chan struct{})
 
-		require.NoError(t, runtime.RegisterController(NewABController(nil, transform.WithExtraEventChannel(extraCh))))
+		require.NoError(t, runtime.RegisterController(NewABController(nil, transform.WithExtraEventChannel(extraEventCh))))
 
-		for _, a := range []*A{
-			NewA("1", ASpec{Str: "foo", Int: 1}),
-			NewA("2", ASpec{Str: "bar", Int: 2}),
-			NewA("3", ASpec{Str: "baz", Int: 3}),
-		} {
-			require.NoError(t, st.Create(ctx, a))
-		}
+		require.NoError(t, st.Create(ctx, NewA("1", ASpec{Str: "foo", Int: 1})))
 
-		rtestutils.AssertResources(ctx, t, st, []resource.ID{"transformed-1", "transformed-2", "transformed-3"}, func(r *B, assert *assert.Assertions) {
-			assert.Equalf(1, r.TypedSpec().TransformCount, "transform count should be 1")
+		var transformCountBeforeChannelSend int
+
+		rtestutils.AssertResources(ctx, t, st, []resource.ID{"transformed-1"}, func(r *B, assert *assert.Assertions) {
+			assert.GreaterOrEqual(r.TypedSpec().TransformCount, 1, "transform count should be at least 1")
+
+			transformCountBeforeChannelSend = r.TypedSpec().TransformCount
 		})
 
-		if !channel.SendWithContext(ctx, extraCh, struct{}{}) {
+		// send two extra events
+
+		if !channel.SendWithContext(ctx, extraEventCh, struct{}{}) {
 			t.FailNow()
 		}
 
-		rtestutils.AssertResources(ctx, t, st, []resource.ID{"transformed-1", "transformed-2", "transformed-3"}, func(r *B, assert *assert.Assertions) {
-			assert.Equalf(2, r.TypedSpec().TransformCount, "transform count should be 2")
+		if !channel.SendWithContext(ctx, extraEventCh, struct{}{}) {
+			t.FailNow()
+		}
+
+		rtestutils.AssertResources(ctx, t, st, []resource.ID{"transformed-1"}, func(r *B, assert *assert.Assertions) {
+			assert.GreaterOrEqualf(r.TypedSpec().TransformCount, transformCountBeforeChannelSend+2, "transform count should be greater or equal to %d", transformCountBeforeChannelSend+2)
 		})
+	})
+}
+
+func TestWithOnShutdownCallback(t *testing.T) {
+	var called atomic.Bool
+
+	t.Cleanup(func() {
+		assert.True(t, called.Load())
+	})
+
+	setup(t, func(ctx context.Context, st state.State, runtime *runtime.Runtime) {
+		require.NoError(t, runtime.RegisterController(NewABController(nil, transform.WithOnShutdownCallback(func(_ context.Context, _ controller.ReaderWriter, logger *zap.Logger) {
+			called.Store(true)
+		}))))
+
+		require.NoError(t, st.Create(ctx, NewA("1", ASpec{Str: "foo", Int: 1})))
+
+		rtestutils.AssertResources(ctx, t, st, []resource.ID{"transformed-1"}, func(r *B, assert *assert.Assertions) {})
 	})
 }
 

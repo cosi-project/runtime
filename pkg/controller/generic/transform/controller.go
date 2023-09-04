@@ -193,6 +193,15 @@ func (ctrl *Controller[Input, Output]) Run(ctx context.Context, r controller.Run
 		zeroOutput Output
 	)
 
+	ctx, cancel := context.WithCancel(ctx)
+	defer cancel()
+
+	defer func() {
+		if ctrl.options.onShutdownCallback != nil {
+			ctrl.options.onShutdownCallback(ctx, r, logger)
+		}
+	}()
+
 	for {
 		select {
 		case <-ctx.Done():

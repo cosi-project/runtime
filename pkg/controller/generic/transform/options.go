@@ -5,6 +5,10 @@
 package transform
 
 import (
+	"context"
+
+	"go.uber.org/zap"
+
 	"github.com/cosi-project/runtime/pkg/controller"
 	"github.com/cosi-project/runtime/pkg/state"
 )
@@ -12,6 +16,7 @@ import (
 // ControllerOptions configures TransformController.
 type ControllerOptions struct {
 	extraEventCh            <-chan struct{}
+	onShutdownCallback      OnShutdownCallback
 	inputListOptions        []state.ListOption
 	extraInputs             []controller.Input
 	extraOutputs            []controller.Output
@@ -79,5 +84,15 @@ func WithIgnoreTearingDownInputs() ControllerOption {
 func WithExtraEventChannel(extraEventCh <-chan struct{}) ControllerOption {
 	return func(o *ControllerOptions) {
 		o.extraEventCh = extraEventCh
+	}
+}
+
+// OnShutdownCallback is a function called when the controller is shutting down, either gracefully or due to an error.
+type OnShutdownCallback func(ctx context.Context, rw controller.ReaderWriter, logger *zap.Logger)
+
+// WithOnShutdownCallback adds a callback to be called when the controller is shutting down, either gracefully or due to an error.
+func WithOnShutdownCallback(onShutdownCallback OnShutdownCallback) ControllerOption {
+	return func(o *ControllerOptions) {
+		o.onShutdownCallback = onShutdownCallback
 	}
 }
