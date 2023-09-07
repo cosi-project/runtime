@@ -80,6 +80,8 @@ func NewController[Input generic.ResourceWithRD, Output generic.ResourceWithRD](
 ) *Controller[Input, Output] {
 	var options ControllerOptions
 
+	options.primaryOutputKind = controller.OutputExclusive
+
 	for _, opt := range opts {
 		opt(&options)
 	}
@@ -171,7 +173,7 @@ func (ctrl *Controller[Input, Output]) Outputs() []controller.Output {
 	return append([]controller.Output{
 		{
 			Type: output.ResourceDefinition().Type,
-			Kind: controller.OutputExclusive,
+			Kind: ctrl.options.primaryOutputKind,
 		},
 	}, ctrl.options.extraOutputs...)
 }

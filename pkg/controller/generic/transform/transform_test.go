@@ -73,6 +73,31 @@ func NewABController(reconcileTeardownCh <-chan struct{}, opts ...transform.Cont
 	)
 }
 
+func NewACController(opts ...transform.ControllerOption) *ABController {
+	return transform.NewController(
+		transform.Settings[*A, *B]{
+			Name: "TransformACController",
+			MapMetadataOptionalFunc: func(in *A) optional.Optional[*B] {
+				if in.Metadata().ID() == "skip-me" {
+					return optional.None[*B]()
+				}
+
+				return optional.Some(NewB("transformed-"+in.Metadata().ID(), BSpec{}))
+			},
+			TransformFunc: func(ctx context.Context, r controller.Reader, l *zap.Logger, in *A, out *B) error {
+				if in.TypedSpec().Int < 0 {
+					return fmt.Errorf("hate negative numbers")
+				}
+
+				out.TypedSpec().Out = fmt.Sprintf("%q-%d", in.TypedSpec().Str, in.TypedSpec().Int)
+
+				return nil
+			},
+		},
+		opts...,
+	)
+}
+
 func TestSimpleMap(t *testing.T) {
 	setup(t, func(ctx context.Context, st state.State, runtime *runtime.Runtime) {
 		require.NoError(t, runtime.RegisterController(NewABController(nil)))
@@ -533,6 +558,13 @@ func TestWithOnShutdownCallback(t *testing.T) {
 		require.NoError(t, st.Create(ctx, NewA("1", ASpec{Str: "foo", Int: 1})))
 
 		rtestutils.AssertResources(ctx, t, st, []resource.ID{"transformed-1"}, func(r *B, assert *assert.Assertions) {})
+	})
+}
+
+func TestOutputShared(t *testing.T) {
+	setup(t, func(ctx context.Context, st state.State, runtime *runtime.Runtime) {
+		require.NoError(t, runtime.RegisterController(NewABController(nil, transform.WithOutputKind(controller.OutputShared))))
+		require.NoError(t, runtime.RegisterController(NewACController(transform.WithOutputKind(controller.OutputShared))))
 	})
 }
 

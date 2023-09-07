@@ -20,6 +20,7 @@ type ControllerOptions struct {
 	inputListOptions        []state.ListOption
 	extraInputs             []controller.Input
 	extraOutputs            []controller.Output
+	primaryOutputKind       controller.OutputKind
 	inputFinalizers         bool
 	ignoreTearingDownInputs bool
 }
@@ -94,5 +95,12 @@ type OnShutdownCallback func(ctx context.Context, rw controller.ReaderWriter, lo
 func WithOnShutdownCallback(onShutdownCallback OnShutdownCallback) ControllerOption {
 	return func(o *ControllerOptions) {
 		o.onShutdownCallback = onShutdownCallback
+	}
+}
+
+// WithOutputKind sets main output resource kind.
+func WithOutputKind(kind controller.OutputKind) ControllerOption {
+	return func(o *ControllerOptions) {
+		o.primaryOutputKind = kind
 	}
 }
