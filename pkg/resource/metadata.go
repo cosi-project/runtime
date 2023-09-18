@@ -9,6 +9,7 @@ import (
 	"sort"
 	"time"
 
+	"github.com/siderolabs/gen/xslices"
 	"google.golang.org/protobuf/types/known/timestamppb"
 	"gopkg.in/yaml.v3"
 )
@@ -391,13 +392,7 @@ func getFinalizers(val *yaml.Node) Finalizers {
 		panicFormatf("%d:%d expected sequence node, got %d", val.Line, val.Column, val.Kind)
 	}
 
-	fins := make(Finalizers, 0, len(val.Content))
-
-	for _, fin := range val.Content {
-		fins = append(fins, getScalarValue(fin))
-	}
-
-	return fins
+	return xslices.Map(val.Content, getScalarValue)
 }
 
 func panicFormatf(format string, a ...any) {

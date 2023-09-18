@@ -13,9 +13,7 @@ type trackingOutputPool struct {
 func (mp *trackingOutputPool) Get() map[outputTrackingID]struct{} {
 	val := mp.pool.Get()
 	if val, ok := val.(map[outputTrackingID]struct{}); ok {
-		for k := range val {
-			delete(val, k)
-		}
+		clear(val)
 
 		return val
 	}

@@ -1,6 +1,6 @@
 # THIS FILE WAS AUTOMATICALLY GENERATED, PLEASE DO NOT EDIT.
 #
-# Generated on 2023-08-24T14:41:20Z by kres latest.
+# Generated on 2023-09-18T10:26:44Z by kres latest.
 
 # common variables
 
@@ -14,9 +14,9 @@ WITH_RACE ?= false
 REGISTRY ?= ghcr.io
 USERNAME ?= cosi-project
 REGISTRY_AND_USERNAME ?= $(REGISTRY)/$(USERNAME)
-PROTOBUF_GO_VERSION ?= 1.28.1
+PROTOBUF_GO_VERSION ?= 1.31.0
 GRPC_GO_VERSION ?= 1.3.0
-GRPC_GATEWAY_VERSION ?= 2.16.2
+GRPC_GATEWAY_VERSION ?= 2.17.1
 VTPROTOBUF_VERSION ?= 0.4.0
 DEEPCOPY_VERSION ?= v0.5.5
 GOLANGCILINT_VERSION ?= v1.54.2
@@ -40,6 +40,7 @@ PROGRESS ?= auto
 PUSH ?= false
 CI_ARGS ?=
 COMMON_ARGS = --file=Dockerfile
+COMMON_ARGS += --provenance=false
 COMMON_ARGS += --progress=$(PROGRESS)
 COMMON_ARGS += --platform=$(PLATFORM)
 COMMON_ARGS += --push=$(PUSH)

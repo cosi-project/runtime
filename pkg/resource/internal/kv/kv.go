@@ -6,11 +6,12 @@
 package kv
 
 import (
+	"maps"
 	"sort"
 
 	"gopkg.in/yaml.v3"
 
-	kvutils "github.com/cosi-project/runtime/pkg/resource/kvutils"
+	"github.com/cosi-project/runtime/pkg/resource/kvutils"
 )
 
 // KV is a set free-form of key-value pairs.
@@ -57,7 +58,7 @@ func (kv *KV) Set(key, value string) {
 			return
 		}
 
-		kv.m = cloneMap(kv.m)
+		kv.m = maps.Clone(kv.m)
 	}
 
 	kv.m[key] = value
@@ -169,20 +170,6 @@ func (kv *KV) Do(ts func(temp kvutils.TempKV)) {
 	}
 }
 
-func cloneMap(m map[string]string) map[string]string {
-	if m == nil {
-		return nil
-	}
-
-	mCopy := make(map[string]string, len(m))
-
-	for k, v := range m {
-		mCopy[k] = v
-	}
-
-	return mCopy
-}
-
 type tempKV struct {
 	m     map[string]string
 	dirty bool
@@ -195,7 +182,7 @@ func (tmp *tempKV) Delete(key string) {
 	}
 
 	if !tmp.dirty {
-		tmp.m = cloneMap(tmp.m)
+		tmp.m = maps.Clone(tmp.m)
 		tmp.dirty = true
 	}
 
@@ -213,7 +200,7 @@ func (tmp *tempKV) Set(key, value string) {
 		if tmp.m == nil {
 			tmp.m = map[string]string{}
 		} else {
-			tmp.m = cloneMap(tmp.m)
+			tmp.m = maps.Clone(tmp.m)
 		}
 
 		tmp.dirty = true

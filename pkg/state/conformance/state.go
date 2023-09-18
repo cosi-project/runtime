@@ -13,6 +13,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/siderolabs/gen/xslices"
 	"github.com/stretchr/testify/suite"
 	"golang.org/x/sync/errgroup"
 
@@ -77,11 +78,7 @@ func (suite *StateSuite) TestCRD() {
 		if path1.Metadata().Namespace() == path2.Metadata().Namespace() {
 			suite.Assert().Len(list.Items, 2)
 
-			ids := make([]string, len(list.Items))
-
-			for i := range ids {
-				ids[i] = resource.String(list.Items[i])
-			}
+			ids := xslices.Map(list.Items, resource.String)
 
 			suite.Assert().Equal([]string{resource.String(path2), resource.String(path1)}, ids)
 		} else {

@@ -4,6 +4,8 @@
 
 package resource
 
+import "slices"
+
 // Finalizer is a free-form string which blocks resource destruction.
 //
 // Resource can't be destroyed until all the finalizers are cleared.
@@ -14,12 +16,10 @@ type Finalizers []Finalizer
 
 // Add a (unique) Finalizer to the set.
 func (fins *Finalizers) Add(fin Finalizer) bool {
-	*fins = append(Finalizers(nil), *fins...)
+	*fins = slices.Clone(*fins)
 
-	for _, f := range *fins {
-		if f == fin {
-			return false
-		}
+	if slices.Contains(*fins, fin) {
+		return false
 	}
 
 	*fins = append(*fins, fin)
@@ -29,7 +29,7 @@ func (fins *Finalizers) Add(fin Finalizer) bool {
 
 // Remove a (unique) Finalizer from the set.
 func (fins *Finalizers) Remove(fin Finalizer) bool {
-	*fins = append(Finalizers(nil), *fins...)
+	*fins = slices.Clone(*fins)
 
 	for i, f := range *fins {
 		if f == fin {
@@ -49,23 +49,10 @@ func (fins Finalizers) Empty() bool {
 
 // Has returns true if fin is present in the list of finalizers.
 func (fins Finalizers) Has(fin Finalizer) bool {
-	for _, f := range fins {
-		if f == fin {
-			return true
-		}
-	}
-
-	return false
+	return slices.Contains(fins, fin)
 }
 
 // Set copies the finalizers from the other.
 func (fins *Finalizers) Set(other Finalizers) {
-	if other == nil {
-		*fins = nil
-
-		return
-	}
-
-	*fins = make([]Finalizer, len(other))
-	copy(*fins, other)
+	*fins = slices.Clone(other)
 }

@@ -1,7 +1,7 @@
 ---
 # THIS FILE WAS AUTOMATICALLY GENERATED, PLEASE DO NOT EDIT.
 #
-# Generated on 2023-06-05T13:33:56Z by kres latest.
+# Generated on 2023-09-18T10:51:41Z by kres latest.
 
 kind: pipeline
 type: kubernetes
@@ -280,6 +280,8 @@ services:
   - --log-level=error
   privileged: true
   volumes:
+  - name: dev
+    path: /dev
   - name: outer-docker-socket
     path: /var/outer-run
   - name: docker-socket
@@ -302,6 +304,9 @@ volumes:
 - name: ssh
   temp:
     medium: memory
+- name: dev
+  host:
+    path: /dev
 
 trigger:
   branch:
