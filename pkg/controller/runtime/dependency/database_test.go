@@ -7,11 +7,12 @@ package dependency_test
 import (
 	"testing"
 
-	"github.com/siderolabs/go-pointer"
+	"github.com/siderolabs/gen/optional"
 	"github.com/stretchr/testify/suite"
 
 	"github.com/cosi-project/runtime/pkg/controller"
 	"github.com/cosi-project/runtime/pkg/controller/runtime/dependency"
+	"github.com/cosi-project/runtime/pkg/resource"
 )
 
 type DatabaseSuite struct {
@@ -112,13 +113,13 @@ func (suite *DatabaseSuite) TestControllerDependency() {
 	suite.Assert().Len(deps, 1)
 	suite.Assert().Equal("user", deps[0].Namespace)
 	suite.Assert().Equal("Config", deps[0].Type)
-	suite.Assert().Nil(deps[0].ID)
+	suite.Assert().False(deps[0].ID.IsPresent())
 	suite.Assert().Equal(controller.InputWeak, deps[0].Kind)
 
 	suite.Require().NoError(suite.db.AddControllerInput("ConfigController", controller.Input{
 		Namespace: "state",
 		Type:      "Machine",
-		ID:        pointer.To("system"),
+		ID:        optional.Some[resource.ID]("system"),
 		Kind:      controller.InputStrong,
 	}))
 
@@ -128,25 +129,18 @@ func (suite *DatabaseSuite) TestControllerDependency() {
 
 	suite.Assert().Equal("state", deps[0].Namespace)
 	suite.Assert().Equal("Machine", deps[0].Type)
-	suite.Assert().Equal("system", *deps[0].ID)
+	suite.Assert().Equal("system", deps[0].ID.ValueOrZero())
 	suite.Assert().Equal(controller.InputStrong, deps[0].Kind)
 
 	suite.Assert().Equal("user", deps[1].Namespace)
 	suite.Assert().Equal("Config", deps[1].Type)
-	suite.Assert().Nil(deps[1].ID)
+	suite.Assert().False(deps[1].ID.IsPresent())
 	suite.Assert().Equal(controller.InputWeak, deps[1].Kind)
 
 	ctrls, err := suite.db.GetDependentControllers(controller.Input{
 		Namespace: "user",
 		Type:      "Config",
-		ID:        pointer.To("config"),
-	})
-	suite.Require().NoError(err)
-	suite.Assert().Equal([]string{"ConfigController"}, ctrls)
-
-	ctrls, err = suite.db.GetDependentControllers(controller.Input{
-		Namespace: "user",
-		Type:      "Config",
+		ID:        optional.Some[resource.ID]("config"),
 	})
 	suite.Require().NoError(err)
 	suite.Assert().Equal([]string{"ConfigController"}, ctrls)
@@ -154,6 +148,7 @@ func (suite *DatabaseSuite) TestControllerDependency() {
 	ctrls, err = suite.db.GetDependentControllers(controller.Input{
 		Namespace: "user",
 		Type:      "Spec",
+		ID:        optional.Some[resource.ID]("config"),
 	})
 	suite.Require().NoError(err)
 	suite.Assert().Empty(ctrls)
@@ -161,7 +156,7 @@ func (suite *DatabaseSuite) TestControllerDependency() {
 	ctrls, err = suite.db.GetDependentControllers(controller.Input{
 		Namespace: "state",
 		Type:      "Machine",
-		ID:        pointer.To("node"),
+		ID:        optional.Some[resource.ID]("node"),
 	})
 	suite.Require().NoError(err)
 	suite.Assert().Empty(ctrls)
@@ -169,14 +164,7 @@ func (suite *DatabaseSuite) TestControllerDependency() {
 	ctrls, err = suite.db.GetDependentControllers(controller.Input{
 		Namespace: "state",
 		Type:      "Machine",
-		ID:        pointer.To("system"),
-	})
-	suite.Require().NoError(err)
-	suite.Assert().Equal([]string{"ConfigController"}, ctrls)
-
-	ctrls, err = suite.db.GetDependentControllers(controller.Input{
-		Namespace: "state",
-		Type:      "Machine",
+		ID:        optional.Some[resource.ID]("system"),
 	})
 	suite.Require().NoError(err)
 	suite.Assert().Equal([]string{"ConfigController"}, ctrls)
@@ -184,12 +172,13 @@ func (suite *DatabaseSuite) TestControllerDependency() {
 	suite.Require().NoError(suite.db.DeleteControllerInput("ConfigController", controller.Input{
 		Namespace: "state",
 		Type:      "Machine",
-		ID:        pointer.To("system"),
+		ID:        optional.Some[resource.ID]("system"),
 	}))
 
 	ctrls, err = suite.db.GetDependentControllers(controller.Input{
 		Namespace: "state",
 		Type:      "Machine",
+		ID:        optional.Some[resource.ID]("system"),
 	})
 	suite.Require().NoError(err)
 	suite.Assert().Empty(ctrls)
@@ -221,7 +210,7 @@ func (suite *DatabaseSuite) TestExport() {
 		Namespace: "user",
 		Type:      "Config",
 		Kind:      controller.InputWeak,
-		ID:        pointer.To("config"),
+		ID:        optional.Some[resource.ID]("config"),
 	}))
 
 	suite.Require().NoError(suite.db.AddControllerInput("ControllerTable", controller.Input{

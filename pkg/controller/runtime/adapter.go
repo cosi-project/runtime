@@ -10,18 +10,16 @@ import (
 	"fmt"
 	"runtime/debug"
 	"slices"
-	"sort"
 	"sync"
 	"time"
 
 	"github.com/cenkalti/backoff/v4"
+	"github.com/siderolabs/gen/optional"
 	"github.com/siderolabs/gen/pair/ordered"
-	"github.com/siderolabs/go-pointer"
 	"go.uber.org/zap"
 	"golang.org/x/time/rate"
 
 	"github.com/cosi-project/runtime/pkg/controller"
-	"github.com/cosi-project/runtime/pkg/controller/runtime/dependency"
 	"github.com/cosi-project/runtime/pkg/logging"
 	"github.com/cosi-project/runtime/pkg/resource"
 	"github.com/cosi-project/runtime/pkg/state"
@@ -93,9 +91,7 @@ func (adapter *adapter) ResetRestartBackoff() {
 
 // UpdateDependencies implements controller.Runtime interface.
 func (adapter *adapter) UpdateInputs(deps []controller.Input) error {
-	sort.Slice(deps, func(i, j int) bool {
-		return dependency.Less(&deps[i], &deps[j])
-	})
+	slices.SortFunc(deps, controller.Input.Compare)
 
 	dbDeps, err := adapter.runtime.depDB.GetControllerInputs(adapter.name)
 	if err != nil {
@@ -122,12 +118,12 @@ func (adapter *adapter) UpdateInputs(deps []controller.Input) error {
 			dJ := dbDeps[j]
 
 			switch {
-			case dependency.Equal(&dI, &dJ):
+			case dI == dJ:
 				i++
 				j++
-			case dependency.EqualKeys(&dI, &dJ):
+			case dI.EqualKeys(dJ):
 				shouldAdd, shouldDelete = true, true
-			case dependency.Less(&dI, &dJ):
+			case dI.Compare(dJ) < 0:
 				shouldAdd = true
 			default:
 				shouldDelete = true
@@ -176,7 +172,7 @@ func (adapter *adapter) isOutput(resourceType resource.Type) bool {
 	return false
 }
 
-func (adapter *adapter) checkReadAccess(resourceNamespace resource.Namespace, resourceType resource.Type, resourceID *resource.ID) error {
+func (adapter *adapter) checkReadAccess(resourceNamespace resource.Namespace, resourceType resource.Type, resourceID optional.Optional[resource.ID]) error {
 	if adapter.isOutput(resourceType) {
 		return nil
 	}
@@ -185,16 +181,16 @@ func (adapter *adapter) checkReadAccess(resourceNamespace resource.Namespace, re
 	for _, dep := range adapter.inputs {
 		if dep.Namespace == resourceNamespace && dep.Type == resourceType {
 			// any ID is allowed
-			if dep.ID == nil {
+			if !dep.ID.IsPresent() {
 				return nil
 			}
 
 			// list request, but only ID-specific dependency found
-			if resourceID == nil {
+			if !resourceID.IsPresent() {
 				continue
 			}
 
-			if *dep.ID == *resourceID {
+			if dep.ID == resourceID {
 				return nil
 			}
 		}
@@ -208,11 +204,11 @@ func (adapter *adapter) checkFinalizerAccess(resourceNamespace resource.Namespac
 	for _, dep := range adapter.inputs {
 		if dep.Namespace == resourceNamespace && dep.Type == resourceType && dep.Kind == controller.InputStrong {
 			// any ID is allowed
-			if dep.ID == nil {
+			if !dep.ID.IsPresent() {
 				return nil
 			}
 
-			if *dep.ID == resourceID {
+			if dep.ID.ValueOrZero() == resourceID {
 				return nil
 			}
 		}
@@ -223,7 +219,7 @@ func (adapter *adapter) checkFinalizerAccess(resourceNamespace resource.Namespac
 
 // Get implements controller.Runtime interface.
 func (adapter *adapter) Get(ctx context.Context, resourcePointer resource.Pointer, opts ...state.GetOption) (resource.Resource, error) { //nolint:ireturn
-	if err := adapter.checkReadAccess(resourcePointer.Namespace(), resourcePointer.Type(), pointer.To(resourcePointer.ID())); err != nil {
+	if err := adapter.checkReadAccess(resourcePointer.Namespace(), resourcePointer.Type(), optional.Some(resourcePointer.ID())); err != nil {
 		return nil, err
 	}
 
@@ -232,7 +228,7 @@ func (adapter *adapter) Get(ctx context.Context, resourcePointer resource.Pointe
 
 // List implements controller.Runtime interface.
 func (adapter *adapter) List(ctx context.Context, resourceKind resource.Kind, opts ...state.ListOption) (resource.List, error) {
-	if err := adapter.checkReadAccess(resourceKind.Namespace(), resourceKind.Type(), nil); err != nil {
+	if err := adapter.checkReadAccess(resourceKind.Namespace(), resourceKind.Type(), optional.None[resource.ID]()); err != nil {
 		return resource.List{}, err
 	}
 
@@ -241,7 +237,7 @@ func (adapter *adapter) List(ctx context.Context, resourceKind resource.Kind, op
 
 // WatchFor implements controller.Runtime interface.
 func (adapter *adapter) WatchFor(ctx context.Context, resourcePointer resource.Pointer, opts ...state.WatchForConditionFunc) (resource.Resource, error) { //nolint:ireturn
-	if err := adapter.checkReadAccess(resourcePointer.Namespace(), resourcePointer.Type(), nil); err != nil {
+	if err := adapter.checkReadAccess(resourcePointer.Namespace(), resourcePointer.Type(), optional.None[resource.ID]()); err != nil {
 		return nil, err
 	}
 

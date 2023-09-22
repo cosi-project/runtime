@@ -69,7 +69,7 @@ func convertInputs(inputs []controller.Input) []*v1alpha1.ControllerInput {
 		protoInputs[i] = &v1alpha1.ControllerInput{
 			Namespace: inputs[i].Namespace,
 			Type:      inputs[i].Type,
-			Id:        inputs[i].ID,
+			Id:        inputs[i].ID.Ptr(),
 		}
 
 		switch inputs[i].Kind {

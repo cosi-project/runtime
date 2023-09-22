@@ -10,6 +10,7 @@ import (
 	"sync"
 
 	"github.com/siderolabs/gen/channel"
+	"github.com/siderolabs/gen/optional"
 	"go.uber.org/zap"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
@@ -81,7 +82,10 @@ func convertInputs(protoInputs []*v1alpha1.ControllerInput) []controller.Input {
 	for i := range protoInputs {
 		inputs[i].Namespace = protoInputs[i].Namespace
 		inputs[i].Type = protoInputs[i].Type
-		inputs[i].ID = protoInputs[i].Id
+
+		if protoInputs[i].Id != nil {
+			inputs[i].ID = optional.Some[resource.ID](*protoInputs[i].Id)
+		}
 
 		switch protoInputs[i].Kind {
 		case v1alpha1.ControllerInputKind_STRONG:

@@ -2,13 +2,14 @@
 // License, v. 2.0. If a copy of the MPL was not distributed with this
 // file, You can obtain one at http://mozilla.org/MPL/2.0/.
 
+// Package dependency implements controller dependency database.
 package dependency
 
 import (
+	"cmp"
 	"fmt"
-
-	"github.com/hashicorp/go-memdb"
-	"github.com/siderolabs/go-pointer"
+	"slices"
+	"sync"
 
 	"github.com/cosi-project/runtime/pkg/controller"
 	"github.com/cosi-project/runtime/pkg/resource"
@@ -16,224 +17,102 @@ import (
 
 // Database tracks dependencies between resources and controllers (and vice versa).
 type Database struct {
-	db *memdb.MemDB
+	exclusiveOutputs map[resource.Type]string
+	sharedOutputs    map[resource.Type][]string
+
+	inputLookup      map[namespaceType][]string
+	inputLookupID    map[namespaceTypeID][]string
+	controllerInputs map[string][]controller.Input
+
+	mu sync.Mutex
 }
 
-const (
-	tableExclusiveOutputs = "exclusive_outputs"
-	tableSharedOutputs    = "shared_outputs"
-	tableInputs           = "inputs"
-)
+type namespaceType struct {
+	Namespace resource.Namespace
+	Type      resource.Type
+}
+
+type namespaceTypeID struct {
+	namespaceType
+	ID resource.ID
+}
 
 // NewDatabase creates new Database.
 func NewDatabase() (*Database, error) {
-	db := &Database{}
+	return &Database{
+		exclusiveOutputs: make(map[resource.Type]string),
+		sharedOutputs:    make(map[resource.Type][]string),
 
-	var err error
-
-	db.db, err = memdb.NewMemDB(&memdb.DBSchema{
-		Tables: map[string]*memdb.TableSchema{
-			tableExclusiveOutputs: {
-				Name: tableExclusiveOutputs,
-				Indexes: map[string]*memdb.IndexSchema{
-					"id": {
-						Name:   "id",
-						Unique: true,
-						Indexer: &memdb.StringFieldIndex{
-							Field: "Type",
-						},
-					},
-					"controller": {
-						Name:   "controller",
-						Unique: false,
-						Indexer: &memdb.StringFieldIndex{
-							Field: "ControllerName",
-						},
-					},
-				},
-			},
-			tableSharedOutputs: {
-				Name: tableSharedOutputs,
-				Indexes: map[string]*memdb.IndexSchema{
-					"id": {
-						Name:   "id",
-						Unique: true,
-						Indexer: &memdb.CompoundIndex{
-							Indexes: []memdb.Indexer{
-								&memdb.StringFieldIndex{
-									Field: "ControllerName",
-								},
-								&memdb.StringFieldIndex{
-									Field: "Type",
-								},
-							},
-						},
-					},
-					"controller": {
-						Name:   "controller",
-						Unique: false,
-						Indexer: &memdb.StringFieldIndex{
-							Field: "ControllerName",
-						},
-					},
-					"type": {
-						Name:   "type",
-						Unique: false,
-						Indexer: &memdb.StringFieldIndex{
-							Field: "Type",
-						},
-					},
-				},
-			},
-			tableInputs: {
-				Name: tableInputs,
-				Indexes: map[string]*memdb.IndexSchema{
-					"id": {
-						Name:   "id",
-						Unique: true,
-						Indexer: &memdb.CompoundIndex{
-							Indexes: []memdb.Indexer{
-								&memdb.StringFieldIndex{
-									Field: "ControllerName",
-								},
-								&memdb.StringFieldIndex{
-									Field: "Namespace",
-								},
-								&memdb.StringFieldIndex{
-									Field: "Type",
-								},
-								&memdb.StringFieldIndex{
-									Field: "ID",
-								},
-							},
-						},
-					},
-					"controller": {
-						Name: "controller",
-						Indexer: &memdb.StringFieldIndex{
-							Field: "ControllerName",
-						},
-					},
-					"resource": {
-						Name: "resource",
-						Indexer: &memdb.CompoundIndex{
-							Indexes: []memdb.Indexer{
-								&memdb.StringFieldIndex{
-									Field: "Namespace",
-								},
-								&memdb.StringFieldIndex{
-									Field: "Type",
-								},
-							},
-						},
-					},
-				},
-			},
-		},
-	})
-	if err != nil {
-		return nil, fmt.Errorf("error creating memory db: %w", err)
-	}
-
-	return db, nil
+		inputLookup:      make(map[namespaceType][]string),
+		inputLookupID:    make(map[namespaceTypeID][]string),
+		controllerInputs: make(map[string][]controller.Input),
+	}, nil
 }
 
 // AddControllerOutput tracks which resource is managed by which controller.
 func (db *Database) AddControllerOutput(controllerName string, out controller.Output) error {
-	txn := db.db.Txn(true)
-	defer txn.Abort()
+	db.mu.Lock()
+	defer db.mu.Unlock()
 
-	obj, err := txn.First(tableExclusiveOutputs, "id", out.Type)
-	if err != nil {
-		return fmt.Errorf("error quering controller outputs: %w", err)
-	}
-
-	if obj != nil {
-		dep := obj.(*ControllerOutput) //nolint:errcheck,forcetypeassert
-
-		return fmt.Errorf("resource %q is already managed in exclusive mode by %q", dep.Type, dep.ControllerName)
+	if exclusiveController, ok := db.exclusiveOutputs[out.Type]; ok {
+		return fmt.Errorf("resource %q is already managed in exclusive mode by %q", out.Type, exclusiveController)
 	}
 
 	switch out.Kind {
 	case controller.OutputExclusive:
-		obj, err = txn.First(tableSharedOutputs, "type", out.Type)
-		if err != nil {
-			return fmt.Errorf("error quering controller outputs: %w", err)
+		if sharedControllers, ok := db.sharedOutputs[out.Type]; ok {
+			return fmt.Errorf("resource %q is already managed in shared mode by %q", out.Type, sharedControllers[0])
 		}
 
-		if obj != nil {
-			dep := obj.(*ControllerOutput) //nolint:errcheck,forcetypeassert
-
-			return fmt.Errorf("resource %q is already managed in shared mode by %q", dep.Type, dep.ControllerName)
-		}
-
-		if err = txn.Insert(tableExclusiveOutputs, &ControllerOutput{
-			Type:           out.Type,
-			ControllerName: controllerName,
-			Kind:           out.Kind,
-		}); err != nil {
-			return fmt.Errorf("error adding controller exclusive output: %w", err)
-		}
+		db.exclusiveOutputs[out.Type] = controllerName
 	case controller.OutputShared:
-		obj, err = txn.First(tableSharedOutputs, "id", controllerName, out.Type)
-		if err != nil {
-			return fmt.Errorf("error quering controller outputs: %w", err)
+		sharedControllers := db.sharedOutputs[out.Type]
+
+		idx, found := slices.BinarySearch(sharedControllers, controllerName)
+		if found {
+			return fmt.Errorf("duplicate shared controller output: %q -> %q", out.Type, controllerName)
 		}
 
-		if obj != nil {
-			dep := obj.(*ControllerOutput) //nolint:errcheck,forcetypeassert
-
-			return fmt.Errorf("duplicate shared controller output: %q -> %q", dep.Type, dep.ControllerName)
-		}
-
-		if err = txn.Insert(tableSharedOutputs, &ControllerOutput{
-			Type:           out.Type,
-			ControllerName: controllerName,
-			Kind:           out.Kind,
-		}); err != nil {
-			return fmt.Errorf("error adding controller exclusive output: %w", err)
-		}
+		db.sharedOutputs[out.Type] = slices.Insert(sharedControllers, idx, controllerName)
 	}
-
-	txn.Commit()
 
 	return nil
 }
 
 // GetControllerOutputs returns resource managed by controller.
+//
+// This method is not optimized for performance and should be used only for debugging.
 func (db *Database) GetControllerOutputs(controllerName string) ([]controller.Output, error) {
-	txn := db.db.Txn(false)
-	defer txn.Abort()
+	db.mu.Lock()
+	defer db.mu.Unlock()
 
 	var result []controller.Output
 
-	obj, err := txn.First(tableExclusiveOutputs, "controller", controllerName)
-	if err != nil {
-		return nil, fmt.Errorf("error quering exclusive controller outputs: %w", err)
+	for resourceType, exclusiveController := range db.exclusiveOutputs {
+		if exclusiveController == controllerName {
+			result = append(result, controller.Output{
+				Type: resourceType,
+				Kind: controller.OutputExclusive,
+			})
+		}
 	}
 
-	if obj != nil {
-		dep := obj.(*ControllerOutput) //nolint:errcheck,forcetypeassert
-
-		result = append(result, controller.Output{
-			Type: dep.Type,
-			Kind: dep.Kind,
-		})
+	for resourceType, sharedControllers := range db.sharedOutputs {
+		if _, found := slices.BinarySearch(sharedControllers, controllerName); found {
+			result = append(result, controller.Output{
+				Type: resourceType,
+				Kind: controller.OutputShared,
+			})
+		}
 	}
 
-	iter, err := txn.Get(tableSharedOutputs, "controller", controllerName)
-	if err != nil {
-		return nil, fmt.Errorf("error fetching controller dependencies: %w", err)
-	}
+	slices.SortFunc(result, func(a, b controller.Output) int {
+		if a.Kind != b.Kind {
+			return a.Kind - b.Kind
+		}
 
-	for obj := iter.Next(); obj != nil; obj = iter.Next() {
-		dep := obj.(*ControllerOutput) //nolint:errcheck,forcetypeassert
-
-		result = append(result, controller.Output{
-			Type: dep.Type,
-			Kind: dep.Kind,
-		})
-	}
+		return cmp.Compare(a.Type, b.Type)
+	})
 
 	return result, nil
 }
@@ -242,193 +121,213 @@ func (db *Database) GetControllerOutputs(controllerName string) ([]controller.Ou
 //
 // If no controller manages a resource in exclusive mode, empty string is returned.
 func (db *Database) GetResourceExclusiveController(resourceType resource.Type) (string, error) {
-	txn := db.db.Txn(false)
-	defer txn.Abort()
+	db.mu.Lock()
+	defer db.mu.Unlock()
 
-	obj, err := txn.First(tableExclusiveOutputs, "id", resourceType)
-	if err != nil {
-		return "", fmt.Errorf("error quering exclusive outputs: %w", err)
-	}
-
-	if obj == nil {
-		return "", nil
-	}
-
-	dep := obj.(*ControllerOutput) //nolint:errcheck,forcetypeassert
-
-	return dep.ControllerName, nil
+	return db.exclusiveOutputs[resourceType], nil
 }
 
 // AddControllerInput adds a dependency of controller on a resource.
 func (db *Database) AddControllerInput(controllerName string, dep controller.Input) error {
-	txn := db.db.Txn(true)
-	defer txn.Abort()
+	db.mu.Lock()
+	defer db.mu.Unlock()
 
-	model := ControllerInput{
-		ControllerName: controllerName,
-		Namespace:      dep.Namespace,
-		Type:           dep.Type,
-		Kind:           dep.Kind,
+	existingInputs := db.controllerInputs[controllerName]
+
+	idx, _ := slices.BinarySearchFunc(existingInputs, dep, controller.Input.Compare)
+
+	// we might have a direct hit, or it could be in the area +/-1 to the index
+	for _, shift := range []int{-1, 0, 1} {
+		if idx+shift >= 0 && idx+shift < len(existingInputs) {
+			if existingInputs[idx+shift].EqualKeys(dep) {
+				return fmt.Errorf("duplicate controller input: %q -> %v", controllerName, dep)
+			}
+		}
 	}
 
-	if dep.ID != nil {
-		model.ID = *dep.ID
+	db.controllerInputs[controllerName] = slices.Insert(existingInputs, idx, dep)
+
+	id, ok := dep.ID.Get()
+	if !ok {
+		key := namespaceType{
+			Namespace: dep.Namespace,
+			Type:      dep.Type,
+		}
+
+		db.inputLookup[key] = append(db.inputLookup[key], controllerName)
 	} else {
-		model.ID = StarID
-	}
+		key := namespaceTypeID{
+			namespaceType: namespaceType{
+				Namespace: dep.Namespace,
+				Type:      dep.Type,
+			},
+			ID: id,
+		}
 
-	if err := txn.Insert(tableInputs, &model); err != nil {
-		return fmt.Errorf("error adding controller managed resource: %w", err)
+		db.inputLookupID[key] = append(db.inputLookupID[key], controllerName)
 	}
-
-	txn.Commit()
 
 	return nil
 }
 
 // DeleteControllerInput adds a dependency of controller on a resource.
 func (db *Database) DeleteControllerInput(controllerName string, dep controller.Input) error {
-	txn := db.db.Txn(true)
-	defer txn.Abort()
+	db.mu.Lock()
+	defer db.mu.Unlock()
 
-	resourceID := StarID
-	if dep.ID != nil {
-		resourceID = *dep.ID
+	var matched bool
+
+	existingInputs := db.controllerInputs[controllerName]
+
+	idx, _ := slices.BinarySearchFunc(existingInputs, dep, controller.Input.Compare)
+
+	// we might have a direct hit, or it could be in the area +/-1 to the index
+	for _, shift := range []int{-1, 0, 1} {
+		if idx+shift >= 0 && idx+shift < len(existingInputs) {
+			if existingInputs[idx+shift].EqualKeys(dep) {
+				matched = true
+
+				db.controllerInputs[controllerName] = slices.Delete(existingInputs, idx+shift, idx+shift+1)
+
+				break
+			}
+		}
 	}
 
-	if _, err := txn.DeleteAll(tableInputs, "id", controllerName, dep.Namespace, dep.Type, resourceID); err != nil {
-		return fmt.Errorf("error deleting controller managed resource: %w", err)
+	if !matched {
+		return fmt.Errorf("controller %q does not have input %v", controllerName, dep)
 	}
 
-	txn.Commit()
+	id, ok := dep.ID.Get()
+	if !ok {
+		key := namespaceType{
+			Namespace: dep.Namespace,
+			Type:      dep.Type,
+		}
+
+		db.inputLookup[key] = slices.DeleteFunc(db.inputLookup[key], func(s string) bool {
+			return s == controllerName
+		})
+	} else {
+		key := namespaceTypeID{
+			namespaceType: namespaceType{
+				Namespace: dep.Namespace,
+				Type:      dep.Type,
+			},
+			ID: id,
+		}
+
+		db.inputLookupID[key] = slices.DeleteFunc(db.inputLookupID[key], func(s string) bool {
+			return s == controllerName
+		})
+	}
 
 	return nil
 }
 
 // GetControllerInputs returns a list of controller dependencies.
 func (db *Database) GetControllerInputs(controllerName string) ([]controller.Input, error) {
-	txn := db.db.Txn(false)
-	defer txn.Abort()
+	db.mu.Lock()
+	defer db.mu.Unlock()
 
-	iter, err := txn.Get(tableInputs, "controller", controllerName)
-	if err != nil {
-		return nil, fmt.Errorf("error fetching controller dependencies: %w", err)
-	}
-
-	var result []controller.Input
-
-	for obj := iter.Next(); obj != nil; obj = iter.Next() {
-		model := obj.(*ControllerInput) //nolint:errcheck,forcetypeassert
-
-		dep := controller.Input{
-			Namespace: model.Namespace,
-			Type:      model.Type,
-			Kind:      model.Kind,
-		}
-
-		if model.ID != StarID {
-			dep.ID = pointer.To(model.ID)
-		}
-
-		result = append(result, dep)
-	}
-
-	return result, nil
+	return slices.Clone(db.controllerInputs[controllerName]), nil
 }
 
 // GetDependentControllers returns a list of controllers which depend on resource change.
 func (db *Database) GetDependentControllers(dep controller.Input) ([]string, error) {
-	txn := db.db.Txn(false)
-	defer txn.Abort()
+	db.mu.Lock()
+	defer db.mu.Unlock()
 
-	iter, err := txn.Get(tableInputs, "resource", dep.Namespace, dep.Type)
-	if err != nil {
-		return nil, fmt.Errorf("error fetching dependent resources: %w", err)
+	if !dep.ID.IsPresent() {
+		return nil, fmt.Errorf("resource ID is not set")
 	}
 
-	var result []string
-
-	for obj := iter.Next(); obj != nil; obj = iter.Next() {
-		model := obj.(*ControllerInput) //nolint:errcheck,forcetypeassert
-
-		if dep.ID == nil || model.ID == StarID || model.ID == *dep.ID {
-			result = append(result, model.ControllerName)
-		}
-	}
-
-	return result, nil
+	return append(
+		slices.Clone(
+			db.inputLookup[namespaceType{
+				Namespace: dep.Namespace,
+				Type:      dep.Type,
+			}],
+		),
+		db.inputLookupID[namespaceTypeID{
+			namespaceType: namespaceType{
+				Namespace: dep.Namespace,
+				Type:      dep.Type,
+			},
+			ID: dep.ID.ValueOrZero(),
+		}]...,
+	), nil
 }
 
 // Export dependency graph.
 func (db *Database) Export() (*controller.DependencyGraph, error) {
 	graph := &controller.DependencyGraph{}
 
-	txn := db.db.Txn(false)
-	defer txn.Abort()
+	db.mu.Lock()
+	defer db.mu.Unlock()
 
-	iter, err := txn.Get(tableExclusiveOutputs, "id")
-	if err != nil {
-		return nil, fmt.Errorf("error fetching exclusive outputs: %w", err)
-	}
-
-	for obj := iter.Next(); obj != nil; obj = iter.Next() {
-		model := obj.(*ControllerOutput) //nolint:errcheck,forcetypeassert
-
+	for resourceType, exclusiveController := range db.exclusiveOutputs {
 		graph.Edges = append(graph.Edges, controller.DependencyEdge{
-			ControllerName: model.ControllerName,
+			ControllerName: exclusiveController,
 			EdgeType:       controller.EdgeOutputExclusive,
-			ResourceType:   model.Type,
+			ResourceType:   resourceType,
 		})
 	}
 
-	iter, err = txn.Get(tableSharedOutputs, "id")
-	if err != nil {
-		return nil, fmt.Errorf("error fetching shared outputs: %w", err)
+	for resourceType, sharedControllers := range db.sharedOutputs {
+		for _, sharedController := range sharedControllers {
+			graph.Edges = append(graph.Edges, controller.DependencyEdge{
+				ControllerName: sharedController,
+				EdgeType:       controller.EdgeOutputShared,
+				ResourceType:   resourceType,
+			})
+		}
 	}
 
-	for obj := iter.Next(); obj != nil; obj = iter.Next() {
-		model := obj.(*ControllerOutput) //nolint:errcheck,forcetypeassert
+	for controllerName, inputs := range db.controllerInputs {
+		for _, input := range inputs {
+			var edgeType controller.DependencyEdgeType
 
-		graph.Edges = append(graph.Edges, controller.DependencyEdge{
-			ControllerName: model.ControllerName,
-			EdgeType:       controller.EdgeOutputShared,
-			ResourceType:   model.Type,
-		})
+			switch input.Kind {
+			case controller.InputStrong:
+				edgeType = controller.EdgeInputStrong
+			case controller.InputWeak:
+				edgeType = controller.EdgeInputWeak
+			case controller.InputDestroyReady:
+				edgeType = controller.EdgeInputDestroyReady
+			}
+
+			graph.Edges = append(graph.Edges, controller.DependencyEdge{
+				ControllerName:    controllerName,
+				EdgeType:          edgeType,
+				ResourceNamespace: input.Namespace,
+				ResourceType:      input.Type,
+				ResourceID:        input.ID.ValueOrZero(),
+			})
+		}
 	}
 
-	iter, err = txn.Get(tableInputs, "id")
-	if err != nil {
-		return nil, fmt.Errorf("error fetching dependent resources: %w", err)
-	}
-
-	for obj := iter.Next(); obj != nil; obj = iter.Next() {
-		model := obj.(*ControllerInput) //nolint:errcheck,forcetypeassert
-
-		var edgeType controller.DependencyEdgeType
-
-		switch model.Kind {
-		case controller.InputStrong:
-			edgeType = controller.EdgeInputStrong
-		case controller.InputWeak:
-			edgeType = controller.EdgeInputWeak
-		case controller.InputDestroyReady:
-			edgeType = controller.EdgeInputDestroyReady
+	slices.SortFunc(graph.Edges, func(a, b controller.DependencyEdge) int {
+		if a.EdgeType != b.EdgeType {
+			if a.EdgeType < controller.EdgeInputStrong || b.EdgeType < controller.EdgeInputStrong {
+				return cmp.Compare(a.EdgeType, b.EdgeType)
+			}
 		}
 
-		var resourceID resource.ID
-
-		if model.ID != StarID {
-			resourceID = model.ID
+		if a.ControllerName != b.ControllerName {
+			return cmp.Compare(a.ControllerName, b.ControllerName)
 		}
 
-		graph.Edges = append(graph.Edges, controller.DependencyEdge{
-			ControllerName:    model.ControllerName,
-			EdgeType:          edgeType,
-			ResourceNamespace: model.Namespace,
-			ResourceType:      model.Type,
-			ResourceID:        resourceID,
-		})
-	}
+		if a.ResourceNamespace != b.ResourceNamespace {
+			return cmp.Compare(a.ResourceNamespace, b.ResourceNamespace)
+		}
+
+		if a.ResourceType != b.ResourceType {
+			return cmp.Compare(a.ResourceType, b.ResourceType)
+		}
+
+		return cmp.Compare(a.ResourceID, b.ResourceID)
+	})
 
 	return graph, nil
 }

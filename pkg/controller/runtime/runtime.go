@@ -12,7 +12,7 @@ import (
 
 	"github.com/cenkalti/backoff/v4"
 	"github.com/siderolabs/gen/channel"
-	"github.com/siderolabs/go-pointer"
+	"github.com/siderolabs/gen/optional"
 	"go.uber.org/zap"
 	"golang.org/x/time/rate"
 
@@ -379,7 +379,7 @@ func (runtime *Runtime) deliverDeduplicatedEvents(ch chan dedup, empty chan<- de
 		controllers, err := runtime.depDB.GetDependentControllers(controller.Input{
 			Namespace: k.namespace,
 			Type:      k.typ,
-			ID:        pointer.To(k.id),
+			ID:        optional.Some(k.id),
 		})
 		if err != nil {
 			runtime.logger.Error("failed to get dependent controllers", zap.Error(err))

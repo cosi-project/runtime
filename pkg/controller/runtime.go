@@ -5,7 +5,10 @@
 package controller
 
 import (
+	"cmp"
 	"context"
+
+	"github.com/siderolabs/gen/optional"
 
 	"github.com/cosi-project/runtime/pkg/resource"
 	"github.com/cosi-project/runtime/pkg/state"
@@ -51,10 +54,32 @@ const (
 // when the resource enters "teardown" phase and has no finalizers attached.
 // Resources are filtered to be owned by the controller.
 type Input struct {
-	ID        *resource.ID
 	Namespace resource.Namespace
 	Type      resource.Type
+	ID        optional.Optional[resource.ID]
 	Kind      InputKind
+}
+
+// Compare defines Input sort order.
+func (a Input) Compare(b Input) int {
+	if a.Namespace != b.Namespace {
+		return cmp.Compare(a.Namespace, b.Namespace)
+	}
+
+	if a.Type != b.Type {
+		return cmp.Compare(a.Type, b.Type)
+	}
+
+	if a.ID != b.ID {
+		return cmp.Compare(a.ID.ValueOrZero(), b.ID.ValueOrZero())
+	}
+
+	return cmp.Compare(a.Kind, b.Kind)
+}
+
+// EqualKeys checks if two Inputs have equal (conflicting) keys.
+func (a Input) EqualKeys(b Input) bool {
+	return a.Namespace == b.Namespace && a.Type == b.Type && a.ID == b.ID
 }
 
 // OutputKind for outputs.
