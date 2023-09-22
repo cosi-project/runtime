@@ -6,7 +6,7 @@ package resource
 
 import (
 	"fmt"
-	"sort"
+	"slices"
 	"time"
 
 	"github.com/siderolabs/gen/xslices"
@@ -172,19 +172,23 @@ func (md Metadata) Equal(other Metadata) bool {
 		return true
 	}
 
-	fins := append(Finalizers(nil), md.fins...)
-	otherFins := append(Finalizers(nil), other.fins...)
+	switch len(md.fins) {
+	case 0:
+		return true
+	case 1:
+		return md.fins[0] == other.fins[0]
+	case 2:
+		return md.fins[0] == other.fins[0] && md.fins[1] == other.fins[1] ||
+			md.fins[0] == other.fins[1] && md.fins[1] == other.fins[0]
+	default:
+		fins := slices.Clone(md.fins)
+		otherFins := slices.Clone(other.fins)
 
-	sort.Strings(fins)
-	sort.Strings(otherFins)
+		slices.Sort(fins)
+		slices.Sort(otherFins)
 
-	for i := range fins {
-		if fins[i] != otherFins[i] {
-			return false
-		}
+		return slices.Equal(fins, otherFins)
 	}
-
-	return true
 }
 
 // MarshalYAML implements yaml.Marshaller interface.

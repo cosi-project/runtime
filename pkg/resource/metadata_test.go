@@ -6,6 +6,7 @@ package resource_test
 
 import (
 	"fmt"
+	"strconv"
 	"testing"
 	"time"
 
@@ -253,4 +254,26 @@ func TestNewMedataFromProto(t *testing.T) {
 	other.Labels().Set("app", "foo")
 
 	assert.True(t, md.Equal(other))
+}
+
+func BenchmarkMetadataEqual(b *testing.B) {
+	for _, l := range []int{0, 1, 2, 3} {
+		b.Run(strconv.Itoa(l), func(b *testing.B) {
+			md := resource.NewMetadata("default", "type", "aaa", resource.VersionUndefined)
+			other := resource.NewMetadata("default", "type", "aaa", resource.VersionUndefined)
+
+			for i := 0; i < l; i++ {
+				md.Finalizers().Add(fmt.Sprintf("finalizer-%d", i))
+				other.Finalizers().Add(fmt.Sprintf("finalizer-%d", l-i-1))
+			}
+
+			b.ResetTimer()
+
+			for i := 0; i < b.N; i++ {
+				if !md.Equal(other) {
+					b.FailNow()
+				}
+			}
+		})
+	}
 }
