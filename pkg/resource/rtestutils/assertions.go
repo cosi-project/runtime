@@ -150,8 +150,56 @@ func AssertNoResource[R ResourceWithRD](
 }
 
 // AssertAll asserts on all resources of a kind.
-func AssertAll[R ResourceWithRD](ctx context.Context, t *testing.T, st state.State, assertionFunc func(r R, assertion *assert.Assertions)) {
-	AssertResources(ctx, t, st, ResourceIDs[R](ctx, t, st), assertionFunc)
+func AssertAll[R ResourceWithRD](ctx context.Context, t *testing.T, st state.State, assertionFunc func(r R, assertion *assert.Assertions), opts ...Option) {
+	AssertResources(ctx, t, st, ResourceIDs[R](ctx, t, st), assertionFunc, opts...)
+}
+
+// AssertLength asserts on the length of a resource list.
+func AssertLength[R ResourceWithRD](ctx context.Context, t *testing.T, st state.State, expectedLength int, opts ...Option) {
+	require := require.New(t)
+
+	var r R
+
+	rds := r.ResourceDefinition()
+
+	ctx, cancel := context.WithCancel(ctx)
+	defer cancel()
+
+	watchCh := make(chan state.Event)
+	opt := makeOptions(opts...)
+	namespace := pick(opt.Namespace != "", opt.Namespace, rds.DefaultNamespace)
+
+	require.NoError(st.WatchKind(ctx, resource.NewMetadata(namespace, rds.Type, "", resource.VersionUndefined), watchCh, state.WithBootstrapContents(true)))
+
+	reportTicker := time.NewTicker(opt.ReportInterval)
+	defer reportTicker.Stop()
+
+	length := 0
+	bootstrapped := false
+
+	for {
+		select {
+		case event := <-watchCh:
+			switch event.Type { //nolint:exhaustive
+			case state.Created:
+				length++
+			case state.Destroyed:
+				length--
+			case state.Bootstrapped:
+				bootstrapped = true
+			case state.Errored:
+				require.NoError(event.Error)
+			}
+
+			if bootstrapped && length == expectedLength {
+				return
+			}
+		case <-reportTicker.C:
+			t.Logf("length: expected %d, actual %d", expectedLength, length)
+		case <-ctx.Done():
+			t.Fatalf("timeout: expected %d, actual %d", expectedLength, length)
+		}
+	}
 }
 
 // Options is a set of options for the test utils.
