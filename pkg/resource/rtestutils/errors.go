@@ -37,3 +37,29 @@ func (agg *assertionAggregator) String() string {
 
 	return strings.Join(lines, "\n")
 }
+
+func (agg *assertionAggregator) Equal(other *assertionAggregator) bool {
+	if agg.hadErrors != other.hadErrors {
+		return false
+	}
+
+	if agg.errors == nil {
+		return other.errors == nil
+	}
+
+	if other.errors == nil {
+		return false
+	}
+
+	if len(agg.errors) != len(other.errors) {
+		return false
+	}
+
+	for errorString := range agg.errors {
+		if _, ok := other.errors[errorString]; !ok {
+			return false
+		}
+	}
+
+	return true
+}

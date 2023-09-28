@@ -7,6 +7,7 @@ package rtestutils
 import (
 	"context"
 	"testing"
+	"time"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -40,6 +41,15 @@ func AssertResources[R ResourceWithRD](
 
 	require.NoError(st.WatchKind(ctx, resource.NewMetadata(namespace, rds.Type, "", resource.VersionUndefined), watchCh))
 
+	reportTicker := time.NewTicker(opt.ReportInterval)
+	defer reportTicker.Stop()
+
+	var (
+		doReport               bool
+		lastReportedAggregator assertionAggregator
+		lastReporedOk          int
+	)
+
 	for {
 		ok := 0
 
@@ -71,7 +81,15 @@ func AssertResources[R ResourceWithRD](
 			return
 		}
 
-		t.Logf("ok: %d/%d, assertions:\n%s", ok, len(ids), &aggregator)
+		if doReport {
+			// suppress duplicate reports
+			if !lastReportedAggregator.Equal(&aggregator) || lastReporedOk != ok {
+				t.Logf("ok: %d/%d, assertions:\n%s", ok, len(ids), &aggregator)
+			}
+
+			lastReporedOk = ok
+			lastReportedAggregator = aggregator
+		}
 
 		var ev state.Event
 
@@ -79,10 +97,13 @@ func AssertResources[R ResourceWithRD](
 		case <-ctx.Done():
 			require.FailNow("timeout", "assertions:\n%s", &aggregator)
 		case ev = <-watchCh:
-		}
+			doReport = false
 
-		if ev.Type == state.Errored {
-			require.NoError(ev.Error)
+			if ev.Type == state.Errored {
+				require.NoError(ev.Error)
+			}
+		case <-reportTicker.C:
+			doReport = true
 		}
 	}
 }
@@ -135,14 +156,17 @@ func AssertAll[R ResourceWithRD](ctx context.Context, t *testing.T, st state.Sta
 
 // Options is a set of options for the test utils.
 type Options struct {
-	Namespace string
+	Namespace      string
+	ReportInterval time.Duration
 }
 
 // Option is a functional option for the test utils.
 type Option func(*Options)
 
 func makeOptions(opts ...Option) Options {
-	var opt Options
+	opt := Options{
+		ReportInterval: 30 * time.Second,
+	}
 
 	for _, o := range opts {
 		o(&opt)
@@ -155,6 +179,13 @@ func makeOptions(opts ...Option) Options {
 func WithNamespace(namespace string) Option {
 	return func(o *Options) {
 		o.Namespace = namespace
+	}
+}
+
+// WithReportInterval controls the report interval for the test utils.
+func WithReportInterval(interval time.Duration) Option {
+	return func(o *Options) {
+		o.ReportInterval = interval
 	}
 }
 
