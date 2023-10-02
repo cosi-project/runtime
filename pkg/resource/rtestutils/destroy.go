@@ -29,15 +29,15 @@ func Destroy[R ResourceWithRD](ctx context.Context, t *testing.T, st state.State
 
 	rds := r.ResourceDefinition()
 
-	require.NoError(t, teardown(ctx, st, ids, rds))
-
 	watchCh := make(chan safe.WrappedStateEvent[R])
 
 	ctx, cancel := context.WithCancel(ctx)
 	defer cancel()
 
+	// start watching before tearing down, so that we don't lose events
 	require.NoError(t, safe.StateWatchKind(ctx, st, resource.NewMetadata(rds.DefaultNamespace, rds.Type, "", resource.VersionUndefined), watchCh, state.WithBootstrapContents(true)))
 
+	ids = Teardown[R](ctx, t, st, ids)
 	idMap := xslices.ToSet(ids)
 
 	for len(idMap) > 0 {
@@ -81,20 +81,30 @@ func Destroy[R ResourceWithRD](ctx context.Context, t *testing.T, st state.State
 }
 
 // Teardown moves provided resources to the PhaseTearingDown.
-func Teardown[R ResourceWithRD](ctx context.Context, t *testing.T, st state.State, ids []string) {
+//
+// Teardown ignores not found resources and returns a list of resources that were actually torn down.
+func Teardown[R ResourceWithRD](ctx context.Context, t *testing.T, st state.State, ids []string) []string {
 	var r R
 
-	require.NoError(t, teardown(ctx, st, ids, r.ResourceDefinition()))
+	torndown, err := teardown(ctx, st, ids, r.ResourceDefinition())
+
+	require.NoError(t, err)
+
+	return torndown
 }
 
-func teardown(ctx context.Context, st state.State, ids []string, rds meta.ResourceDefinitionSpec) error {
+func teardown(ctx context.Context, st state.State, ids []string, rds meta.ResourceDefinitionSpec) ([]string, error) {
+	tornDown := make([]string, 0, len(ids))
+
 	for _, id := range ids {
-		if _, err := st.Teardown(ctx, resource.NewMetadata(rds.DefaultNamespace, rds.Type, id, resource.VersionUndefined)); err != nil {
-			return err
+		if _, err := st.Teardown(ctx, resource.NewMetadata(rds.DefaultNamespace, rds.Type, id, resource.VersionUndefined)); err == nil {
+			tornDown = append(tornDown, id)
+		} else if ignoreNotFound(err) != nil {
+			return nil, err
 		}
 	}
 
-	return nil
+	return tornDown, nil
 }
 
 func ignoreNotFound(err error) error {
