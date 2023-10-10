@@ -7,6 +7,7 @@ package protobuf
 import (
 	"encoding/json"
 
+	"google.golang.org/protobuf/encoding/protojson"
 	"google.golang.org/protobuf/proto"
 	"gopkg.in/yaml.v3"
 )
@@ -69,7 +70,9 @@ func (spec *ResourceSpec[T, S]) UnmarshalYAML(node *yaml.Node) error {
 func (spec *ResourceSpec[T, S]) UnmarshalJSON(bytes []byte) error {
 	spec.Value = new(T)
 
-	return json.Unmarshal(bytes, &spec.Value)
+	opts := protojson.UnmarshalOptions{}
+
+	return opts.Unmarshal(bytes, spec.Value)
 }
 
 // UnmarshalProto implements protobuf.ResourceUnmarshaler.
