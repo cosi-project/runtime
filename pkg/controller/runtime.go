@@ -115,6 +115,7 @@ type Writer interface {
 	Create(context.Context, resource.Resource) error
 	Update(context.Context, resource.Resource) error
 	Modify(context.Context, resource.Resource, func(resource.Resource) error) error
+	ModifyWithResult(context.Context, resource.Resource, func(resource.Resource) error) (resource.Resource, error)
 	Teardown(context.Context, resource.Pointer, ...Option) (bool, error)
 	Destroy(context.Context, resource.Pointer, ...Option) error
 

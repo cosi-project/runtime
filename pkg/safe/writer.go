@@ -23,3 +23,17 @@ func WriterModify[T resource.Resource](ctx context.Context, writer controller.Wr
 		return fn(arg)
 	})
 }
+
+// WriterModifyWithResult is a type safe wrapper around writer.ModifyWithResult.
+func WriterModifyWithResult[T resource.Resource](ctx context.Context, writer controller.Writer, r T, fn func(T) error) (T, error) {
+	got, err := writer.ModifyWithResult(ctx, r, func(r resource.Resource) error {
+		arg, ok := r.(T)
+		if !ok {
+			return fmt.Errorf("type mismatch: expected %T, got %T", arg, r)
+		}
+
+		return fn(arg)
+	})
+
+	return typeAssertOrZero[T](got, err)
+}

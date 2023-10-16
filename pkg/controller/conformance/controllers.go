@@ -428,3 +428,92 @@ func (ctrl *IntDoublerController) Run(ctx context.Context, r controller.Runtime,
 		}
 	}
 }
+
+// ModifyWithResultController doubles IntResource.
+type ModifyWithResultController struct {
+	SourceNamespace resource.Namespace
+	TargetNamespace resource.Namespace
+}
+
+// Name implements controller.Controller interface.
+func (ctrl *ModifyWithResultController) Name() string {
+	return "ModifyWithResultController"
+}
+
+// Inputs implements controller.Controller interface.
+func (ctrl *ModifyWithResultController) Inputs() []controller.Input {
+	return []controller.Input{
+		{
+			Namespace: ctrl.SourceNamespace,
+			Type:      StrResourceType,
+			Kind:      controller.InputStrong,
+		},
+	}
+}
+
+// Outputs implements controller.Controller interface.
+func (ctrl *ModifyWithResultController) Outputs() []controller.Output {
+	return []controller.Output{
+		{
+			Type: StrResourceType,
+			Kind: controller.OutputExclusive,
+		},
+	}
+}
+
+// Run implements controller.Controller interface.
+func (ctrl *ModifyWithResultController) Run(ctx context.Context, r controller.Runtime, _ *zap.Logger) error {
+	sourceMd := resource.NewMetadata(ctrl.SourceNamespace, StrResourceType, "", resource.VersionUndefined)
+
+	for {
+		select {
+		case <-ctx.Done():
+			return nil
+		case <-r.EventCh():
+		}
+
+		strList, err := safe.ReaderList[interface {
+			StringResource
+			resource.Resource
+		}](ctx, r, sourceMd)
+		if err != nil {
+			return fmt.Errorf("error listing objects: %w", err)
+		}
+
+		for iter := strList.Iterator(); iter.Next(); {
+			strRes := iter.Value()
+
+			id := strRes.Metadata().ID() + "-out"
+			val := strRes.Value() + "-modified"
+
+			outRes := NewStrResource(ctrl.TargetNamespace, id, "")
+
+			modifyResult, err := safe.WriterModifyWithResult(ctx, r, outRes, func(r *StrResource) error {
+				r.SetValue(val)
+
+				return nil
+			})
+			if err != nil {
+				return fmt.Errorf("error updating objects: %w", err)
+			}
+
+			resultValid := modifyResult.Metadata().ID() == id && modifyResult.Value() == val
+			resultRes := NewStrResource(ctrl.TargetNamespace, id+"-modify-result", "")
+			resultResVal := strRes.Value() + "-valid"
+
+			if !resultValid {
+				resultResVal = fmt.Sprintf("invalid: id: %q, val: %q", modifyResult.Metadata().ID(), modifyResult.Value())
+			}
+
+			if err := safe.WriterModify(ctx, r, resultRes, func(r *StrResource) error {
+				r.SetValue(resultResVal)
+
+				return nil
+			}); err != nil {
+				return err
+			}
+		}
+
+		r.ResetRestartBackoff()
+	}
+}

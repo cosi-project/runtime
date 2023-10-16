@@ -295,12 +295,25 @@ func (adapter *adapter) Update(ctx context.Context, newResource resource.Resourc
 func (adapter *adapter) Modify(ctx context.Context, emptyResource resource.Resource, updateFunc func(resource.Resource) error) error {
 	metrics.ControllerWrites.Add(adapter.name, 1)
 
+	_, err := adapter.modify(ctx, emptyResource, updateFunc)
+
+	return err
+}
+
+// ModifyWithResult implements controller.Runtime interface.
+func (adapter *adapter) ModifyWithResult(ctx context.Context, emptyResource resource.Resource, updateFunc func(resource.Resource) error) (resource.Resource, error) {
+	metrics.ControllerWrites.Add(adapter.name, 1)
+
+	return adapter.modify(ctx, emptyResource, updateFunc)
+}
+
+func (adapter *adapter) modify(ctx context.Context, emptyResource resource.Resource, updateFunc func(resource.Resource) error) (resource.Resource, error) {
 	if err := adapter.updateLimiter.Wait(ctx); err != nil {
-		return fmt.Errorf("modify rate limited: %w", err)
+		return nil, fmt.Errorf("modify rate limited: %w", err)
 	}
 
 	if !adapter.isOutput(emptyResource.Metadata().Type()) {
-		return fmt.Errorf("resource %q/%q is not an output for controller %q, update attempted on %q",
+		return nil, fmt.Errorf("resource %q/%q is not an output for controller %q, update attempted on %q",
 			emptyResource.Metadata().Namespace(), emptyResource.Metadata().Type(), adapter.name, emptyResource.Metadata().ID())
 	}
 
@@ -313,18 +326,20 @@ func (adapter *adapter) Modify(ctx context.Context, emptyResource resource.Resou
 		if state.IsNotFoundError(err) {
 			err = updateFunc(emptyResource)
 			if err != nil {
-				return err
+				return nil, err
 			}
 
-			return adapter.runtime.state.Create(ctx, emptyResource, state.WithCreateOwner(adapter.name))
+			if err = adapter.runtime.state.Create(ctx, emptyResource, state.WithCreateOwner(adapter.name)); err != nil {
+				return nil, err
+			}
+
+			return emptyResource, nil
 		}
 
-		return fmt.Errorf("error querying current object state: %w", err)
+		return nil, fmt.Errorf("error querying current object state: %w", err)
 	}
 
-	_, err = adapter.runtime.state.UpdateWithConflicts(ctx, emptyResource.Metadata(), updateFunc, state.WithUpdateOwner(adapter.name))
-
-	return err
+	return adapter.runtime.state.UpdateWithConflicts(ctx, emptyResource.Metadata(), updateFunc, state.WithUpdateOwner(adapter.name))
 }
 
 // AddFinalizer implements controller.Runtime interface.

@@ -598,18 +598,32 @@ func (ctrlAdapter *controllerAdapter) Update(ctx context.Context, newResource re
 }
 
 func (ctrlAdapter *controllerAdapter) Modify(ctx context.Context, emptyResource resource.Resource, updateFunc func(resource.Resource) error) error {
+	_, err := ctrlAdapter.modify(ctx, emptyResource, updateFunc)
+
+	return err
+}
+
+func (ctrlAdapter *controllerAdapter) ModifyWithResult(ctx context.Context, emptyResource resource.Resource, updateFunc func(resource.Resource) error) (resource.Resource, error) {
+	return ctrlAdapter.modify(ctx, emptyResource, updateFunc)
+}
+
+func (ctrlAdapter *controllerAdapter) modify(ctx context.Context, emptyResource resource.Resource, updateFunc func(resource.Resource) error) (resource.Resource, error) {
 	_, err := ctrlAdapter.Get(ctx, emptyResource.Metadata())
 	if err != nil {
 		if state.IsNotFoundError(err) {
 			err = updateFunc(emptyResource)
 			if err != nil {
-				return err
+				return nil, err
 			}
 
-			return ctrlAdapter.Create(ctx, emptyResource)
+			if err = ctrlAdapter.Create(ctx, emptyResource); err != nil {
+				return nil, err
+			}
+
+			return emptyResource, nil
 		}
 
-		return fmt.Errorf("error querying current object state: %w", err)
+		return nil, fmt.Errorf("error querying current object state: %w", err)
 	}
 
 	resourcePointer := emptyResource.Metadata()
@@ -617,29 +631,29 @@ func (ctrlAdapter *controllerAdapter) Modify(ctx context.Context, emptyResource 
 	for {
 		current, err := ctrlAdapter.Get(ctx, resourcePointer)
 		if err != nil {
-			return err
+			return nil, err
 		}
 
 		newResource := current.DeepCopy()
 
 		if err = updateFunc(newResource); err != nil {
-			return err
+			return nil, err
 		}
 
 		if resource.Equal(current, newResource) {
-			return nil
+			return newResource, nil
 		}
 
 		err = ctrlAdapter.Update(ctx, newResource)
 		if err == nil {
-			return nil
+			return newResource, nil
 		}
 
 		if state.IsConflictError(err) {
 			continue
 		}
 
-		return err
+		return nil, err
 	}
 }
 

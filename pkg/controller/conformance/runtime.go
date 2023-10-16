@@ -450,3 +450,43 @@ func (suite *RuntimeSuite) TestIntDoublerController() {
 	suite.Assert().NoError(retry.Constant(10*time.Second, retry.WithUnits(10*time.Millisecond)).
 		Retry(suite.assertIntObjects([]string{"one", "two"}, []int{2, 4})))
 }
+
+// TestModifyWithResultController ...
+func (suite *RuntimeSuite) TestModifyWithResultController() {
+	srcNS := "modify-with-result-source"
+	targetNS := "modify-with-result-target"
+
+	suite.Require().NoError(suite.Runtime.RegisterController(&ModifyWithResultController{
+		SourceNamespace: srcNS,
+		TargetNamespace: targetNS,
+	}))
+
+	suite.startRuntime()
+
+	// test create
+
+	suite.Require().NoError(suite.State.Create(suite.ctx, NewStrResource(srcNS, "id", "val-1")))
+
+	suite.Assert().NoError(retry.Constant(10*time.Second, retry.WithUnits(10*time.Millisecond)).Retry(
+		suite.assertStrObjects(targetNS, StrResourceType,
+			[]string{"id-out", "id-out-modify-result"},
+			[]string{"val-1-modified", "val-1-valid"},
+		),
+	))
+
+	// test update
+
+	_, err := safe.StateUpdateWithConflicts(suite.ctx, suite.State, NewStrResource(srcNS, "id", "").Metadata(), func(r *StrResource) error {
+		r.SetValue("val-2")
+
+		return nil
+	})
+	suite.Require().NoError(err)
+
+	suite.Assert().NoError(retry.Constant(10*time.Second, retry.WithUnits(10*time.Millisecond)).Retry(
+		suite.assertStrObjects(targetNS, StrResourceType,
+			[]string{"id-out", "id-out-modify-result"},
+			[]string{"val-2-modified", "val-2-valid"},
+		),
+	))
+}

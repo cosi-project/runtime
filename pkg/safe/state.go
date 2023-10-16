@@ -20,23 +20,6 @@ func typeMismatchErr(expected, got any) error {
 	return fmt.Errorf("type mismatch: expected %T, got %T", expected, got)
 }
 
-func typeAssertOrZero[T resource.Resource](got resource.Resource, err error) (T, error) { //nolint:ireturn
-	if err != nil {
-		var zero T
-
-		return zero, err
-	}
-
-	result, ok := got.(T)
-	if !ok {
-		var zero T
-
-		return zero, typeMismatchErr(result, got)
-	}
-
-	return result, nil
-}
-
 // StateGet is a type safe wrapper around state.Get.
 func StateGet[T resource.Resource](ctx context.Context, st state.CoreState, ptr resource.Pointer, options ...state.GetOption) (T, error) { //nolint:ireturn
 	got, err := st.Get(ctx, ptr, options...)
