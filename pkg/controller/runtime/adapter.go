@@ -20,6 +20,7 @@ import (
 	"golang.org/x/time/rate"
 
 	"github.com/cosi-project/runtime/pkg/controller"
+	"github.com/cosi-project/runtime/pkg/controller/runtime/metrics"
 	"github.com/cosi-project/runtime/pkg/logging"
 	"github.com/cosi-project/runtime/pkg/resource"
 	"github.com/cosi-project/runtime/pkg/state"
@@ -219,6 +220,8 @@ func (adapter *adapter) checkFinalizerAccess(resourceNamespace resource.Namespac
 
 // Get implements controller.Runtime interface.
 func (adapter *adapter) Get(ctx context.Context, resourcePointer resource.Pointer, opts ...state.GetOption) (resource.Resource, error) { //nolint:ireturn
+	metrics.ControllerReads.Add(adapter.name, 1)
+
 	if err := adapter.checkReadAccess(resourcePointer.Namespace(), resourcePointer.Type(), optional.Some(resourcePointer.ID())); err != nil {
 		return nil, err
 	}
@@ -228,6 +231,8 @@ func (adapter *adapter) Get(ctx context.Context, resourcePointer resource.Pointe
 
 // List implements controller.Runtime interface.
 func (adapter *adapter) List(ctx context.Context, resourceKind resource.Kind, opts ...state.ListOption) (resource.List, error) {
+	metrics.ControllerReads.Add(adapter.name, 1)
+
 	if err := adapter.checkReadAccess(resourceKind.Namespace(), resourceKind.Type(), optional.None[resource.ID]()); err != nil {
 		return resource.List{}, err
 	}
@@ -237,6 +242,8 @@ func (adapter *adapter) List(ctx context.Context, resourceKind resource.Kind, op
 
 // WatchFor implements controller.Runtime interface.
 func (adapter *adapter) WatchFor(ctx context.Context, resourcePointer resource.Pointer, opts ...state.WatchForConditionFunc) (resource.Resource, error) { //nolint:ireturn
+	metrics.ControllerReads.Add(adapter.name, 1)
+
 	if err := adapter.checkReadAccess(resourcePointer.Namespace(), resourcePointer.Type(), optional.None[resource.ID]()); err != nil {
 		return nil, err
 	}
@@ -246,6 +253,8 @@ func (adapter *adapter) WatchFor(ctx context.Context, resourcePointer resource.P
 
 // Create implements controller.Runtime interface.
 func (adapter *adapter) Create(ctx context.Context, r resource.Resource) error {
+	metrics.ControllerWrites.Add(adapter.name, 1)
+
 	if err := adapter.updateLimiter.Wait(ctx); err != nil {
 		return fmt.Errorf("create rate limited: %w", err)
 	}
@@ -264,6 +273,8 @@ func (adapter *adapter) Create(ctx context.Context, r resource.Resource) error {
 
 // Update implements controller.Runtime interface.
 func (adapter *adapter) Update(ctx context.Context, newResource resource.Resource) error {
+	metrics.ControllerWrites.Add(adapter.name, 1)
+
 	if err := adapter.updateLimiter.Wait(ctx); err != nil {
 		return fmt.Errorf("update rate limited: %w", err)
 	}
@@ -282,6 +293,8 @@ func (adapter *adapter) Update(ctx context.Context, newResource resource.Resourc
 
 // Modify implements controller.Runtime interface.
 func (adapter *adapter) Modify(ctx context.Context, emptyResource resource.Resource, updateFunc func(resource.Resource) error) error {
+	metrics.ControllerWrites.Add(adapter.name, 1)
+
 	if err := adapter.updateLimiter.Wait(ctx); err != nil {
 		return fmt.Errorf("modify rate limited: %w", err)
 	}
@@ -316,6 +329,8 @@ func (adapter *adapter) Modify(ctx context.Context, emptyResource resource.Resou
 
 // AddFinalizer implements controller.Runtime interface.
 func (adapter *adapter) AddFinalizer(ctx context.Context, resourcePointer resource.Pointer, fins ...resource.Finalizer) error {
+	metrics.ControllerWrites.Add(adapter.name, 1)
+
 	if err := adapter.updateLimiter.Wait(ctx); err != nil {
 		return fmt.Errorf("add finalizer rate limited: %w", err)
 	}
@@ -329,6 +344,8 @@ func (adapter *adapter) AddFinalizer(ctx context.Context, resourcePointer resour
 
 // RemoveFinalizer implements controller.Runtime interface.
 func (adapter *adapter) RemoveFinalizer(ctx context.Context, resourcePointer resource.Pointer, fins ...resource.Finalizer) error {
+	metrics.ControllerWrites.Add(adapter.name, 1)
+
 	if err := adapter.updateLimiter.Wait(ctx); err != nil {
 		return fmt.Errorf("remove finalizer rate limited: %w", err)
 	}
@@ -347,6 +364,8 @@ func (adapter *adapter) RemoveFinalizer(ctx context.Context, resourcePointer res
 
 // Teardown implements controller.Runtime interface.
 func (adapter *adapter) Teardown(ctx context.Context, resourcePointer resource.Pointer, opOpts ...controller.Option) (bool, error) {
+	metrics.ControllerWrites.Add(adapter.name, 1)
+
 	if err := adapter.updateLimiter.Wait(ctx); err != nil {
 		return false, fmt.Errorf("teardown rate limited: %w", err)
 	}
@@ -369,6 +388,8 @@ func (adapter *adapter) Teardown(ctx context.Context, resourcePointer resource.P
 
 // Destroy implements controller.Runtime interface.
 func (adapter *adapter) Destroy(ctx context.Context, resourcePointer resource.Pointer, opOpts ...controller.Option) error {
+	metrics.ControllerWrites.Add(adapter.name, 1)
+
 	if err := adapter.updateLimiter.Wait(ctx); err != nil {
 		return fmt.Errorf("destroy finalizer rate limited: %w", err)
 	}
@@ -444,6 +465,7 @@ func (adapter *adapter) triggerReconcile() {
 	// otherwise channel is not empty, and reconcile is anyway scheduled
 	select {
 	case adapter.ch <- controller.ReconcileEvent{}:
+		metrics.ControllerWakeups.Add(adapter.name, 1)
 	default:
 	}
 }
@@ -456,6 +478,8 @@ func (adapter *adapter) run(ctx context.Context) {
 		if err == nil {
 			return
 		}
+
+		metrics.ControllerCrashes.Add(adapter.name, 1)
 
 		interval := adapter.backoff.NextBackOff()
 

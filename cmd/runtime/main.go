@@ -2,7 +2,9 @@
 // License, v. 2.0. If a copy of the MPL was not distributed with this
 // file, You can obtain one at http://mozilla.org/MPL/2.0/.
 
-// main is the entrypoint for the controller runtime.
+// Package main is the entrypoint for the controller runtime.
+//
+// It exists to provide a simple example of how to use the controller runtime.
 package main
 
 import (
@@ -12,14 +14,17 @@ import (
 	"fmt"
 	"log"
 	"net"
+	"net/http"
 	"os"
 	"os/signal"
 	"syscall"
+	"time"
 
 	"golang.org/x/sync/errgroup"
 	"google.golang.org/grpc"
 
 	"github.com/cosi-project/runtime/api/v1alpha1"
+	"github.com/cosi-project/runtime/pkg/controller/conformance"
 	runtimeserver "github.com/cosi-project/runtime/pkg/controller/protobuf/server"
 	"github.com/cosi-project/runtime/pkg/controller/runtime"
 	"github.com/cosi-project/runtime/pkg/logging"
@@ -30,13 +35,15 @@ import (
 )
 
 var (
-	addressAndPort string
-	socketPath     string
+	grpcAddressAndPort string
+	httpServerAndPort  string
+	socketPath         string
 )
 
 func main() {
 	flag.StringVar(&socketPath, "socket-path", "/system/runtime.sock", "path to the UNIX socket to listen on")
-	flag.StringVar(&addressAndPort, "address", "", "the address and port to bind to")
+	flag.StringVar(&grpcAddressAndPort, "grpc-address", "", "the grpc address and port to bind to")
+	flag.StringVar(&httpServerAndPort, "http-address", "", `the http address and port to bind to. It can be used to access the metrics endpoint "/debug/vars"`)
 	flag.Parse()
 
 	if err := run(); err != nil {
@@ -56,9 +63,9 @@ func run() error {
 		address = socketPath
 	)
 
-	if addressAndPort != "" {
+	if grpcAddressAndPort != "" {
 		network = "tcp"
-		address = addressAndPort
+		address = grpcAddressAndPort
 	} else if err := os.Remove(socketPath); err != nil {
 		if !errors.Is(err, os.ErrNotExist) {
 			return err
@@ -90,13 +97,83 @@ func run() error {
 
 	var eg errgroup.Group
 
+	httpServer := &http.Server{
+		Addr: httpServerAndPort,
+	}
+
+	if httpServerAndPort != "" {
+		eg.Go(func() error {
+			return runHTTPServer(httpServer)
+		})
+	}
+
 	eg.Go(func() error {
 		return grpcServer.Serve(l)
+	})
+
+	eg.Go(func() error {
+		ctrl := &conformance.IntToStrController{
+			SourceNamespace: "default",
+			TargetNamespace: "default",
+		}
+
+		if err := controllerRuntime.RegisterController(ctrl); err != nil {
+			return fmt.Errorf("error registering controller: %w", err)
+		}
+
+		return controllerRuntime.Run(ctx)
+	})
+
+	eg.Go(func() error {
+		return runController(ctx, inmemState)
 	})
 
 	<-ctx.Done()
 
 	grpcServer.GracefulStop()
 
+	if httpServerAndPort != "" {
+		shutdownHTTPServer(httpServer)
+	}
+
 	return eg.Wait()
+}
+
+func runHTTPServer(httpServer *http.Server) error {
+	if err := httpServer.ListenAndServe(); err != nil && !errors.Is(err, http.ErrServerClosed) {
+		return fmt.Errorf("error listening and serving http: %w", err)
+	}
+
+	return nil
+}
+
+func shutdownHTTPServer(httpServer *http.Server) {
+	shutdownCtx, shutdownCancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer shutdownCancel()
+
+	if err := httpServer.Shutdown(shutdownCtx); err != nil {
+		log.Printf("error shutting down http server: %v", err)
+	}
+}
+
+func runController(ctx context.Context, st state.State) error {
+	ticker := time.NewTicker(2 * time.Second)
+	defer ticker.Stop()
+
+	i := 1
+
+	for {
+		select {
+		case <-ctx.Done():
+			return nil
+		case <-ticker.C:
+			intRes := conformance.NewIntResource("default", fmt.Sprintf("int-%d", i), i)
+
+			i++
+
+			if err := st.Create(ctx, intRes); err != nil {
+				return fmt.Errorf("error creating resource: %w", err)
+			}
+		}
+	}
 }
