@@ -17,6 +17,91 @@ import (
 	"github.com/cosi-project/runtime/pkg/state"
 )
 
+// AssertResource asserts on a resource.
+// Doesn't use watch kind.
+func AssertResource[R ResourceWithRD](
+	ctx context.Context,
+	t *testing.T,
+	st state.State,
+	id resource.ID,
+	assertionFunc func(r R, assertion *assert.Assertions),
+	opts ...Option,
+) {
+	require := require.New(t)
+
+	var r R
+
+	rds := r.ResourceDefinition()
+
+	ctx, cancel := context.WithCancel(ctx)
+	defer cancel()
+
+	watchCh := make(chan state.Event)
+	opt := makeOptions(opts...)
+	namespace := pick(opt.Namespace != "", opt.Namespace, rds.DefaultNamespace)
+
+	require.NoError(st.Watch(ctx, resource.NewMetadata(namespace, rds.Type, id, resource.VersionUndefined), watchCh))
+
+	reportTicker := time.NewTicker(opt.ReportInterval)
+	defer reportTicker.Stop()
+
+	var (
+		doReport               bool
+		lastReportedAggregator assertionAggregator
+	)
+
+	for {
+		var aggregator assertionAggregator
+
+		asserter := assert.New(&aggregator)
+
+		res, err := safe.StateGet[R](ctx, st, resource.NewMetadata(namespace, rds.Type, id, resource.VersionUndefined))
+		if err != nil {
+			if state.IsNotFoundError(err) {
+				asserter.NoError(err)
+
+				t.Logf("assertions:\n%s", &aggregator)
+
+				continue
+			}
+
+			require.NoError(err)
+		}
+
+		aggregator.hadErrors = false
+
+		assertionFunc(res, asserter)
+
+		if !aggregator.hadErrors {
+			return
+		}
+
+		if doReport {
+			// suppress duplicate reports
+			if !lastReportedAggregator.Equal(&aggregator) {
+				t.Logf("assertions:\n%s", &aggregator)
+			}
+
+			lastReportedAggregator = aggregator
+		}
+
+		var ev state.Event
+
+		select {
+		case <-ctx.Done():
+			require.FailNow("timeout", "assertions:\n%s", &aggregator)
+		case ev = <-watchCh:
+			doReport = false
+
+			if ev.Type == state.Errored {
+				require.NoError(ev.Error)
+			}
+		case <-reportTicker.C:
+			doReport = true
+		}
+	}
+}
+
 // AssertResources asserts on a resource list.
 func AssertResources[R ResourceWithRD](
 	ctx context.Context,
