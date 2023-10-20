@@ -6,6 +6,7 @@ package transform
 
 import (
 	"context"
+	"time"
 
 	"go.uber.org/zap"
 
@@ -21,6 +22,7 @@ type ControllerOptions struct {
 	extraInputs             []controller.Input
 	extraOutputs            []controller.Output
 	primaryOutputKind       controller.OutputKind
+	requeueInterval         time.Duration
 	inputFinalizers         bool
 	ignoreTearingDownInputs bool
 }
@@ -102,5 +104,13 @@ func WithOnShutdownCallback(onShutdownCallback OnShutdownCallback) ControllerOpt
 func WithOutputKind(kind controller.OutputKind) ControllerOption {
 	return func(o *ControllerOptions) {
 		o.primaryOutputKind = kind
+	}
+}
+
+// WithRequeueInterval sets the requeue interval of the transform controller.
+// Requeue is triggered by returning an error tagged SkipReconcileAndRequeue from the input processor function.
+func WithRequeueInterval(value time.Duration) ControllerOption {
+	return func(o *ControllerOptions) {
+		o.requeueInterval = value
 	}
 }

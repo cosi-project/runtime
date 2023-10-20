@@ -7,6 +7,7 @@ package transform
 import (
 	"context"
 	"fmt"
+	"time"
 
 	"github.com/hashicorp/go-multierror"
 	"github.com/siderolabs/gen/optional"
@@ -186,6 +187,9 @@ type runState struct {
 	// removeInputFinalizers is a list of inputs which can have finalizers removed.
 	// maps out ID -> input MD
 	removeInputFinalizers map[resource.ID]*resource.Metadata
+
+	requeueReason string
+	requeue       bool
 }
 
 // Run implements controller.Controller interface.
@@ -198,10 +202,26 @@ func (ctrl *Controller[Input, Output]) Run(ctx context.Context, r controller.Run
 	ctx, cancel := context.WithCancel(ctx)
 	defer cancel()
 
+	var (
+		requeueChan <-chan time.Time
+		timer       *time.Timer
+	)
+
+	stopRequeueTimer := func() {
+		if timer != nil && !timer.Stop() {
+			select {
+			case <-timer.C:
+			default:
+			}
+		}
+	}
+
 	defer func() {
 		if ctrl.options.onShutdownCallback != nil {
 			ctrl.options.onShutdownCallback(ctx, r, logger)
 		}
+
+		stopRequeueTimer()
 	}()
 
 	for {
@@ -210,6 +230,7 @@ func (ctrl *Controller[Input, Output]) Run(ctx context.Context, r controller.Run
 			return nil
 		case <-r.EventCh():
 		case <-ctrl.options.extraEventCh:
+		case <-requeueChan:
 		}
 
 		// controller runs in two phases:
@@ -233,6 +254,21 @@ func (ctrl *Controller[Input, Output]) Run(ctx context.Context, r controller.Run
 			resource.NewMetadata(zeroInput.ResourceDefinition().DefaultNamespace, zeroInput.ResourceDefinition().Type, "", resource.VersionUndefined),
 		); err != nil {
 			return err
+		}
+
+		if state.requeue && ctrl.options.requeueInterval != 0 {
+			stopRequeueTimer()
+
+			timer = time.NewTimer(ctrl.options.requeueInterval)
+
+			requeueChan = timer.C
+
+			logger.Info("requeue reconciliation",
+				zap.Duration("after", ctrl.options.requeueInterval),
+				zap.String("reason", state.requeueReason),
+			)
+		} else {
+			requeueChan = nil
 		}
 
 		if err := ctrl.cleanupOutputs(
@@ -310,6 +346,14 @@ func (ctrl *Controller[Input, Output]) processInputs(
 
 			if xerrors.TagIs[SkipReconcileTag](err) {
 				// skip this resource
+				continue
+			}
+
+			if xerrors.TagIs[SkipReconcileAndRequeueTag](err) {
+				// skip reconciliation and requeue
+				runState.requeue = true
+				runState.requeueReason = err.Error()
+
 				continue
 			}
 

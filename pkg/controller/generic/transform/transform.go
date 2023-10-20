@@ -9,3 +9,6 @@ package transform
 //
 // It's useful when next reconcile event should bring things into order.
 type SkipReconcileTag struct{}
+
+// SkipReconcileAndRequeueTag makes transform controller requeue the reconciliation call.
+type SkipReconcileAndRequeueTag struct{}

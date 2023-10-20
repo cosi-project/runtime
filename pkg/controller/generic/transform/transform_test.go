@@ -15,6 +15,7 @@ import (
 
 	"github.com/siderolabs/gen/channel"
 	"github.com/siderolabs/gen/optional"
+	"github.com/siderolabs/gen/xerrors"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"go.uber.org/goleak"
@@ -565,6 +566,41 @@ func TestOutputShared(t *testing.T) {
 	setup(t, func(ctx context.Context, st state.State, runtime *runtime.Runtime) {
 		require.NoError(t, runtime.RegisterController(NewABController(nil, transform.WithOutputKind(controller.OutputShared))))
 		require.NoError(t, runtime.RegisterController(NewACController(transform.WithOutputKind(controller.OutputShared))))
+	})
+}
+
+func TestRequeue(t *testing.T) {
+	counter := 0
+
+	c := transform.NewController(
+		transform.Settings[*A, *B]{
+			Name: "TransformACController",
+			MapMetadataOptionalFunc: func(in *A) optional.Optional[*B] {
+				return optional.Some(NewB("transformed-"+in.Metadata().ID(), BSpec{}))
+			},
+			TransformFunc: func(ctx context.Context, r controller.Reader, l *zap.Logger, in *A, out *B) error {
+				defer func() { counter++ }()
+
+				if counter < 2 {
+					return xerrors.NewTaggedf[transform.SkipReconcileAndRequeueTag]("the time hasn't come yet")
+				}
+
+				out.TypedSpec().Out = in.TypedSpec().Str
+
+				return nil
+			},
+		},
+		transform.WithRequeueInterval(time.Millisecond*50),
+	)
+
+	setup(t, func(ctx context.Context, st state.State, runtime *runtime.Runtime) {
+		require.NoError(t, runtime.RegisterController(c))
+
+		require.NoError(t, st.Create(ctx, NewA("1", ASpec{Str: "foo", Int: 1})))
+
+		rtestutils.AssertResource[*B](ctx, t, st, "transformed-1", func(b *B, assert *assert.Assertions) {
+			assert.EqualValues("foo", b.TypedSpec().Out)
+		})
 	})
 }
 
