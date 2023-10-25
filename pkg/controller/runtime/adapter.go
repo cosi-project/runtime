@@ -40,7 +40,8 @@ type adapter struct {
 
 	watchFilters map[watchKey]watchFilter
 
-	name string
+	name  string
+	state state.State
 
 	// output tracker (optional)
 	//
@@ -220,41 +221,33 @@ func (adapter *adapter) checkFinalizerAccess(resourceNamespace resource.Namespac
 
 // Get implements controller.Runtime interface.
 func (adapter *adapter) Get(ctx context.Context, resourcePointer resource.Pointer, opts ...state.GetOption) (resource.Resource, error) { //nolint:ireturn
-	metrics.ControllerReads.Add(adapter.name, 1)
-
 	if err := adapter.checkReadAccess(resourcePointer.Namespace(), resourcePointer.Type(), optional.Some(resourcePointer.ID())); err != nil {
 		return nil, err
 	}
 
-	return adapter.runtime.state.Get(ctx, resourcePointer, opts...)
+	return adapter.state.Get(ctx, resourcePointer, opts...)
 }
 
 // List implements controller.Runtime interface.
 func (adapter *adapter) List(ctx context.Context, resourceKind resource.Kind, opts ...state.ListOption) (resource.List, error) {
-	metrics.ControllerReads.Add(adapter.name, 1)
-
 	if err := adapter.checkReadAccess(resourceKind.Namespace(), resourceKind.Type(), optional.None[resource.ID]()); err != nil {
 		return resource.List{}, err
 	}
 
-	return adapter.runtime.state.List(ctx, resourceKind, opts...)
+	return adapter.state.List(ctx, resourceKind, opts...)
 }
 
 // WatchFor implements controller.Runtime interface.
 func (adapter *adapter) WatchFor(ctx context.Context, resourcePointer resource.Pointer, opts ...state.WatchForConditionFunc) (resource.Resource, error) { //nolint:ireturn
-	metrics.ControllerReads.Add(adapter.name, 1)
-
 	if err := adapter.checkReadAccess(resourcePointer.Namespace(), resourcePointer.Type(), optional.None[resource.ID]()); err != nil {
 		return nil, err
 	}
 
-	return adapter.runtime.state.WatchFor(ctx, resourcePointer, opts...)
+	return adapter.state.WatchFor(ctx, resourcePointer, opts...)
 }
 
 // Create implements controller.Runtime interface.
 func (adapter *adapter) Create(ctx context.Context, r resource.Resource) error {
-	metrics.ControllerWrites.Add(adapter.name, 1)
-
 	if err := adapter.updateLimiter.Wait(ctx); err != nil {
 		return fmt.Errorf("create rate limited: %w", err)
 	}
@@ -268,13 +261,11 @@ func (adapter *adapter) Create(ctx context.Context, r resource.Resource) error {
 		adapter.outputTracker[makeOutputTrackingID(r.Metadata())] = struct{}{}
 	}
 
-	return adapter.runtime.state.Create(ctx, r, state.WithCreateOwner(adapter.name))
+	return adapter.state.Create(ctx, r, state.WithCreateOwner(adapter.name))
 }
 
 // Update implements controller.Runtime interface.
 func (adapter *adapter) Update(ctx context.Context, newResource resource.Resource) error {
-	metrics.ControllerWrites.Add(adapter.name, 1)
-
 	if err := adapter.updateLimiter.Wait(ctx); err != nil {
 		return fmt.Errorf("update rate limited: %w", err)
 	}
@@ -288,13 +279,11 @@ func (adapter *adapter) Update(ctx context.Context, newResource resource.Resourc
 		adapter.outputTracker[makeOutputTrackingID(newResource.Metadata())] = struct{}{}
 	}
 
-	return adapter.runtime.state.Update(ctx, newResource, state.WithUpdateOwner(adapter.name))
+	return adapter.state.Update(ctx, newResource, state.WithUpdateOwner(adapter.name))
 }
 
 // Modify implements controller.Runtime interface.
 func (adapter *adapter) Modify(ctx context.Context, emptyResource resource.Resource, updateFunc func(resource.Resource) error) error {
-	metrics.ControllerWrites.Add(adapter.name, 1)
-
 	_, err := adapter.modify(ctx, emptyResource, updateFunc)
 
 	return err
@@ -302,8 +291,6 @@ func (adapter *adapter) Modify(ctx context.Context, emptyResource resource.Resou
 
 // ModifyWithResult implements controller.Runtime interface.
 func (adapter *adapter) ModifyWithResult(ctx context.Context, emptyResource resource.Resource, updateFunc func(resource.Resource) error) (resource.Resource, error) {
-	metrics.ControllerWrites.Add(adapter.name, 1)
-
 	return adapter.modify(ctx, emptyResource, updateFunc)
 }
 
@@ -321,7 +308,7 @@ func (adapter *adapter) modify(ctx context.Context, emptyResource resource.Resou
 		adapter.outputTracker[makeOutputTrackingID(emptyResource.Metadata())] = struct{}{}
 	}
 
-	_, err := adapter.runtime.state.Get(ctx, emptyResource.Metadata())
+	_, err := adapter.state.Get(ctx, emptyResource.Metadata())
 	if err != nil {
 		if state.IsNotFoundError(err) {
 			err = updateFunc(emptyResource)
@@ -329,7 +316,7 @@ func (adapter *adapter) modify(ctx context.Context, emptyResource resource.Resou
 				return nil, err
 			}
 
-			if err = adapter.runtime.state.Create(ctx, emptyResource, state.WithCreateOwner(adapter.name)); err != nil {
+			if err = adapter.state.Create(ctx, emptyResource, state.WithCreateOwner(adapter.name)); err != nil {
 				return nil, err
 			}
 
@@ -339,13 +326,11 @@ func (adapter *adapter) modify(ctx context.Context, emptyResource resource.Resou
 		return nil, fmt.Errorf("error querying current object state: %w", err)
 	}
 
-	return adapter.runtime.state.UpdateWithConflicts(ctx, emptyResource.Metadata(), updateFunc, state.WithUpdateOwner(adapter.name))
+	return adapter.state.UpdateWithConflicts(ctx, emptyResource.Metadata(), updateFunc, state.WithUpdateOwner(adapter.name))
 }
 
 // AddFinalizer implements controller.Runtime interface.
 func (adapter *adapter) AddFinalizer(ctx context.Context, resourcePointer resource.Pointer, fins ...resource.Finalizer) error {
-	metrics.ControllerWrites.Add(adapter.name, 1)
-
 	if err := adapter.updateLimiter.Wait(ctx); err != nil {
 		return fmt.Errorf("add finalizer rate limited: %w", err)
 	}
@@ -354,13 +339,11 @@ func (adapter *adapter) AddFinalizer(ctx context.Context, resourcePointer resour
 		return err
 	}
 
-	return adapter.runtime.state.AddFinalizer(ctx, resourcePointer, fins...)
+	return adapter.state.AddFinalizer(ctx, resourcePointer, fins...)
 }
 
 // RemoveFinalizer implements controller.Runtime interface.
 func (adapter *adapter) RemoveFinalizer(ctx context.Context, resourcePointer resource.Pointer, fins ...resource.Finalizer) error {
-	metrics.ControllerWrites.Add(adapter.name, 1)
-
 	if err := adapter.updateLimiter.Wait(ctx); err != nil {
 		return fmt.Errorf("remove finalizer rate limited: %w", err)
 	}
@@ -369,7 +352,7 @@ func (adapter *adapter) RemoveFinalizer(ctx context.Context, resourcePointer res
 		return err
 	}
 
-	err := adapter.runtime.state.RemoveFinalizer(ctx, resourcePointer, fins...)
+	err := adapter.state.RemoveFinalizer(ctx, resourcePointer, fins...)
 	if state.IsNotFoundError(err) {
 		err = nil
 	}
@@ -379,8 +362,6 @@ func (adapter *adapter) RemoveFinalizer(ctx context.Context, resourcePointer res
 
 // Teardown implements controller.Runtime interface.
 func (adapter *adapter) Teardown(ctx context.Context, resourcePointer resource.Pointer, opOpts ...controller.Option) (bool, error) {
-	metrics.ControllerWrites.Add(adapter.name, 1)
-
 	if err := adapter.updateLimiter.Wait(ctx); err != nil {
 		return false, fmt.Errorf("teardown rate limited: %w", err)
 	}
@@ -398,13 +379,11 @@ func (adapter *adapter) Teardown(ctx context.Context, resourcePointer resource.P
 		opts = append(opts, state.WithTeardownOwner(adapter.name))
 	}
 
-	return adapter.runtime.state.Teardown(ctx, resourcePointer, opts...)
+	return adapter.state.Teardown(ctx, resourcePointer, opts...)
 }
 
 // Destroy implements controller.Runtime interface.
 func (adapter *adapter) Destroy(ctx context.Context, resourcePointer resource.Pointer, opOpts ...controller.Option) error {
-	metrics.ControllerWrites.Add(adapter.name, 1)
-
 	if err := adapter.updateLimiter.Wait(ctx); err != nil {
 		return fmt.Errorf("destroy finalizer rate limited: %w", err)
 	}
@@ -422,11 +401,16 @@ func (adapter *adapter) Destroy(ctx context.Context, resourcePointer resource.Po
 		opts = append(opts, state.WithDestroyOwner(adapter.name))
 	}
 
-	return adapter.runtime.state.Destroy(ctx, resourcePointer, opts...)
+	return adapter.state.Destroy(ctx, resourcePointer, opts...)
 }
 
 func (adapter *adapter) initialize() error {
 	adapter.name = adapter.ctrl.Name()
+
+	adapter.state = adapter.runtime.state
+	if adapter.runtime.options.MetricsEnabled {
+		adapter.state = metrics.WrapState(adapter.name, adapter.state)
+	}
 
 	adapter.outputs = slices.Clone(adapter.ctrl.Outputs())
 
@@ -480,7 +464,10 @@ func (adapter *adapter) triggerReconcile() {
 	// otherwise channel is not empty, and reconcile is anyway scheduled
 	select {
 	case adapter.ch <- controller.ReconcileEvent{}:
-		metrics.ControllerWakeups.Add(adapter.name, 1)
+		if adapter.runtime.options.MetricsEnabled {
+			metrics.ControllerWakeups.Add(adapter.name, 1)
+		}
+
 	default:
 	}
 }
@@ -494,7 +481,9 @@ func (adapter *adapter) run(ctx context.Context) {
 			return
 		}
 
-		metrics.ControllerCrashes.Add(adapter.name, 1)
+		if adapter.runtime.options.MetricsEnabled {
+			metrics.ControllerCrashes.Add(adapter.name, 1)
+		}
 
 		interval := adapter.backoff.NextBackOff()
 

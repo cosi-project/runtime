@@ -81,7 +81,7 @@ func run() error {
 
 	logger := logging.DefaultLogger()
 
-	controllerRuntime, err := runtime.NewRuntime(inmemState, logger)
+	controllerRuntime, err := runtime.NewRuntime(inmemState, logger, runtime.WithMetrics(true))
 	if err != nil {
 		return fmt.Errorf("error setting up controller runtime: %w", err)
 	}

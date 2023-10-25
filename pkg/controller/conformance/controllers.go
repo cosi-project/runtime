@@ -517,3 +517,87 @@ func (ctrl *ModifyWithResultController) Run(ctx context.Context, r controller.Ru
 		r.ResetRestartBackoff()
 	}
 }
+
+// MetricsController is a controller which does operations to facilitate testing of controller runtime metrics.
+type MetricsController struct {
+	ControllerName  string
+	SourceNamespace resource.Namespace
+	TargetNamespace resource.Namespace
+}
+
+// Name implements controller.Controller interface.
+func (ctrl *MetricsController) Name() string {
+	return ctrl.ControllerName
+}
+
+// Inputs implements controller.Controller interface.
+func (ctrl *MetricsController) Inputs() []controller.Input {
+	return []controller.Input{
+		{
+			Namespace: ctrl.SourceNamespace,
+			Type:      IntResourceType,
+			Kind:      controller.InputStrong,
+		},
+		{
+			Namespace: ctrl.TargetNamespace,
+			Type:      StrResourceType,
+			Kind:      controller.InputDestroyReady,
+		},
+	}
+}
+
+// Outputs implements controller.Controller interface.
+func (ctrl *MetricsController) Outputs() []controller.Output {
+	return []controller.Output{
+		{
+			Type: StrResourceType,
+			Kind: controller.OutputExclusive,
+		},
+	}
+}
+
+// Run implements controller.Controller interface.
+func (ctrl *MetricsController) Run(ctx context.Context, r controller.Runtime, _ *zap.Logger) error {
+	sourceMd := resource.NewMetadata(ctrl.SourceNamespace, IntResourceType, "", resource.VersionUndefined)
+
+	for {
+		select {
+		case <-ctx.Done():
+			return nil
+		case <-r.EventCh():
+		}
+
+		intList, err := safe.ReaderList[interface {
+			IntegerResource
+			resource.Resource
+		}](ctx, r, sourceMd)
+		if err != nil {
+			return fmt.Errorf("error listing objects: %w", err)
+		}
+
+		for iter := intList.Iterator(); iter.Next(); {
+			intRes := iter.Value()
+
+			if intRes.Value() == 42 {
+				return fmt.Errorf("magic number caused controller to crash")
+			}
+
+			strRes := NewStrResource(ctrl.TargetNamespace, intRes.Metadata().ID(), "")
+
+			if err = safe.WriterModify(ctx, r, strRes, func(r *StrResource) error {
+				r.SetValue(strconv.Itoa(intRes.Value()))
+
+				return nil
+			}); err != nil {
+				return err
+			}
+
+			// call destroy on a non-existent resource to trigger metrics.ControllerWrites increment
+			if err = r.Destroy(ctx, NewStrResource(ctrl.TargetNamespace, "non-existent", "").Metadata()); err != nil && !state.IsNotFoundError(err) {
+				return err
+			}
+		}
+
+		r.ResetRestartBackoff()
+	}
+}

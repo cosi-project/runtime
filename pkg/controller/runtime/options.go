@@ -11,6 +11,7 @@ type Options struct {
 	// ChangeRateLimit and ChangeBurst configure rate limiting of changes performed by controllers.
 	ChangeRateLimit rate.Limit
 	ChangeBurst     int
+	MetricsEnabled  bool
 }
 
 // Option is a functional option for controller runtime.
@@ -26,10 +27,18 @@ func WithChangeRateLimit(limit rate.Limit, burst int) Option {
 	}
 }
 
+// WithMetrics enables runtime metrics to be exposed via metrics package.
+func WithMetrics(enabled bool) Option {
+	return func(options *Options) {
+		options.MetricsEnabled = enabled
+	}
+}
+
 // DefaultOptions returns default value of Options.
 func DefaultOptions() Options {
 	return Options{
 		ChangeRateLimit: rate.Inf,
 		ChangeBurst:     0,
+		MetricsEnabled:  true,
 	}
 }

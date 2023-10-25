@@ -6,13 +6,18 @@ package conformance
 
 import (
 	"context"
+	"expvar"
+	"fmt"
+	"math/rand"
 	"sync"
 	"time"
 
 	"github.com/siderolabs/go-retry/retry"
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/suite"
 
 	"github.com/cosi-project/runtime/pkg/controller"
+	"github.com/cosi-project/runtime/pkg/controller/runtime/metrics"
 	"github.com/cosi-project/runtime/pkg/resource"
 	"github.com/cosi-project/runtime/pkg/safe"
 	"github.com/cosi-project/runtime/pkg/state"
@@ -30,6 +35,7 @@ type RuntimeSuite struct { //nolint:govet
 	TearDownRuntime func()
 
 	OutputTrackerNotImplemented bool
+	MetricsNotImplemented       bool
 
 	wg sync.WaitGroup
 
@@ -489,4 +495,72 @@ func (suite *RuntimeSuite) TestModifyWithResultController() {
 			[]string{"val-2-modified", "val-2-valid"},
 		),
 	))
+}
+
+// TestControllerRuntimeMetrics ...
+func (suite *RuntimeSuite) TestControllerRuntimeMetrics() {
+	if suite.MetricsNotImplemented {
+		suite.T().Skip("Metrics not implemented")
+	}
+
+	controllerName := fmt.Sprintf("MetricsController-%d-%d", time.Now().UnixNano(), rand.Intn(1024)) // use a random name to avoid between parallel tests
+
+	getIntValFromExpVarMap := func(m *expvar.Map, key string) int {
+		v := m.Get(key)
+		if v == nil {
+			return 0
+		}
+
+		return int(v.(*expvar.Int).Value()) //nolint:forcetypeassert
+	}
+
+	ctrl := &MetricsController{
+		ControllerName:  controllerName,
+		SourceNamespace: "default",
+		TargetNamespace: "default",
+	}
+
+	suite.Zero(getIntValFromExpVarMap(metrics.ControllerWakeups, ctrl.Name()), "ControllerWakeups should be 0")
+
+	suite.Require().NoError(suite.Runtime.RegisterController(ctrl))
+
+	// initial wakeup will be scheduled on RegisterController
+	suite.Equal(1, getIntValFromExpVarMap(metrics.ControllerWakeups, ctrl.Name()), "ControllerWakeups should be 1")
+
+	intRes := NewIntResource("default", "one", 1)
+
+	suite.Assert().NoError(suite.State.Create(suite.ctx, intRes))
+
+	suite.startRuntime()
+
+	suite.EventuallyWithT(func(collect *assert.CollectT) {
+		_, err := suite.State.Get(suite.ctx, NewStrResource("default", "one", "").Metadata())
+
+		assert.NoError(collect, err)
+
+		// two reads expected: one for listing the IntResources, other due to controller calling WriterModify
+		assert.Equal(collect, 2, getIntValFromExpVarMap(metrics.ControllerReads, ctrl.Name()), "ControllerReads should be 2")
+
+		// two writes expected: one due to controller calling WriterModify, other due to controller calling Destroy on a non-existent resource
+		assert.Equal(collect, 2, getIntValFromExpVarMap(metrics.ControllerWrites, ctrl.Name()), "ControllerWrites should be 0")
+	}, 10*time.Second, 10*time.Millisecond)
+
+	// update the resource to trigger a controller crash
+	_, err := safe.StateUpdateWithConflicts(suite.ctx, suite.State, intRes.Metadata(), func(r *IntResource) error {
+		r.SetValue(42)
+
+		return nil
+	})
+	suite.Require().NoError(err)
+
+	suite.EventuallyWithT(func(collect *assert.CollectT) {
+		// controller should wake up one more time
+		assert.Equal(collect, 2, getIntValFromExpVarMap(metrics.ControllerWakeups, ctrl.Name()), "ControllerWakeups should be 2")
+
+		// an additional read is expected due to controller listing the IntResources
+		assert.Equal(collect, 3, getIntValFromExpVarMap(metrics.ControllerReads, ctrl.Name()), "ControllerReads should be 3")
+
+		// magic number will cause the controller to crash
+		assert.Equal(collect, getIntValFromExpVarMap(metrics.ControllerCrashes, ctrl.Name()), 1, "ControllerCrashes should be 1")
+	}, 10*time.Second, 10*time.Millisecond)
 }

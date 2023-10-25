@@ -45,6 +45,7 @@ func TestProtobufConformance(t *testing.T) {
 	suite := &ProtobufConformanceSuite{
 		RuntimeSuite: conformance.RuntimeSuite{
 			OutputTrackerNotImplemented: true,
+			MetricsNotImplemented:       true,
 		},
 	}
 
