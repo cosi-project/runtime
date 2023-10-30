@@ -160,7 +160,7 @@ func watch[T resource.Resource](ctx context.Context, eventCh chan<- WrappedState
 }
 
 // StateWatch is a type safe wrapper around State.Watch.
-func StateWatch[T resource.Resource](ctx context.Context, st state.State, ptr resource.Pointer, eventCh chan<- WrappedStateEvent[T], opts ...state.WatchOption) error {
+func StateWatch[T resource.Resource](ctx context.Context, st state.CoreState, ptr resource.Pointer, eventCh chan<- WrappedStateEvent[T], opts ...state.WatchOption) error {
 	untypedEventCh := make(chan state.Event)
 
 	err := st.Watch(ctx, ptr, untypedEventCh, opts...)
@@ -181,7 +181,7 @@ func StateWatchFor[T resource.Resource](ctx context.Context, st state.State, ptr
 }
 
 // StateWatchKind is a type safe wrapper around State.WatchKind.
-func StateWatchKind[T resource.Resource](ctx context.Context, st state.State, kind resource.Kind, eventCh chan<- WrappedStateEvent[T], opts ...state.WatchKindOption) error {
+func StateWatchKind[T resource.Resource](ctx context.Context, st state.CoreState, kind resource.Kind, eventCh chan<- WrappedStateEvent[T], opts ...state.WatchKindOption) error {
 	untypedEventCh := make(chan state.Event)
 
 	err := st.WatchKind(ctx, kind, untypedEventCh, opts...)
