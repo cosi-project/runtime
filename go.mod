@@ -1,29 +1,29 @@
 module github.com/cosi-project/runtime
 
-go 1.21.0
+go 1.21.3
 
 // forked yaml that introduces RawYAML interface that can be used to provide YAML encoder bytes
 // which are then encoded as a valid YAML block with proper indentiation
 replace gopkg.in/yaml.v3 => github.com/unix4ever/yaml v0.0.0-20220527175918-f17b0f05cf2c
 
 require (
-	github.com/ProtonMail/gopenpgp/v2 v2.7.3
+	github.com/ProtonMail/gopenpgp/v2 v2.7.4
 	github.com/cenkalti/backoff/v4 v4.2.1
 	github.com/gertd/go-pluralize v0.2.1
 	github.com/grpc-ecosystem/grpc-gateway/v2 v2.18.0
 	github.com/hashicorp/go-multierror v1.1.1
-	github.com/klauspost/compress v1.16.7
+	github.com/klauspost/compress v1.17.2
 	github.com/siderolabs/gen v0.4.7
 	github.com/siderolabs/go-pointer v1.0.0
-	github.com/siderolabs/go-retry v0.3.2
+	github.com/siderolabs/go-retry v0.3.3
 	github.com/siderolabs/protoenc v0.2.0
 	github.com/stretchr/testify v1.8.4
-	go.etcd.io/bbolt v1.3.7
-	go.uber.org/goleak v1.2.1
+	go.etcd.io/bbolt v1.3.8
+	go.uber.org/goleak v1.3.0
 	go.uber.org/zap v1.26.0
-	golang.org/x/sync v0.3.0
+	golang.org/x/sync v0.4.0
 	golang.org/x/time v0.3.0
-	google.golang.org/grpc v1.58.1
+	google.golang.org/grpc v1.59.0
 	google.golang.org/protobuf v1.31.0
 	gopkg.in/yaml.v3 v3.0.1
 )
