@@ -19,7 +19,7 @@ import (
 )
 
 func init() {
-	ensure.NoError(protobuf.RegisterResource(conformance.PathResourceType, &conformance.PathResource{}))
+	ensure.NoError(protobuf.RegisterResource(conformance.PathResourceType.Naked(), &conformance.PathResource{}))
 }
 
 func TestMarshaler_Key(t *testing.T) {

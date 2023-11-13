@@ -123,3 +123,8 @@ func ReaderWatchFor[T resource.Resource](ctx context.Context, rdr controller.Rea
 func ReaderWatchForResource[T resource.Resource](ctx context.Context, rdr controller.Reader, r T, conds ...state.WatchForConditionFunc) (T, error) { //nolint:ireturn
 	return ReaderWatchFor[T](ctx, rdr, r.Metadata(), conds...)
 }
+
+// ReaderListByMD is a type safe wrapper around Reader.List.
+func ReaderListByMD[T resource.Resource](ctx context.Context, rdr controller.Reader, md TaggedMD[T], opts ...state.ListOption) (List[T], error) {
+	return ReaderList[T](ctx, rdr, md, opts...)
+}

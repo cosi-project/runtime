@@ -4,7 +4,9 @@
 
 package conformance
 
-import "github.com/cosi-project/runtime/pkg/resource"
+import (
+	"github.com/cosi-project/runtime/pkg/resource"
+)
 
 // Resource represents some T value.
 type Resource[T any, S Spec[T], SS SpecPtr[T, S]] struct {

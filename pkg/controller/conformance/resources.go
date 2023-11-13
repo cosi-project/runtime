@@ -8,6 +8,7 @@ import (
 	"encoding/binary"
 
 	"github.com/cosi-project/runtime/pkg/resource"
+	"github.com/cosi-project/runtime/pkg/safe"
 )
 
 // IntegerResource is implemented by resources holding ints.
@@ -23,14 +24,14 @@ type StringResource interface {
 }
 
 // IntResourceType is the type of IntResource.
-const IntResourceType = resource.Type("test/int")
+const IntResourceType = safe.TaggedType[*IntResource]("test/int")
 
 // IntResource represents some integer value.
 type IntResource = Resource[int, intSpec, *intSpec]
 
 // NewIntResource creates new IntResource.
 func NewIntResource(ns resource.Namespace, id resource.ID, value int) *IntResource {
-	return NewResource[int, intSpec, *intSpec](resource.NewMetadata(ns, IntResourceType, id, resource.VersionUndefined), value)
+	return NewResource[int, intSpec, *intSpec](safe.NewTaggedMD(ns, IntResourceType, id, resource.VersionUndefined).Naked(), value)
 }
 
 type intSpec struct{ ValueGetSet[int] }
@@ -48,14 +49,14 @@ func (is intSpec) MarshalProto() ([]byte, error) {
 }
 
 // StrResourceType is the type of StrResource.
-const StrResourceType = resource.Type("test/str")
+const StrResourceType = safe.TaggedType[*StrResource]("test/str")
 
 // StrResource represents some string value.
 type StrResource = Resource[string, strSpec, *strSpec]
 
 // NewStrResource creates new StrResource.
 func NewStrResource(ns resource.Namespace, id resource.ID, value string) *StrResource {
-	return NewResource[string, strSpec, *strSpec](resource.NewMetadata(ns, StrResourceType, id, resource.VersionUndefined), value)
+	return NewResource[string, strSpec, *strSpec](resource.NewMetadata(ns, StrResourceType.Naked(), id, resource.VersionUndefined), value)
 }
 
 type strSpec struct{ ValueGetSet[string] }

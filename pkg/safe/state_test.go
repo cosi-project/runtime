@@ -41,16 +41,32 @@ func setup(t *testing.T) (context.Context, string, string, *conformance.IntResou
 	return ctx, testNamespace, testID, r, s, safeEventCh, unsafeEventCh
 }
 
-func TestStateWatch(t *testing.T) {
-	ctx, testNamespace, testID, r, s, safeEventCh, unsafeEventCh := setup(t)
+func TestStateGet(t *testing.T) {
+	ctx, testNamespace, testID, r, s, _, _ := setup(t)
 
-	metadata := resource.NewMetadata(testNamespace, conformance.IntResourceType, testID, resource.VersionUndefined)
+	metadata := safe.NewTaggedMD(testNamespace, conformance.IntResourceType, testID, resource.VersionUndefined)
 
 	assert.NoError(t, s.Create(ctx, r))
 
-	assert.NoError(t, s.Watch(ctx, metadata, unsafeEventCh))
+	intRes, err := safe.StateGetByMD(ctx, s, metadata)
+	assert.NoError(t, err)
 
-	assert.NoError(t, safe.StateWatch(ctx, s, metadata, safeEventCh))
+	naked := metadata.Naked()
+	naked.SetVersion(intRes.Metadata().Version())
+
+	assert.True(t, naked.Equal(*intRes.Metadata()))
+}
+
+func TestStateWatch(t *testing.T) {
+	ctx, testNamespace, testID, r, s, safeEventCh, unsafeEventCh := setup(t)
+
+	metadata := safe.NewTaggedMD(testNamespace, conformance.IntResourceType, testID, resource.VersionUndefined)
+
+	assert.NoError(t, s.Create(ctx, r))
+
+	assert.NoError(t, s.Watch(ctx, metadata.Naked(), unsafeEventCh))
+
+	assert.NoError(t, safe.StateWatchByMD(ctx, s, metadata, safeEventCh))
 
 	unsafeEvent := <-unsafeEventCh
 
@@ -72,14 +88,14 @@ func TestStateWatch(t *testing.T) {
 func TestStateWatchFor(t *testing.T) {
 	ctx, testNamespace, testID, r, s, _, _ := setup(t)
 
-	metadata := resource.NewMetadata(testNamespace, conformance.IntResourceType, testID, resource.VersionUndefined)
+	metadata := safe.NewTaggedMD(testNamespace, conformance.IntResourceType, testID, resource.VersionUndefined)
 
 	assert.NoError(t, s.Create(ctx, r))
 
-	unsafeResult, unsafeWatchForErr := s.WatchFor(ctx, metadata)
+	unsafeResult, unsafeWatchForErr := s.WatchFor(ctx, metadata.Naked())
 	assert.NoError(t, unsafeWatchForErr)
 
-	safeResult, safeWatchForErr := safe.StateWatchFor[*conformance.IntResource](ctx, s, metadata)
+	safeResult, safeWatchForErr := safe.StateWatchForByMD(ctx, s, metadata)
 	assert.NoError(t, safeWatchForErr)
 
 	assert.Equal(t, unsafeResult, safeResult)
@@ -88,7 +104,7 @@ func TestStateWatchFor(t *testing.T) {
 func TestStateWatchKind(t *testing.T) {
 	ctx, testNamespace, _, r, s, safeEventCh, unsafeEventCh := setup(t)
 
-	metadata := resource.NewMetadata(testNamespace, conformance.IntResourceType, "", resource.VersionUndefined)
+	metadata := safe.NewTaggedMD(testNamespace, conformance.IntResourceType, "", resource.VersionUndefined)
 
 	assert.NoError(t, s.WatchKind(ctx, metadata, unsafeEventCh))
 
@@ -129,7 +145,7 @@ func TestListFilter(t *testing.T) {
 		require.NoError(t, s.Create(ctx, r))
 	}
 
-	all, err := safe.StateList[*conformance.IntResource](ctx, s, resource.NewMetadata(testNamespace, conformance.IntResourceType, "", resource.VersionUndefined))
+	all, err := safe.StateListByMD(ctx, s, safe.NewTaggedMD(testNamespace, conformance.IntResourceType, "", resource.VersionUndefined))
 	require.NoError(t, err)
 
 	assert.Equal(t, 3, all.Len())

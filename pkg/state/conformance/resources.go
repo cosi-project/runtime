@@ -8,10 +8,11 @@ import (
 	"fmt"
 
 	"github.com/cosi-project/runtime/pkg/resource"
+	"github.com/cosi-project/runtime/pkg/safe"
 )
 
 // PathResourceType is the type of PathResource.
-const PathResourceType = resource.Type("os/path")
+const PathResourceType = safe.TaggedType[*PathResource]("os/path")
 
 // PathResource represents a path in the filesystem.
 //
@@ -29,7 +30,7 @@ func (spec pathSpec) MarshalProto() ([]byte, error) {
 // NewPathResource creates new PathResource.
 func NewPathResource(ns resource.Namespace, path string) *PathResource {
 	r := &PathResource{
-		md: resource.NewMetadata(ns, PathResourceType, path, resource.VersionUndefined),
+		md: resource.NewMetadata(ns, PathResourceType.Naked(), path, resource.VersionUndefined),
 	}
 
 	return r

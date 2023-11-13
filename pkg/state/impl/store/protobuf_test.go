@@ -50,5 +50,5 @@ func BenchmarkProto(b *testing.B) {
 }
 
 func init() {
-	ensure.NoError(protobuf.RegisterResource(conformance.PathResourceType, &conformance.PathResource{}))
+	ensure.NoError(protobuf.RegisterResource(conformance.PathResourceType.Naked(), &conformance.PathResource{}))
 }
