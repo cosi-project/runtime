@@ -65,7 +65,7 @@ func TestProtobufConformance(t *testing.T) {
 
 	stateClient := v1alpha1.NewStateClient(grpcConn)
 
-	require.NoError(t, protobuf.RegisterResource(conformance.PathResourceType, &conformance.PathResource{}))
+	require.NoError(t, protobuf.RegisterResource(conformance.PathResourceType.Naked(), &conformance.PathResource{}))
 
 	suite.Run(t, &conformance.StateSuite{
 		State:      state.WrapCore(client.NewAdapter(stateClient)),

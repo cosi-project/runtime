@@ -16,12 +16,12 @@ import (
 )
 
 func BenchmarkCreateResource(b *testing.B) {
-	_ = protobuf.RegisterResource(conformance.PathResourceType, &conformance.PathResource{}) //nolint:errcheck
+	_ = protobuf.RegisterResource(conformance.PathResourceType.Naked(), &conformance.PathResource{}) //nolint:errcheck
 
 	protoR := &v1alpha1.Resource{
 		Metadata: &v1alpha1.Metadata{
 			Namespace: "ns",
-			Type:      conformance.PathResourceType,
+			Type:      conformance.PathResourceType.Naked(),
 			Id:        "a/b",
 			Version:   "3",
 			Phase:     "running",
@@ -53,12 +53,12 @@ func BenchmarkCreateResource(b *testing.B) {
 func TestRegistry(t *testing.T) {
 	t.Parallel()
 
-	require.NoError(t, protobuf.RegisterResource(conformance.PathResourceType, &conformance.PathResource{}))
+	require.NoError(t, protobuf.RegisterResource(conformance.PathResourceType.Naked(), &conformance.PathResource{}))
 
 	protoR := &v1alpha1.Resource{
 		Metadata: &v1alpha1.Metadata{
 			Namespace: "ns",
-			Type:      conformance.PathResourceType,
+			Type:      conformance.PathResourceType.Naked(),
 			Id:        "a/b",
 			Version:   "3",
 			Phase:     "running",

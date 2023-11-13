@@ -82,10 +82,10 @@ func TestBufferOverrun(t *testing.T) {
 	watchKindCh := make(chan state.Event)
 	watchCh := make(chan state.Event)
 
-	err := st.WatchKind(ctx, resource.NewMetadata(namespace, conformance.PathResourceType, "", resource.VersionUndefined), watchKindCh)
+	err := st.WatchKind(ctx, resource.NewMetadata(namespace, conformance.PathResourceType.Naked(), "", resource.VersionUndefined), watchKindCh)
 	require.NoError(t, err)
 
-	err = st.Watch(ctx, resource.NewMetadata(namespace, conformance.PathResourceType, "0", resource.VersionUndefined), watchCh)
+	err = st.Watch(ctx, resource.NewMetadata(namespace, conformance.PathResourceType.Naked(), "0", resource.VersionUndefined), watchCh)
 	require.NoError(t, err)
 
 	// insert 10 resources
@@ -176,7 +176,7 @@ func TestNoBufferOverrunDynamic(t *testing.T) {
 	// start watching for changes
 	watchKindCh := make(chan state.Event)
 
-	err := st.WatchKind(ctx, resource.NewMetadata(namespace, conformance.PathResourceType, "", resource.VersionUndefined), watchKindCh)
+	err := st.WatchKind(ctx, resource.NewMetadata(namespace, conformance.PathResourceType.Naked(), "", resource.VersionUndefined), watchKindCh)
 	require.NoError(t, err)
 
 	// insert N resources

@@ -33,12 +33,12 @@ func (ctrl *IntToStrController) Inputs() []controller.Input {
 	return []controller.Input{
 		{
 			Namespace: ctrl.SourceNamespace,
-			Type:      IntResourceType,
+			Type:      IntResourceType.Naked(),
 			Kind:      controller.InputStrong,
 		},
 		{
 			Namespace: ctrl.TargetNamespace,
-			Type:      StrResourceType,
+			Type:      StrResourceType.Naked(),
 			Kind:      controller.InputDestroyReady,
 		},
 	}
@@ -48,7 +48,7 @@ func (ctrl *IntToStrController) Inputs() []controller.Input {
 func (ctrl *IntToStrController) Outputs() []controller.Output {
 	return []controller.Output{
 		{
-			Type: StrResourceType,
+			Type: StrResourceType.Naked(),
 			Kind: controller.OutputExclusive,
 		},
 	}
@@ -58,7 +58,7 @@ func (ctrl *IntToStrController) Outputs() []controller.Output {
 //
 //nolint:gocognit
 func (ctrl *IntToStrController) Run(ctx context.Context, r controller.Runtime, _ *zap.Logger) error {
-	sourceMd := resource.NewMetadata(ctrl.SourceNamespace, IntResourceType, "", resource.VersionUndefined)
+	sourceMd := safe.NewTaggedMD(ctrl.SourceNamespace, IntResourceType, "", resource.VersionUndefined)
 
 	for {
 		select {
@@ -67,10 +67,7 @@ func (ctrl *IntToStrController) Run(ctx context.Context, r controller.Runtime, _
 		case <-r.EventCh():
 		}
 
-		intList, err := safe.ReaderList[interface {
-			IntegerResource
-			resource.Resource
-		}](ctx, r, sourceMd)
+		intList, err := safe.ReaderListByMD(ctx, r, sourceMd)
 		if err != nil {
 			return fmt.Errorf("error listing objects: %w", err)
 		}
@@ -154,7 +151,7 @@ func (ctrl *StrToSentenceController) Run(ctx context.Context, r controller.Runti
 	if err := r.UpdateInputs([]controller.Input{
 		{
 			Namespace: ctrl.SourceNamespace,
-			Type:      StrResourceType,
+			Type:      StrResourceType.Naked(),
 			Kind:      controller.InputStrong,
 		},
 		{
@@ -166,7 +163,7 @@ func (ctrl *StrToSentenceController) Run(ctx context.Context, r controller.Runti
 		return fmt.Errorf("error setting up dependencies: %w", err)
 	}
 
-	sourceMd := resource.NewMetadata(ctrl.SourceNamespace, StrResourceType, "", resource.VersionUndefined)
+	sourceMd := safe.NewTaggedMD(ctrl.SourceNamespace, StrResourceType, "", resource.VersionUndefined)
 
 	for {
 		select {
@@ -175,10 +172,7 @@ func (ctrl *StrToSentenceController) Run(ctx context.Context, r controller.Runti
 		case <-r.EventCh():
 		}
 
-		strList, err := safe.ReaderList[interface {
-			StringResource
-			resource.Resource
-		}](ctx, r, sourceMd)
+		strList, err := safe.ReaderListByMD(ctx, r, sourceMd)
 		if err != nil {
 			return fmt.Errorf("error listing objects: %w", err)
 		}
@@ -250,7 +244,7 @@ func (ctrl *SumController) Inputs() []controller.Input {
 func (ctrl *SumController) Outputs() []controller.Output {
 	return []controller.Output{
 		{
-			Type: IntResourceType,
+			Type: IntResourceType.Naked(),
 			Kind: controller.OutputShared,
 		},
 	}
@@ -261,14 +255,14 @@ func (ctrl *SumController) Run(ctx context.Context, r controller.Runtime, _ *zap
 	if err := r.UpdateInputs([]controller.Input{
 		{
 			Namespace: ctrl.SourceNamespace,
-			Type:      IntResourceType,
+			Type:      IntResourceType.Naked(),
 			Kind:      controller.InputWeak,
 		},
 	}); err != nil {
 		return fmt.Errorf("error setting up dependencies: %w", err)
 	}
 
-	sourceMd := resource.NewMetadata(ctrl.SourceNamespace, IntResourceType, "", resource.VersionUndefined)
+	sourceMd := safe.NewTaggedMD(ctrl.SourceNamespace, IntResourceType, "", resource.VersionUndefined)
 
 	for {
 		select {
@@ -277,10 +271,7 @@ func (ctrl *SumController) Run(ctx context.Context, r controller.Runtime, _ *zap
 		case <-r.EventCh():
 		}
 
-		intList, err := safe.ReaderList[interface {
-			IntegerResource
-			resource.Resource
-		}](ctx, r, sourceMd, state.WithLabelQuery(resource.RawLabelQuery(ctrl.SourceLabelQuery)))
+		intList, err := safe.ReaderListByMD(ctx, r, sourceMd, state.WithLabelQuery(resource.RawLabelQuery(ctrl.SourceLabelQuery)))
 		if err != nil {
 			return fmt.Errorf("error listing objects: %w", err)
 		}
@@ -325,7 +316,7 @@ func (ctrl *FailingController) Inputs() []controller.Input {
 func (ctrl *FailingController) Outputs() []controller.Output {
 	return []controller.Output{
 		{
-			Type: IntResourceType,
+			Type: IntResourceType.Naked(),
 			Kind: controller.OutputExclusive,
 		},
 	}
@@ -372,7 +363,7 @@ func (ctrl *IntDoublerController) Inputs() []controller.Input {
 	return []controller.Input{
 		{
 			Namespace: ctrl.SourceNamespace,
-			Type:      IntResourceType,
+			Type:      IntResourceType.Naked(),
 			Kind:      controller.InputStrong,
 		},
 	}
@@ -382,7 +373,7 @@ func (ctrl *IntDoublerController) Inputs() []controller.Input {
 func (ctrl *IntDoublerController) Outputs() []controller.Output {
 	return []controller.Output{
 		{
-			Type: IntResourceType,
+			Type: IntResourceType.Naked(),
 			Kind: controller.OutputShared,
 		},
 	}
@@ -390,7 +381,7 @@ func (ctrl *IntDoublerController) Outputs() []controller.Output {
 
 // Run implements controller.Controller interface.
 func (ctrl *IntDoublerController) Run(ctx context.Context, r controller.Runtime, _ *zap.Logger) error {
-	sourceMd := resource.NewMetadata(ctrl.SourceNamespace, IntResourceType, "", resource.VersionUndefined)
+	sourceMd := safe.NewTaggedMD(ctrl.SourceNamespace, IntResourceType, "", resource.VersionUndefined)
 
 	for {
 		select {
@@ -401,10 +392,7 @@ func (ctrl *IntDoublerController) Run(ctx context.Context, r controller.Runtime,
 
 		r.StartTrackingOutputs()
 
-		intList, err := safe.ReaderList[interface {
-			IntegerResource
-			resource.Resource
-		}](ctx, r, sourceMd)
+		intList, err := safe.ReaderListByMD(ctx, r, sourceMd)
 		if err != nil {
 			return fmt.Errorf("error listing objects: %w", err)
 		}
@@ -423,7 +411,7 @@ func (ctrl *IntDoublerController) Run(ctx context.Context, r controller.Runtime,
 			}
 		}
 
-		if err = r.CleanupOutputs(ctx, resource.NewMetadata(ctrl.TargetNamespace, IntResourceType, "", resource.VersionUndefined)); err != nil {
+		if err = r.CleanupOutputs(ctx, safe.NewTaggedMD(ctrl.TargetNamespace, IntResourceType, "", resource.VersionUndefined)); err != nil {
 			return fmt.Errorf("error cleaning up outputs: %w", err)
 		}
 	}
@@ -445,7 +433,7 @@ func (ctrl *ModifyWithResultController) Inputs() []controller.Input {
 	return []controller.Input{
 		{
 			Namespace: ctrl.SourceNamespace,
-			Type:      StrResourceType,
+			Type:      StrResourceType.Naked(),
 			Kind:      controller.InputStrong,
 		},
 	}
@@ -455,7 +443,7 @@ func (ctrl *ModifyWithResultController) Inputs() []controller.Input {
 func (ctrl *ModifyWithResultController) Outputs() []controller.Output {
 	return []controller.Output{
 		{
-			Type: StrResourceType,
+			Type: StrResourceType.Naked(),
 			Kind: controller.OutputExclusive,
 		},
 	}
@@ -463,7 +451,7 @@ func (ctrl *ModifyWithResultController) Outputs() []controller.Output {
 
 // Run implements controller.Controller interface.
 func (ctrl *ModifyWithResultController) Run(ctx context.Context, r controller.Runtime, _ *zap.Logger) error {
-	sourceMd := resource.NewMetadata(ctrl.SourceNamespace, StrResourceType, "", resource.VersionUndefined)
+	sourceMd := safe.NewTaggedMD(ctrl.SourceNamespace, StrResourceType, "", resource.VersionUndefined)
 
 	for {
 		select {
@@ -472,10 +460,7 @@ func (ctrl *ModifyWithResultController) Run(ctx context.Context, r controller.Ru
 		case <-r.EventCh():
 		}
 
-		strList, err := safe.ReaderList[interface {
-			StringResource
-			resource.Resource
-		}](ctx, r, sourceMd)
+		strList, err := safe.ReaderListByMD(ctx, r, sourceMd)
 		if err != nil {
 			return fmt.Errorf("error listing objects: %w", err)
 		}
@@ -535,12 +520,12 @@ func (ctrl *MetricsController) Inputs() []controller.Input {
 	return []controller.Input{
 		{
 			Namespace: ctrl.SourceNamespace,
-			Type:      IntResourceType,
+			Type:      IntResourceType.Naked(),
 			Kind:      controller.InputStrong,
 		},
 		{
 			Namespace: ctrl.TargetNamespace,
-			Type:      StrResourceType,
+			Type:      StrResourceType.Naked(),
 			Kind:      controller.InputDestroyReady,
 		},
 	}
@@ -550,7 +535,7 @@ func (ctrl *MetricsController) Inputs() []controller.Input {
 func (ctrl *MetricsController) Outputs() []controller.Output {
 	return []controller.Output{
 		{
-			Type: StrResourceType,
+			Type: StrResourceType.Naked(),
 			Kind: controller.OutputExclusive,
 		},
 	}
@@ -558,7 +543,7 @@ func (ctrl *MetricsController) Outputs() []controller.Output {
 
 // Run implements controller.Controller interface.
 func (ctrl *MetricsController) Run(ctx context.Context, r controller.Runtime, _ *zap.Logger) error {
-	sourceMd := resource.NewMetadata(ctrl.SourceNamespace, IntResourceType, "", resource.VersionUndefined)
+	sourceMd := safe.NewTaggedMD(ctrl.SourceNamespace, IntResourceType, "", resource.VersionUndefined)
 
 	for {
 		select {
@@ -567,10 +552,7 @@ func (ctrl *MetricsController) Run(ctx context.Context, r controller.Runtime, _ 
 		case <-r.EventCh():
 		}
 
-		intList, err := safe.ReaderList[interface {
-			IntegerResource
-			resource.Resource
-		}](ctx, r, sourceMd)
+		intList, err := safe.ReaderListByMD(ctx, r, sourceMd)
 		if err != nil {
 			return fmt.Errorf("error listing objects: %w", err)
 		}

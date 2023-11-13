@@ -38,8 +38,8 @@ type ProtobufConformanceSuite struct {
 }
 
 func TestProtobufConformance(t *testing.T) {
-	require.NoError(t, protobuf.RegisterResource(conformance.IntResourceType, &conformance.IntResource{}))
-	require.NoError(t, protobuf.RegisterResource(conformance.StrResourceType, &conformance.StrResource{}))
+	require.NoError(t, protobuf.RegisterResource(conformance.IntResourceType.Naked(), &conformance.IntResource{}))
+	require.NoError(t, protobuf.RegisterResource(conformance.StrResourceType.Naked(), &conformance.StrResource{}))
 	require.NoError(t, protobuf.RegisterResource(conformance.SentenceResourceType, &conformance.SentenceResource{}))
 
 	suite := &ProtobufConformanceSuite{

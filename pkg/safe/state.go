@@ -315,3 +315,25 @@ func (it *ListIterator[T]) Next() bool {
 func (it *ListIterator[T]) Value() T { //nolint:ireturn
 	return it.list.Get(it.pos - 1)
 }
+
+// StateWatchByMD is a type safe wrapper around State.Watch.
+func StateWatchByMD[T resource.Resource](ctx context.Context, st state.CoreState, md TaggedMD[T], eventCh chan<- WrappedStateEvent[T], opts ...state.WatchOption) error {
+	return StateWatch[T](ctx, st, md.Naked(), eventCh, opts...)
+}
+
+// StateWatchForByMD is a type safe wrapper around State.WatchFor.
+func StateWatchForByMD[T resource.Resource](ctx context.Context, st state.State, md TaggedMD[T], opts ...state.WatchForConditionFunc) (T, error) { //nolint:ireturn
+	got, err := st.WatchFor(ctx, md.Naked(), opts...)
+
+	return typeAssertOrZero[T](got, err)
+}
+
+// StateListByMD is a type safe wrapper around state.List.
+func StateListByMD[T resource.Resource](ctx context.Context, st state.CoreState, md TaggedMD[T], options ...state.ListOption) (List[T], error) {
+	return StateList[T](ctx, st, md.Naked(), options...)
+}
+
+// StateGetByMD is a type safe wrapper around state.Get.
+func StateGetByMD[T resource.Resource](ctx context.Context, st state.CoreState, md TaggedMD[T], options ...state.GetOption) (T, error) { //nolint:ireturn
+	return StateGet[T](ctx, st, md.Naked(), options...)
+}

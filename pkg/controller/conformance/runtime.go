@@ -113,13 +113,13 @@ func (suite *RuntimeSuite) assertIntObjects(ids []string, values []int) retry.Re
 	typ := IntResourceType
 
 	return func() error {
-		items, err := suite.State.List(suite.ctx, resource.NewMetadata(ns, typ, "", resource.VersionUndefined))
+		items, err := safe.StateListByMD(suite.ctx, suite.State, safe.NewTaggedMD(ns, typ, "", resource.VersionUndefined))
 		if err != nil {
 			return err
 		}
 
-		if len(items.Items) != len(ids) {
-			return retry.ExpectedErrorf("expected %d objects, got %d", len(ids), len(items.Items))
+		if items.Len() != len(ids) {
+			return retry.ExpectedErrorf("expected %d objects, got %d", len(ids), items.Len())
 		}
 
 		for i, id := range ids {
@@ -186,13 +186,13 @@ func (suite *RuntimeSuite) TestIntToStrControllers() {
 	suite.Assert().NoError(suite.State.Create(suite.ctx, NewIntResource("default", "two", 2)))
 
 	suite.Assert().NoError(retry.Constant(10*time.Second, retry.WithUnits(10*time.Millisecond)).
-		Retry(suite.assertStrObjects("default", StrResourceType, []string{"one", "two"}, []string{"1", "2"})))
+		Retry(suite.assertStrObjects("default", StrResourceType.Naked(), []string{"one", "two"}, []string{"1", "2"})))
 
 	three := NewIntResource("default", "three", 3)
 	suite.Assert().NoError(suite.State.Create(suite.ctx, three))
 
 	suite.Assert().NoError(retry.Constant(10*time.Second, retry.WithUnits(10*time.Millisecond)).
-		Retry(suite.assertStrObjects("default", StrResourceType, []string{"one", "two", "three"}, []string{"1", "2", "3"})))
+		Retry(suite.assertStrObjects("default", StrResourceType.Naked(), []string{"one", "two", "three"}, []string{"1", "2", "3"})))
 
 	type integerResource interface {
 		IntegerResource
@@ -207,7 +207,7 @@ func (suite *RuntimeSuite) TestIntToStrControllers() {
 	suite.Assert().NoError(err)
 
 	suite.Assert().NoError(retry.Constant(10*time.Second, retry.WithUnits(10*time.Millisecond)).
-		Retry(suite.assertStrObjects("default", StrResourceType, []string{"one", "two", "three"}, []string{"1", "2", "33"})))
+		Retry(suite.assertStrObjects("default", StrResourceType.Naked(), []string{"one", "two", "three"}, []string{"1", "2", "33"})))
 
 	ready, err := suite.State.Teardown(suite.ctx, three.Metadata())
 	suite.Assert().NoError(err)
@@ -217,7 +217,7 @@ func (suite *RuntimeSuite) TestIntToStrControllers() {
 	suite.Assert().NoError(err)
 
 	suite.Assert().NoError(retry.Constant(10*time.Second, retry.WithUnits(10*time.Millisecond)).
-		Retry(suite.assertStrObjects("default", StrResourceType, []string{"one", "two"}, []string{"1", "2"})))
+		Retry(suite.assertStrObjects("default", StrResourceType.Naked(), []string{"one", "two"}, []string{"1", "2"})))
 
 	suite.Assert().NoError(suite.State.Destroy(suite.ctx, three.Metadata()))
 }
@@ -474,7 +474,7 @@ func (suite *RuntimeSuite) TestModifyWithResultController() {
 	suite.Require().NoError(suite.State.Create(suite.ctx, NewStrResource(srcNS, "id", "val-1")))
 
 	suite.Assert().NoError(retry.Constant(10*time.Second, retry.WithUnits(10*time.Millisecond)).Retry(
-		suite.assertStrObjects(targetNS, StrResourceType,
+		suite.assertStrObjects(targetNS, StrResourceType.Naked(),
 			[]string{"id-out", "id-out-modify-result"},
 			[]string{"val-1-modified", "val-1-valid"},
 		),
@@ -490,7 +490,7 @@ func (suite *RuntimeSuite) TestModifyWithResultController() {
 	suite.Require().NoError(err)
 
 	suite.Assert().NoError(retry.Constant(10*time.Second, retry.WithUnits(10*time.Millisecond)).Retry(
-		suite.assertStrObjects(targetNS, StrResourceType,
+		suite.assertStrObjects(targetNS, StrResourceType.Naked(),
 			[]string{"id-out", "id-out-modify-result"},
 			[]string{"val-2-modified", "val-2-valid"},
 		),
