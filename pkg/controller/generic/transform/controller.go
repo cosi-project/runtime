@@ -7,6 +7,7 @@ package transform
 import (
 	"context"
 	"fmt"
+	"time"
 
 	"github.com/hashicorp/go-multierror"
 	"github.com/siderolabs/gen/optional"
@@ -212,6 +213,10 @@ func (ctrl *Controller[Input, Output]) Run(ctx context.Context, r controller.Run
 		case <-ctrl.options.extraEventCh:
 		}
 
+		MetricReconcileCycles.Add(ctrl.Name(), 1)
+
+		cycleStart := time.Now()
+
 		// controller runs in two phases:
 		//  - list all inputs, and transform inputs into outputs
 		//  - perform cleanup on outputs
@@ -242,6 +247,8 @@ func (ctrl *Controller[Input, Output]) Run(ctx context.Context, r controller.Run
 		); err != nil {
 			return err
 		}
+
+		MetricCycleBusy.AddFloat(ctrl.Name(), time.Since(cycleStart).Seconds())
 
 		if err := state.multiErr.ErrorOrNil(); err != nil {
 			return err
@@ -318,6 +325,8 @@ func (ctrl *Controller[Input, Output]) processInputs(
 			)
 		}
 	}
+
+	MetricReconcileInputItems.Add(ctrl.Name(), int64(inputItems.Len()))
 
 	return nil
 }
