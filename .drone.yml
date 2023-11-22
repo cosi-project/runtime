@@ -1,7 +1,7 @@
 ---
 # THIS FILE WAS AUTOMATICALLY GENERATED, PLEASE DO NOT EDIT.
 #
-# Generated on 2023-09-18T10:51:41Z by kres latest.
+# Generated on 2023-11-22T09:34:57Z by kres latest.
 
 kind: pipeline
 type: kubernetes
@@ -251,7 +251,7 @@ steps:
     - sha512
     draft: true
     files:
-    - _out/*
+    - _out/runtime-*
     note: _out/RELEASE_NOTES.md
   volumes:
   - name: outer-docker-socket
