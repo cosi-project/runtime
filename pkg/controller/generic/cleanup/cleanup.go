@@ -12,6 +12,7 @@ import (
 
 	"github.com/hashicorp/go-multierror"
 	"github.com/siderolabs/gen/xerrors"
+	"github.com/siderolabs/gen/xslices"
 	"go.uber.org/zap"
 
 	"github.com/cosi-project/runtime/pkg/controller"
@@ -256,11 +257,33 @@ func HasNoOutputs[O generic.ResourceWithRD, I generic.ResourceWithRD](
 	}
 }
 
+// RemoveOutputsOptions optional config for the RemoveOutputs handler constructor.
+type RemoveOutputsOptions struct {
+	extraOwners map[string]struct{}
+}
+
+// RemoveOutputsOption defines the function for passing optional arguments to the RemoveOutputs handler.
+type RemoveOutputsOption func(options *RemoveOutputsOptions)
+
+// WithExtraOwners enables destroy for the resources which have the specified owners.
+func WithExtraOwners(owners ...string) RemoveOutputsOption {
+	return func(options *RemoveOutputsOptions) {
+		options.extraOwners = xslices.ToSet(owners)
+	}
+}
+
 // RemoveOutputs is a helper function to create a [Handler] that removes all outputs on input teardown. It ignores
 // resource ownership using [controller.IgnoreOwner].
 func RemoveOutputs[O generic.ResourceWithRD, I generic.ResourceWithRD](
 	listOptions func(I) state.ListOption,
+	opts ...RemoveOutputsOption,
 ) Handler[I] {
+	var options RemoveOutputsOptions
+
+	for _, o := range opts {
+		o(&options)
+	}
+
 	return &handler[I, O]{
 		finalizerRemoval: func(ctx context.Context, r controller.Runtime, logger *zap.Logger, input I) error {
 			var (
@@ -286,13 +309,21 @@ func RemoveOutputs[O generic.ResourceWithRD, I generic.ResourceWithRD](
 			for iter := list.Iterator(); iter.Next(); {
 				out := iter.Value()
 
-				if out.Metadata().Owner() != "" {
-					// owned resource, skip
+				owner := out.Metadata().Owner()
+
+				var allowedOwner bool
+
+				if options.extraOwners != nil {
+					_, allowedOwner = options.extraOwners[owner]
+				}
+
+				if owner != "" && !allowedOwner {
+					// owned resource, skip if it's not explicitly enabled for destroy
 
 					continue
 				}
 
-				ready, err := r.Teardown(ctx, out.Metadata(), controller.WithOwner(""))
+				ready, err := r.Teardown(ctx, out.Metadata(), controller.WithOwner(owner))
 				if err != nil {
 					multiErr = multierror.Append(multiErr, fmt.Errorf("error tearing down %q resource %q: %w", zeroOutputType, out.Metadata().ID(), err))
 
@@ -305,7 +336,7 @@ func RemoveOutputs[O generic.ResourceWithRD, I generic.ResourceWithRD](
 					continue
 				}
 
-				err = r.Destroy(ctx, out.Metadata(), controller.WithOwner(""))
+				err = r.Destroy(ctx, out.Metadata(), controller.WithOwner(owner))
 				if err != nil {
 					multiErr = multierror.Append(multiErr, fmt.Errorf("error destroying %q resource %q: %w", zeroOutputType, out.Metadata().ID(), err))
 				}

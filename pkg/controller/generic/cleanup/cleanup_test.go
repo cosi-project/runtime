@@ -124,7 +124,7 @@ func TestNoRemovalUntilNoOutputs(t *testing.T) {
 
 type RemoveController = cleanup.Controller[*A]
 
-func NewRemoveController() *RemoveController {
+func NewRemoveController(options ...cleanup.RemoveOutputsOption) *RemoveController {
 	return cleanup.NewController[*A](
 		cleanup.Settings[*A]{
 			Name: "RemoveController",
@@ -132,6 +132,7 @@ func NewRemoveController() *RemoveController {
 				func(a *A) state.ListOption {
 					return state.WithLabelQuery(resource.LabelEqual("parent", a.Metadata().ID()))
 				},
+				options...,
 			),
 		},
 	)
@@ -190,6 +191,60 @@ func TestRemoveWithOutputs(t *testing.T) {
 		rtestutils.AssertResources(ctx, t, st, []resource.ID{"3"}, func(r *A, assert *assert.Assertions) {
 			assert.True(r.Metadata().Finalizers().Has(ctrl.Name()))
 		})
+	})
+}
+
+func TestRemoveWithExtraOwners(t *testing.T) {
+	runTest(t, func(ctx context.Context, t *testing.T, st state.State, rt *runtime.Runtime) {
+		ctrl := NewRemoveController(
+			cleanup.WithExtraOwners("some-controller"),
+		)
+
+		require.NoError(t, rt.RegisterController(ctrl))
+
+		for _, a := range []*A{
+			NewA("1"),
+			NewA("2"),
+			NewA("3"),
+		} {
+			require.NoError(t, st.Create(ctx, a))
+		}
+
+		type label struct{ key, value string }
+
+		toCreate := []struct {
+			res    resource.Resource
+			owner  string
+			labels []label
+		}{
+			{res: NewB("1"), labels: []label{{key: "parent", value: "1"}}},
+			{res: NewB("2"), labels: []label{{key: "parent", value: "2"}}, owner: "some-controller"},
+			{res: NewB("3"), labels: []label{{key: "parent", value: "3"}}, owner: "user-owner"},
+		}
+
+		for _, c := range toCreate {
+			for _, l := range c.labels {
+				c.res.Metadata().Labels().Set(l.key, l.value)
+			}
+
+			require.NoError(t, st.Create(ctx, c.res, state.WithCreateOwner(c.owner)))
+		}
+
+		rtestutils.AssertResources(ctx, t, st, []resource.ID{"1", "2", "3"}, func(r *A, assert *assert.Assertions) {
+			assert.True(r.Metadata().Finalizers().Has(ctrl.Name()))
+		})
+
+		rtestutils.Destroy[*A](ctx, t, st, []resource.ID{"1", "2", "3"})
+
+		for _, resID := range []resource.ID{"1", "2"} {
+			rtestutils.AssertNoResource[*B](ctx, t, st, resID)
+		}
+
+		for _, resID := range []resource.ID{"1", "2", "3"} {
+			rtestutils.AssertNoResource[*A](ctx, t, st, resID)
+		}
+
+		rtestutils.AssertResources(ctx, t, st, []resource.ID{"3"}, func(r *B, assert *assert.Assertions) {})
 	})
 }
 
