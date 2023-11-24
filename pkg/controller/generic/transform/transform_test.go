@@ -568,6 +568,67 @@ func TestOutputShared(t *testing.T) {
 	})
 }
 
+func TestHooks(t *testing.T) {
+	setup(t, func(ctx context.Context, st state.State, runtime *runtime.Runtime) {
+		var (
+			preCalled  int64
+			postCalled int64
+		)
+
+		ctrl := transform.NewController(
+			transform.Settings[*A, *B]{
+				Name: "TransformACController",
+				MapMetadataOptionalFunc: func(in *A) optional.Optional[*B] {
+					return optional.Some(NewB("transformed-"+in.Metadata().ID(), BSpec{}))
+				},
+				TransformFunc: func(ctx context.Context, r controller.Reader, l *zap.Logger, in *A, out *B) error {
+					out.TypedSpec().Out = fmt.Sprintf("%q-%d", in.TypedSpec().Str, in.TypedSpec().Int)
+
+					return nil
+				},
+				PreTransformHook: func(ctx context.Context, r controller.ReaderWriter) error {
+					_, err := safe.ReaderListAll[*A](ctx, r)
+
+					atomic.AddInt64(&preCalled, 1)
+
+					return err
+				},
+				PostTransformHook: func(ctx context.Context, r controller.ReaderWriter) error {
+					_, err := safe.ReaderListAll[*B](ctx, r)
+
+					atomic.AddInt64(&postCalled, 1)
+
+					return err
+				},
+			},
+		)
+
+		require.NoError(t, runtime.RegisterController(ctrl))
+
+		for _, a := range []*A{
+			NewA("1", ASpec{Str: "foo", Int: 1}),
+			NewA("2", ASpec{Str: "bar", Int: 2}),
+			NewA("3", ASpec{Str: "baz", Int: 3}),
+		} {
+			require.NoError(t, st.Create(ctx, a))
+		}
+
+		rtestutils.AssertResources(ctx, t, st, []resource.ID{"transformed-1", "transformed-2", "transformed-3"}, func(r *B, assert *assert.Assertions) {
+			switch r.Metadata().ID() {
+			case "transformed-1":
+				assert.Equal(`"foo"-1`, r.TypedSpec().Out)
+			case "transformed-2":
+				assert.Equal(`"bar"-2`, r.TypedSpec().Out)
+			case "transformed-3":
+				assert.Equal(`"baz"-3`, r.TypedSpec().Out)
+			}
+		})
+
+		require.EqualValues(t, 1, atomic.LoadInt64(&preCalled))
+		require.EqualValues(t, 1, atomic.LoadInt64(&postCalled))
+	})
+}
+
 func setup(t *testing.T, f func(ctx context.Context, st state.State, rt *runtime.Runtime)) {
 	defer goleak.VerifyNone(t, goleak.IgnoreCurrent())
 

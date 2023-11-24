@@ -30,6 +30,8 @@ import (
 type Controller[Input generic.ResourceWithRD, Output generic.ResourceWithRD] struct {
 	mapFunc              func(Input) optional.Optional[Output]
 	transformFunc        func(context.Context, controller.ReaderWriter, *zap.Logger, Input, Output) error
+	preTransformHook     func(context.Context, controller.ReaderWriter) error
+	postTransformHook    func(context.Context, controller.ReaderWriter) error
 	finalizerRemovalFunc func(context.Context, controller.ReaderWriter, *zap.Logger, Input) error
 	generic.NamedController
 	options ControllerOptions
@@ -70,6 +72,10 @@ type Settings[Input generic.ResourceWithRD, Output generic.ResourceWithRD] struc
 	// If the controller produces additional outputs, this function should be used instead of FinalizerRemovalFunc.
 	// The only difference is that Reader+Writer is passed as the argument.
 	FinalizerRemovalExtraOutputFunc func(context.Context, controller.ReaderWriter, *zap.Logger, Input) error
+	// PreTransformHook is called before running transform loop for all inputs.
+	PreTransformHook func(context.Context, controller.ReaderWriter) error
+	// PostTransformHook is called after running transform loop for all inputs.
+	PostTransformHook func(context.Context, controller.ReaderWriter) error
 }
 
 // NewController creates a new TransformController.
@@ -135,6 +141,8 @@ func NewController[Input generic.ResourceWithRD, Output generic.ResourceWithRD](
 		transformFunc:        transformFunc,
 		finalizerRemovalFunc: finalizerRemovalFunc,
 		options:              options,
+		preTransformHook:     settings.PreTransformHook,
+		postTransformHook:    settings.PostTransformHook,
 	}
 }
 
@@ -232,6 +240,12 @@ func (ctrl *Controller[Input, Output]) Run(ctx context.Context, r controller.Run
 			removeInputFinalizers: map[resource.ID]*resource.Metadata{},
 		}
 
+		if ctrl.preTransformHook != nil {
+			if err := ctrl.preTransformHook(ctx, r); err != nil {
+				return err
+			}
+		}
+
 		if err := ctrl.processInputs(
 			ctx, r, logger,
 			&state,
@@ -246,6 +260,12 @@ func (ctrl *Controller[Input, Output]) Run(ctx context.Context, r controller.Run
 			resource.NewMetadata(zeroOutput.ResourceDefinition().DefaultNamespace, zeroOutput.ResourceDefinition().Type, "", resource.VersionUndefined),
 		); err != nil {
 			return err
+		}
+
+		if ctrl.postTransformHook != nil {
+			if err := ctrl.postTransformHook(ctx, r); err != nil {
+				return err
+			}
 		}
 
 		MetricCycleBusy.AddFloat(ctrl.Name(), time.Since(cycleStart).Seconds())
