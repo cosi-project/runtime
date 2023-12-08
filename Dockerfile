@@ -2,7 +2,7 @@
 
 # THIS FILE WAS AUTOMATICALLY GENERATED, PLEASE DO NOT EDIT.
 #
-# Generated on 2023-11-22T09:34:57Z by kres latest.
+# Generated on 2023-12-08T14:31:01Z by kres latest.
 
 ARG TOOLCHAIN
 
@@ -23,7 +23,6 @@ RUN markdownlint --ignore "CHANGELOG.md" --ignore "**/node_modules/**" --ignore 
 FROM scratch AS proto-specs
 ADD https://raw.githubusercontent.com/cosi-project/specification/5c734257bfa6a3acb01417809797dbfbe0e73c71/proto/v1alpha1/resource.proto /api/v1alpha1/
 ADD https://raw.githubusercontent.com/cosi-project/specification/5c734257bfa6a3acb01417809797dbfbe0e73c71/proto/v1alpha1/state.proto /api/v1alpha1/
-ADD https://raw.githubusercontent.com/cosi-project/specification/5c734257bfa6a3acb01417809797dbfbe0e73c71/proto/v1alpha1/runtime.proto /api/v1alpha1/
 ADD https://raw.githubusercontent.com/cosi-project/specification/5c734257bfa6a3acb01417809797dbfbe0e73c71/proto/v1alpha1/meta.proto /api/v1alpha1/
 ADD api/key_storage/key_storage.proto /api/key_storage/
 
@@ -84,11 +83,10 @@ RUN --mount=type=cache,target=/go/pkg go list -mod=readonly all >/dev/null
 # runs protobuf compiler
 FROM tools AS proto-compile
 COPY --from=proto-specs / /
-RUN protoc -I/api --grpc-gateway_out=paths=source_relative:/api --grpc-gateway_opt=generate_unbound_methods=true --go_out=paths=source_relative:/api --go-grpc_out=paths=source_relative:/api --go-vtproto_out=paths=source_relative:/api --go-vtproto_opt=features=marshal+unmarshal+size+equal+clone --experimental_allow_proto3_optional /api/v1alpha1/resource.proto /api/v1alpha1/state.proto /api/v1alpha1/runtime.proto /api/v1alpha1/meta.proto
+RUN protoc -I/api --grpc-gateway_out=paths=source_relative:/api --grpc-gateway_opt=generate_unbound_methods=true --go_out=paths=source_relative:/api --go-grpc_out=paths=source_relative:/api --go-vtproto_out=paths=source_relative:/api --go-vtproto_opt=features=marshal+unmarshal+size+equal+clone --experimental_allow_proto3_optional /api/v1alpha1/resource.proto /api/v1alpha1/state.proto /api/v1alpha1/meta.proto
 RUN protoc -I/api --go_out=paths=source_relative:/api --go-grpc_out=paths=source_relative:/api --go-vtproto_out=paths=source_relative:/api --go-vtproto_opt=features=marshal+unmarshal+size+equal+clone --experimental_allow_proto3_optional /api/key_storage/key_storage.proto
 RUN rm /api/v1alpha1/resource.proto
 RUN rm /api/v1alpha1/state.proto
-RUN rm /api/v1alpha1/runtime.proto
 RUN rm /api/v1alpha1/meta.proto
 RUN rm /api/key_storage/key_storage.proto
 RUN goimports -w -local github.com/cosi-project/runtime /api

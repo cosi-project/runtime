@@ -25,7 +25,6 @@ import (
 
 	"github.com/cosi-project/runtime/api/v1alpha1"
 	"github.com/cosi-project/runtime/pkg/controller/conformance"
-	runtimeserver "github.com/cosi-project/runtime/pkg/controller/protobuf/server"
 	"github.com/cosi-project/runtime/pkg/controller/runtime"
 	"github.com/cosi-project/runtime/pkg/logging"
 	"github.com/cosi-project/runtime/pkg/state"
@@ -86,12 +85,8 @@ func run() error {
 		return fmt.Errorf("error setting up controller runtime: %w", err)
 	}
 
-	grpcRuntime := runtimeserver.NewRuntime(controllerRuntime)
-
 	grpcServer := grpc.NewServer()
 	v1alpha1.RegisterStateServer(grpcServer, server.NewState(inmemState))
-	v1alpha1.RegisterControllerRuntimeServer(grpcServer, grpcRuntime)
-	v1alpha1.RegisterControllerAdapterServer(grpcServer, grpcRuntime)
 
 	log.Printf("starting runtime service on %q", socketPath)
 
