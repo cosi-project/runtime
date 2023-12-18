@@ -12,18 +12,18 @@ require (
 	github.com/gertd/go-pluralize v0.2.1
 	github.com/grpc-ecosystem/grpc-gateway/v2 v2.18.1
 	github.com/hashicorp/go-multierror v1.1.1
-	github.com/klauspost/compress v1.17.3
+	github.com/klauspost/compress v1.17.4
 	github.com/siderolabs/gen v0.4.7
 	github.com/siderolabs/go-pointer v1.0.0
 	github.com/siderolabs/go-retry v0.3.3
-	github.com/siderolabs/protoenc v0.2.0
+	github.com/siderolabs/protoenc v0.2.1
 	github.com/stretchr/testify v1.8.4
 	go.etcd.io/bbolt v1.3.8
 	go.uber.org/goleak v1.3.0
 	go.uber.org/zap v1.26.0
 	golang.org/x/sync v0.5.0
-	golang.org/x/time v0.4.0
-	google.golang.org/grpc v1.59.0
+	golang.org/x/time v0.5.0
+	google.golang.org/grpc v1.60.0
 	google.golang.org/protobuf v1.31.0
 	gopkg.in/yaml.v3 v3.0.1
 )
