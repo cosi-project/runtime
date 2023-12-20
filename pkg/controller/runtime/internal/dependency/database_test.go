@@ -11,7 +11,7 @@ import (
 	"github.com/stretchr/testify/suite"
 
 	"github.com/cosi-project/runtime/pkg/controller"
-	"github.com/cosi-project/runtime/pkg/controller/runtime/dependency"
+	"github.com/cosi-project/runtime/pkg/controller/runtime/internal/dependency"
 	"github.com/cosi-project/runtime/pkg/resource"
 )
 

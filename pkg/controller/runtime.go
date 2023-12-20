@@ -38,6 +38,14 @@ const (
 	InputWeak InputKind = iota
 	InputStrong
 	InputDestroyReady
+	// InputQPrimary is put to the queue of the QController directly by metadata.
+	InputQPrimary
+	// InputQMapped is mapped by the QController to one of the primary inputs.
+	InputQMapped
+	// InputQMappedDestroyReady is mapped by the QController to one of the primary inputs.
+	//
+	// On top of mapping, filtered by FilterDestroyReady.
+	InputQMappedDestroyReady
 )
 
 // Input of the controller (dependency on some resource(s)).

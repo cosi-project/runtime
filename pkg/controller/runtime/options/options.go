@@ -2,7 +2,8 @@
 // License, v. 2.0. If a copy of the MPL was not distributed with this
 // file, You can obtain one at http://mozilla.org/MPL/2.0/.
 
-package runtime
+// Package options provides functional options for controller runtime.
+package options
 
 import "golang.org/x/time/rate"
 

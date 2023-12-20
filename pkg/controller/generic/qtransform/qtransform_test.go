@@ -3,17 +3,17 @@
 // file, You can obtain one at http://mozilla.org/MPL/2.0/.
 
 //nolint:goconst
-package transform_test
+package qtransform_test
 
 import (
 	"context"
 	"errors"
 	"fmt"
-	"sync/atomic"
+	"strings"
+	"sync"
 	"testing"
 	"time"
 
-	"github.com/siderolabs/gen/channel"
 	"github.com/siderolabs/gen/optional"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -21,7 +21,7 @@ import (
 	"go.uber.org/zap"
 
 	"github.com/cosi-project/runtime/pkg/controller"
-	"github.com/cosi-project/runtime/pkg/controller/generic/transform"
+	"github.com/cosi-project/runtime/pkg/controller/generic/qtransform"
 	"github.com/cosi-project/runtime/pkg/controller/runtime"
 	"github.com/cosi-project/runtime/pkg/future"
 	"github.com/cosi-project/runtime/pkg/logging"
@@ -33,18 +33,23 @@ import (
 	"github.com/cosi-project/runtime/pkg/state/impl/namespaced"
 )
 
-type ABController = transform.Controller[*A, *B]
+type ABController = qtransform.QController[*A, *B]
 
-func NewABController(reconcileTeardownCh <-chan struct{}, opts ...transform.ControllerOption) *ABController {
-	return transform.NewController(
-		transform.Settings[*A, *B]{
-			Name: "TransformABController",
+func NewABController(reconcileTeardownCh <-chan string, opts ...qtransform.ControllerOption) *ABController {
+	var allowedFinalizerRemovals sync.Map
+
+	return qtransform.NewQController(
+		qtransform.Settings[*A, *B]{
+			Name: "QTransformABController",
 			MapMetadataOptionalFunc: func(in *A) optional.Optional[*B] {
 				if in.Metadata().ID() == "skip-me" {
 					return optional.None[*B]()
 				}
 
 				return optional.Some(NewB("transformed-"+in.Metadata().ID(), BSpec{}))
+			},
+			UnmapMetadataFunc: func(in *B) *A {
+				return NewA(strings.TrimPrefix(in.Metadata().ID(), "transformed-"), ASpec{})
 			},
 			TransformFunc: func(ctx context.Context, r controller.Reader, l *zap.Logger, in *A, out *B) error {
 				if in.TypedSpec().Int < 0 {
@@ -61,11 +66,21 @@ func NewABController(reconcileTeardownCh <-chan struct{}, opts ...transform.Cont
 					return fmt.Errorf("not allowed to reconcile teardown")
 				}
 
-				select {
-				case <-reconcileTeardownCh:
+				if _, ok := allowedFinalizerRemovals.Load(in.Metadata().ID()); ok {
 					return nil
-				case <-ctx.Done():
-					return ctx.Err()
+				}
+
+				for {
+					select {
+					case id := <-reconcileTeardownCh:
+						allowedFinalizerRemovals.Store(id, nil)
+
+						if id == in.Metadata().ID() {
+							return nil
+						}
+					case <-ctx.Done():
+						return ctx.Err()
+					}
 				}
 			},
 		},
@@ -73,16 +88,19 @@ func NewABController(reconcileTeardownCh <-chan struct{}, opts ...transform.Cont
 	)
 }
 
-func NewACController(opts ...transform.ControllerOption) *ABController {
-	return transform.NewController(
-		transform.Settings[*A, *B]{
-			Name: "TransformACController",
+func NewABNoFinalizerRemovalController(opts ...qtransform.ControllerOption) *ABController {
+	return qtransform.NewQController(
+		qtransform.Settings[*A, *B]{
+			Name: "QTransformABNoFinalizerRemovalController",
 			MapMetadataOptionalFunc: func(in *A) optional.Optional[*B] {
 				if in.Metadata().ID() == "skip-me" {
 					return optional.None[*B]()
 				}
 
 				return optional.Some(NewB("transformed-"+in.Metadata().ID(), BSpec{}))
+			},
+			UnmapMetadataFunc: func(in *B) *A {
+				return NewA(strings.TrimPrefix(in.Metadata().ID(), "transformed-"), ASpec{})
 			},
 			TransformFunc: func(ctx context.Context, r controller.Reader, l *zap.Logger, in *A, out *B) error {
 				if in.TypedSpec().Int < 0 {
@@ -98,9 +116,47 @@ func NewACController(opts ...transform.ControllerOption) *ABController {
 	)
 }
 
+func NewABCController(opts ...qtransform.ControllerOption) *ABController {
+	return qtransform.NewQController(
+		qtransform.Settings[*A, *B]{
+			Name: "QTransformABCController",
+			MapMetadataFunc: func(in *A) *B {
+				return NewB("transformed-"+in.Metadata().ID(), BSpec{})
+			},
+			UnmapMetadataFunc: func(in *B) *A {
+				return NewA(strings.TrimPrefix(in.Metadata().ID(), "transformed-"), ASpec{})
+			},
+			TransformFunc: func(ctx context.Context, r controller.Reader, l *zap.Logger, in *A, out *B) error {
+				c, err := safe.ReaderGetByID[*C](ctx, r, in.Metadata().ID())
+				if err != nil && !state.IsNotFoundError(err) {
+					return err
+				}
+
+				out.TypedSpec().Out = fmt.Sprintf("%q-%d", in.TypedSpec().Str, in.TypedSpec().Int)
+
+				if c != nil {
+					out.TypedSpec().Out += fmt.Sprintf("-%d", c.TypedSpec().Aux)
+				}
+
+				out.TypedSpec().TransformCount++
+
+				return nil
+			},
+		},
+		append(
+			opts,
+			qtransform.WithExtraMappedInput(func(_ context.Context, _ *zap.Logger, _ controller.QRuntime, c *C) ([]resource.Pointer, error) {
+				return []resource.Pointer{
+					NewA(c.Metadata().ID(), ASpec{}).Metadata(),
+				}, nil
+			}),
+		)...,
+	)
+}
+
 func TestSimpleMap(t *testing.T) {
 	setup(t, func(ctx context.Context, st state.State, runtime *runtime.Runtime) {
-		require.NoError(t, runtime.RegisterController(NewABController(nil)))
+		require.NoError(t, runtime.RegisterQController(NewABNoFinalizerRemovalController(qtransform.WithConcurrency(4))))
 
 		for _, a := range []*A{
 			NewA("1", ASpec{Str: "foo", Int: 1}),
@@ -146,7 +202,7 @@ func TestSimpleMap(t *testing.T) {
 
 func TestMapWithMissing(t *testing.T) {
 	setup(t, func(ctx context.Context, st state.State, runtime *runtime.Runtime) {
-		require.NoError(t, runtime.RegisterController(NewABController(nil)))
+		require.NoError(t, runtime.RegisterQController(NewABNoFinalizerRemovalController(qtransform.WithConcurrency(2))))
 
 		for _, a := range []*A{
 			NewA("1", ASpec{Str: "foo", Int: 1}),
@@ -171,7 +227,7 @@ func TestMapWithMissing(t *testing.T) {
 
 func TestMapWithErrors(t *testing.T) {
 	setup(t, func(ctx context.Context, st state.State, runtime *runtime.Runtime) {
-		require.NoError(t, runtime.RegisterController(NewABController(nil)))
+		require.NoError(t, runtime.RegisterQController(NewABNoFinalizerRemovalController(qtransform.WithConcurrency(8))))
 
 		for _, a := range []*A{
 			NewA("1", ASpec{Str: "foo", Int: 1}),
@@ -214,7 +270,7 @@ func TestMapWithErrors(t *testing.T) {
 
 func TestDestroy(t *testing.T) {
 	setup(t, func(ctx context.Context, st state.State, runtime *runtime.Runtime) {
-		require.NoError(t, runtime.RegisterController(NewABController(nil)))
+		require.NoError(t, runtime.RegisterQController(NewABNoFinalizerRemovalController()))
 
 		for _, a := range []*A{
 			NewA("1", ASpec{}),
@@ -226,15 +282,24 @@ func TestDestroy(t *testing.T) {
 
 		rtestutils.AssertResources(ctx, t, st, []resource.ID{"transformed-1", "transformed-2", "transformed-3"}, func(r *B, assert *assert.Assertions) {})
 
+		ready, err := st.Teardown(ctx, NewA("1", ASpec{}).Metadata())
+		require.NoError(t, err)
+		assert.False(t, ready)
+
+		_, err = st.WatchFor(ctx, NewA("1", ASpec{}).Metadata(), state.WithFinalizerEmpty())
+		require.NoError(t, err)
+
 		require.NoError(t, st.Destroy(ctx, NewA("1", ASpec{}).Metadata()))
 
 		rtestutils.AssertNoResource[*B](ctx, t, st, "transformed-1")
 		rtestutils.AssertResources(ctx, t, st, []resource.ID{"transformed-2", "transformed-3"}, func(r *B, assert *assert.Assertions) {})
 
-		ready, err := st.Teardown(ctx, NewA("3", ASpec{}).Metadata())
+		ready, err = st.Teardown(ctx, NewA("3", ASpec{}).Metadata())
 		require.NoError(t, err)
+		assert.False(t, ready)
 
-		assert.True(t, ready)
+		_, err = st.WatchFor(ctx, NewA("3", ASpec{}).Metadata(), state.WithFinalizerEmpty())
+		require.NoError(t, err)
 
 		require.NoError(t, st.Destroy(ctx, NewA("3", ASpec{}).Metadata()))
 
@@ -245,7 +310,7 @@ func TestDestroy(t *testing.T) {
 
 func TestDestroyOutputFinalizers(t *testing.T) {
 	setup(t, func(ctx context.Context, st state.State, runtime *runtime.Runtime) {
-		require.NoError(t, runtime.RegisterController(NewABController(nil)))
+		require.NoError(t, runtime.RegisterQController(NewABNoFinalizerRemovalController()))
 
 		for _, a := range []*A{
 			NewA("1", ASpec{}),
@@ -273,24 +338,21 @@ func TestDestroyOutputFinalizers(t *testing.T) {
 			}
 		})
 
-		require.NoError(t, st.Destroy(ctx, NewA("3", ASpec{}).Metadata()))
-
-		rtestutils.AssertResources(ctx, t, st, []resource.ID{"transformed-1", "transformed-2", "transformed-3"}, func(r *B, assert *assert.Assertions) {
-			if r.Metadata().ID() == "transformed-3" {
-				assert.Equal(resource.PhaseTearingDown, r.Metadata().Phase())
-			}
-		})
-
 		require.NoError(t, st.RemoveFinalizer(ctx, NewB("transformed-3", BSpec{}).Metadata(), finalizer))
 		rtestutils.AssertNoResource[*B](ctx, t, st, "transformed-3")
+
+		_, err = st.WatchFor(ctx, NewA("3", ASpec{}).Metadata(), state.WithFinalizerEmpty())
+		require.NoError(t, err)
+
+		require.NoError(t, st.Destroy(ctx, NewA("3", ASpec{}).Metadata()))
 	})
 }
 
 func TestDestroyInputFinalizers(t *testing.T) {
 	setup(t, func(ctx context.Context, st state.State, runtime *runtime.Runtime) {
-		teardownCh := make(chan struct{})
+		teardownCh := make(chan string)
 
-		require.NoError(t, runtime.RegisterController(NewABController(teardownCh, transform.WithInputFinalizers())))
+		require.NoError(t, runtime.RegisterQController(NewABController(teardownCh)))
 
 		for _, a := range []*A{
 			NewA("1", ASpec{Str: "reconcile-teardown"}),
@@ -304,20 +366,20 @@ func TestDestroyInputFinalizers(t *testing.T) {
 
 		// controller should set finalizers on inputs
 		rtestutils.AssertResources(ctx, t, st, []resource.ID{"1", "2", "3"}, func(r *A, assert *assert.Assertions) {
-			assert.False(r.Metadata().Finalizers().Add("TransformABController"))
+			assert.True(r.Metadata().Finalizers().Has("QTransformABController"))
 		})
 
 		// teardown an input, controller should clean up and remove finalizers
 		_, err := st.Teardown(ctx, NewA("3", ASpec{}).Metadata())
 		require.NoError(t, err)
 
-		teardownCh <- struct{}{}
+		teardownCh <- "3"
 
 		rtestutils.AssertNoResource[*B](ctx, t, st, "transformed-3")
 
 		// controller should remove finalizer on inputs
 		rtestutils.AssertResources(ctx, t, st, []resource.ID{"3"}, func(r *A, assert *assert.Assertions) {
-			assert.True(r.Metadata().Finalizers().Add("TransformABController"))
+			assert.False(r.Metadata().Finalizers().Has("QTransformABController"))
 		})
 
 		require.NoError(t, st.Destroy(ctx, NewA("3", ASpec{}).Metadata()))
@@ -330,7 +392,7 @@ func TestDestroyInputFinalizers(t *testing.T) {
 		_, err = st.Teardown(ctx, NewA("2", ASpec{}).Metadata())
 		require.NoError(t, err)
 
-		teardownCh <- struct{}{}
+		teardownCh <- "2"
 
 		rtestutils.AssertResources(ctx, t, st, []resource.ID{"transformed-1", "transformed-2"}, func(r *B, assert *assert.Assertions) {
 			if r.Metadata().ID() == "transformed-2" {
@@ -339,8 +401,6 @@ func TestDestroyInputFinalizers(t *testing.T) {
 		})
 
 		require.NoError(t, st.RemoveFinalizer(ctx, NewB("transformed-2", BSpec{}).Metadata(), finalizer))
-
-		teardownCh <- struct{}{}
 
 		rtestutils.AssertNoResource[*B](ctx, t, st, "transformed-2")
 
@@ -355,13 +415,9 @@ func TestDestroyInputFinalizers(t *testing.T) {
 
 func TestDestroyReconcileTeardown(t *testing.T) {
 	setup(t, func(ctx context.Context, st state.State, runtime *runtime.Runtime) {
-		teardownCh := make(chan struct{})
+		teardownCh := make(chan string)
 
-		require.NoError(t, runtime.RegisterController(
-			NewABController(
-				teardownCh,
-				transform.WithInputFinalizers(),
-			)))
+		require.NoError(t, runtime.RegisterQController(NewABController(teardownCh)))
 
 		for _, a := range []*A{
 			NewA("1", ASpec{Str: "reconcile-teardown"}),
@@ -374,7 +430,7 @@ func TestDestroyReconcileTeardown(t *testing.T) {
 
 		// controller should set finalizers on inputs
 		rtestutils.AssertResources(ctx, t, st, []resource.ID{"1", "2"}, func(r *A, assert *assert.Assertions) {
-			assert.False(r.Metadata().Finalizers().Add("TransformABController"))
+			assert.True(r.Metadata().Finalizers().Has("QTransformABController"))
 		})
 
 		// set finalizers on outputs
@@ -390,7 +446,7 @@ func TestDestroyReconcileTeardown(t *testing.T) {
 			assert.Equal(resource.PhaseRunning, r.Metadata().Phase())
 		})
 
-		teardownCh <- struct{}{}
+		teardownCh <- "2"
 
 		rtestutils.AssertResources(ctx, t, st, []resource.ID{"transformed-2"}, func(r *B, assert *assert.Assertions) {
 			assert.Equal(resource.PhaseTearingDown, r.Metadata().Phase())
@@ -398,212 +454,25 @@ func TestDestroyReconcileTeardown(t *testing.T) {
 
 		require.NoError(t, st.RemoveFinalizer(ctx, NewB("transformed-2", BSpec{}).Metadata(), finalizer))
 
-		teardownCh <- struct{}{}
-
 		// controller should now remove its own finalizer
 		rtestutils.AssertResources(ctx, t, st, []resource.ID{"2"}, func(r *A, assert *assert.Assertions) {
-			assert.True(r.Metadata().Finalizers().Add("TransformABController"))
+			assert.False(r.Metadata().Finalizers().Has("QTransformABController"))
 		})
 
 		rtestutils.AssertNoResource[*B](ctx, t, st, "transformed-2")
-	})
-}
-
-func TestDestroyFinalizersRecreateInput(t *testing.T) {
-	setup(t, func(ctx context.Context, st state.State, runtime *runtime.Runtime) {
-		require.NoError(t, runtime.RegisterController(NewABController(nil)))
-
-		for _, a := range []*A{
-			NewA("1", ASpec{Int: 1}),
-			NewA("2", ASpec{Int: 1}),
-			NewA("3", ASpec{Int: 1}),
-		} {
-			require.NoError(t, st.Create(ctx, a))
-		}
-
-		rtestutils.AssertResources(ctx, t, st, []resource.ID{"transformed-1", "transformed-2", "transformed-3"},
-			func(r *B, assert *assert.Assertions) {
-				assert.Equal(`""-1`, r.TypedSpec().Out)
-			},
-		)
-
-		// add finalizers
-		const finalizer = "foo.cosi"
-
-		for _, id := range []resource.ID{"transformed-1", "transformed-2", "transformed-3"} {
-			require.NoError(t, st.AddFinalizer(ctx, NewB(id, BSpec{}).Metadata(), finalizer))
-		}
-
-		// destroy an input, controller is blocked on removing the output resource due to finalizers
-		require.NoError(t, st.Destroy(ctx, NewA("3", ASpec{}).Metadata()))
-
-		// wait for the output to enter tearing down phase
-		rtestutils.AssertResources(ctx, t, st, []resource.ID{"transformed-3"},
-			func(r *B, assert *assert.Assertions) {
-				assert.Equal(resource.PhaseTearingDown, r.Metadata().Phase())
-			},
-		)
-
-		// recreate the input with new spec
-		require.NoError(t, st.Create(ctx, NewA("3", ASpec{Int: 2})))
-
-		// the output still reflects the old spec since the controller is blocked on removing the output
-		rtestutils.AssertResources(ctx, t, st, []resource.ID{"transformed-3"},
-			func(r *B, assert *assert.Assertions) {
-				assert.Equal(`""-1`, r.TypedSpec().Out)
-				assert.Equal(resource.PhaseTearingDown, r.Metadata().Phase())
-			},
-		)
-
-		// remove the finalizer
-		require.NoError(t, st.RemoveFinalizer(ctx, NewB("transformed-3", BSpec{}).Metadata(), finalizer))
-
-		// the output should be re-created with new spec
-		rtestutils.AssertResources(ctx, t, st, []resource.ID{"transformed-3"},
-			func(r *B, assert *assert.Assertions) {
-				assert.Equal(`""-2`, r.TypedSpec().Out)
-				assert.Equal(resource.PhaseRunning, r.Metadata().Phase())
-			},
-		)
-	})
-}
-
-func TestWithIgnoreTearingDownInputs(t *testing.T) {
-	setup(t, func(ctx context.Context, st state.State, runtime *runtime.Runtime) {
-		require.NoError(t, runtime.RegisterController(NewABController(nil, transform.WithIgnoreTearingDownInputs())))
-
-		for _, a := range []*A{
-			NewA("1", ASpec{Str: "foo", Int: 1}),
-			NewA("2", ASpec{Str: "bar", Int: 2}),
-			NewA("3", ASpec{Str: "baz", Int: 3}),
-		} {
-			require.NoError(t, st.Create(ctx, a))
-		}
-
-		rtestutils.AssertResources(ctx, t, st, []resource.ID{"transformed-1", "transformed-2", "transformed-3"}, func(r *B, assert *assert.Assertions) {})
-
-		_, err := st.Teardown(ctx, NewA("2", ASpec{}).Metadata())
-		require.NoError(t, err)
-
-		// controller should ignore tearing down input "2" and keep the output
-		rtestutils.AssertResources(ctx, t, st, []resource.ID{"transformed-1", "transformed-2", "transformed-3"}, func(r *B, assert *assert.Assertions) {})
-
-		require.NoError(t, st.Destroy(ctx, NewA("2", ASpec{}).Metadata()))
-
-		// as "2" is destroyed, controller should remove the output
-		rtestutils.AssertNoResource[*B](ctx, t, st, "transformed-2")
-
-		// now put a finalizer on the output
-		require.NoError(t, st.AddFinalizer(ctx, NewB("transformed-1", BSpec{}).Metadata(), "foo"))
-
-		// destroy the input
-		require.NoError(t, st.Destroy(ctx, NewA("1", ASpec{}).Metadata()))
-
-		rtestutils.AssertResources(ctx, t, st, []resource.ID{"transformed-1"}, func(r *B, assert *assert.Assertions) {
-			assert.Equal(resource.PhaseTearingDown, r.Metadata().Phase())
-		})
-
-		// release the finalizer
-		require.NoError(t, st.RemoveFinalizer(ctx, NewB("transformed-1", BSpec{}).Metadata(), "foo"))
-
-		// the output should be removed
-		rtestutils.AssertNoResource[*B](ctx, t, st, "transformed-1")
-	})
-}
-
-func TestWithExtraChannel(t *testing.T) {
-	setup(t, func(ctx context.Context, st state.State, runtime *runtime.Runtime) {
-		extraEventCh := make(chan struct{})
-
-		require.NoError(t, runtime.RegisterController(NewABController(nil, transform.WithExtraEventChannel(extraEventCh))))
-
-		require.NoError(t, st.Create(ctx, NewA("1", ASpec{Str: "foo", Int: 1})))
-
-		var transformCountBeforeChannelSend int
-
-		rtestutils.AssertResources(ctx, t, st, []resource.ID{"transformed-1"}, func(r *B, assert *assert.Assertions) {
-			assert.GreaterOrEqual(r.TypedSpec().TransformCount, 1, "transform count should be at least 1")
-
-			transformCountBeforeChannelSend = r.TypedSpec().TransformCount
-		})
-
-		// send two extra events
-
-		if !channel.SendWithContext(ctx, extraEventCh, struct{}{}) {
-			t.FailNow()
-		}
-
-		if !channel.SendWithContext(ctx, extraEventCh, struct{}{}) {
-			t.FailNow()
-		}
-
-		rtestutils.AssertResources(ctx, t, st, []resource.ID{"transformed-1"}, func(r *B, assert *assert.Assertions) {
-			assert.GreaterOrEqualf(r.TypedSpec().TransformCount, transformCountBeforeChannelSend+2, "transform count should be greater or equal to %d", transformCountBeforeChannelSend+2)
-		})
-	})
-}
-
-func TestWithOnShutdownCallback(t *testing.T) {
-	var called atomic.Bool
-
-	t.Cleanup(func() {
-		assert.True(t, called.Load())
-	})
-
-	setup(t, func(ctx context.Context, st state.State, runtime *runtime.Runtime) {
-		require.NoError(t, runtime.RegisterController(NewABController(nil, transform.WithOnShutdownCallback(func(_ context.Context, _ controller.ReaderWriter, logger *zap.Logger) {
-			called.Store(true)
-		}))))
-
-		require.NoError(t, st.Create(ctx, NewA("1", ASpec{Str: "foo", Int: 1})))
-
-		rtestutils.AssertResources(ctx, t, st, []resource.ID{"transformed-1"}, func(r *B, assert *assert.Assertions) {})
 	})
 }
 
 func TestOutputShared(t *testing.T) {
 	setup(t, func(ctx context.Context, st state.State, runtime *runtime.Runtime) {
-		require.NoError(t, runtime.RegisterController(NewABController(nil, transform.WithOutputKind(controller.OutputShared))))
-		require.NoError(t, runtime.RegisterController(NewACController(transform.WithOutputKind(controller.OutputShared))))
+		require.NoError(t, runtime.RegisterQController(NewABController(nil, qtransform.WithOutputKind(controller.OutputShared))))
+		require.NoError(t, runtime.RegisterQController(NewABNoFinalizerRemovalController(qtransform.WithOutputKind(controller.OutputShared))))
 	})
 }
 
-func TestHooks(t *testing.T) {
+func TestRemappedInput(t *testing.T) {
 	setup(t, func(ctx context.Context, st state.State, runtime *runtime.Runtime) {
-		var (
-			preCalled  int64
-			postCalled int64
-		)
-
-		ctrl := transform.NewController(
-			transform.Settings[*A, *B]{
-				Name: "TransformACController",
-				MapMetadataOptionalFunc: func(in *A) optional.Optional[*B] {
-					return optional.Some(NewB("transformed-"+in.Metadata().ID(), BSpec{}))
-				},
-				TransformFunc: func(ctx context.Context, r controller.Reader, l *zap.Logger, in *A, out *B) error {
-					out.TypedSpec().Out = fmt.Sprintf("%q-%d", in.TypedSpec().Str, in.TypedSpec().Int)
-
-					return nil
-				},
-				PreTransformHook: func(ctx context.Context, r controller.ReaderWriter) error {
-					_, err := safe.ReaderListAll[*A](ctx, r)
-
-					atomic.AddInt64(&preCalled, 1)
-
-					return err
-				},
-				PostTransformHook: func(ctx context.Context, r controller.ReaderWriter) error {
-					_, err := safe.ReaderListAll[*B](ctx, r)
-
-					atomic.AddInt64(&postCalled, 1)
-
-					return err
-				},
-			},
-		)
-
-		require.NoError(t, runtime.RegisterController(ctrl))
+		require.NoError(t, runtime.RegisterQController(NewABCController()))
 
 		for _, a := range []*A{
 			NewA("1", ASpec{Str: "foo", Int: 1}),
@@ -624,10 +493,20 @@ func TestHooks(t *testing.T) {
 			}
 		})
 
-		time.Sleep(time.Second)
+		require.NoError(t, st.Create(ctx, NewC("1", CSpec{Aux: 11})))
+		require.NoError(t, st.Create(ctx, NewC("2", CSpec{Aux: 22})))
+		require.NoError(t, st.Create(ctx, NewC("4", CSpec{Aux: 44})))
 
-		require.EqualValues(t, 1, atomic.LoadInt64(&preCalled))
-		require.EqualValues(t, 1, atomic.LoadInt64(&postCalled))
+		rtestutils.AssertResources(ctx, t, st, []resource.ID{"transformed-1", "transformed-2", "transformed-3"}, func(r *B, assert *assert.Assertions) {
+			switch r.Metadata().ID() {
+			case "transformed-1":
+				assert.Equal(`"foo"-1-11`, r.TypedSpec().Out)
+			case "transformed-2":
+				assert.Equal(`"bar"-2-22`, r.TypedSpec().Out)
+			case "transformed-3":
+				assert.Equal(`"baz"-3`, r.TypedSpec().Out)
+			}
+		})
 	})
 }
 

@@ -19,6 +19,7 @@ import (
 
 	"github.com/cosi-project/runtime/pkg/controller/conformance"
 	"github.com/cosi-project/runtime/pkg/controller/runtime"
+	"github.com/cosi-project/runtime/pkg/controller/runtime/options"
 	"github.com/cosi-project/runtime/pkg/future"
 	"github.com/cosi-project/runtime/pkg/resource"
 	"github.com/cosi-project/runtime/pkg/safe"
@@ -30,15 +31,15 @@ import (
 func TestRuntimeConformance(t *testing.T) {
 	for _, tt := range []struct {
 		name string
-		opts []runtime.Option
+		opts []options.Option
 	}{
 		{
 			name: "defaults",
 		},
 		{
 			name: "rate limited",
-			opts: []runtime.Option{
-				runtime.WithChangeRateLimit(10, 20),
+			opts: []options.Option{
+				options.WithChangeRateLimit(10, 20),
 			},
 		},
 	} {

@@ -24,6 +24,8 @@ type Controller interface {
 type Engine interface {
 	// RegisterController registers new controller.
 	RegisterController(ctrl Controller) error
+	// RegisterQController registers new QController.
+	RegisterQController(ctrl QController) error
 	// Run the controllers.
 	Run(ctx context.Context) error
 }

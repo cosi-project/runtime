@@ -26,6 +26,7 @@ import (
 	"github.com/cosi-project/runtime/api/v1alpha1"
 	"github.com/cosi-project/runtime/pkg/controller/conformance"
 	"github.com/cosi-project/runtime/pkg/controller/runtime"
+	"github.com/cosi-project/runtime/pkg/controller/runtime/options"
 	"github.com/cosi-project/runtime/pkg/logging"
 	"github.com/cosi-project/runtime/pkg/state"
 	"github.com/cosi-project/runtime/pkg/state/impl/inmem"
@@ -80,7 +81,7 @@ func run() error {
 
 	logger := logging.DefaultLogger()
 
-	controllerRuntime, err := runtime.NewRuntime(inmemState, logger, runtime.WithMetrics(true))
+	controllerRuntime, err := runtime.NewRuntime(inmemState, logger, options.WithMetrics(true))
 	if err != nil {
 		return fmt.Errorf("error setting up controller runtime: %w", err)
 	}

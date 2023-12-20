@@ -564,3 +564,149 @@ func (suite *RuntimeSuite) TestControllerRuntimeMetrics() {
 		assert.Equal(collect, getIntValFromExpVarMap(metrics.ControllerCrashes, ctrl.Name()), 1, "ControllerCrashes should be 1")
 	}, 10*time.Second, 10*time.Millisecond)
 }
+
+// TestQIntToStrController ...
+func (suite *RuntimeSuite) TestQIntToStrController() {
+	srcNS := "q-int"
+	targetNS := "q-str"
+
+	suite.Require().NoError(suite.Runtime.RegisterQController(&QIntToStrController{
+		SourceNamespace: srcNS,
+		TargetNamespace: targetNS,
+	}))
+
+	suite.Require().NoError(suite.State.Create(suite.ctx, NewIntResource(srcNS, "id1", 1)))
+	suite.Require().NoError(suite.State.Create(suite.ctx, NewIntResource(srcNS, "id2", 2)))
+
+	suite.startRuntime()
+
+	suite.Assert().NoError(retry.Constant(10*time.Second, retry.WithUnits(10*time.Millisecond)).Retry(
+		suite.assertStrObjects(targetNS, StrResourceType,
+			[]string{"id1", "id2"},
+			[]string{"1", "2"},
+		),
+	))
+
+	suite.Require().NoError(suite.State.Create(suite.ctx, NewIntResource(srcNS, "id3", 3)))
+
+	suite.Assert().NoError(retry.Constant(10*time.Second, retry.WithUnits(10*time.Millisecond)).Retry(
+		suite.assertStrObjects(targetNS, StrResourceType,
+			[]string{"id1", "id2", "id3"},
+			[]string{"1", "2", "3"},
+		),
+	))
+
+	int2Resource, err := safe.StateGet[*IntResource](suite.ctx, suite.State, resource.NewMetadata(srcNS, IntResourceType, "id2", resource.VersionUndefined))
+	suite.Require().NoError(err)
+
+	int2Resource.SetValue(22)
+	suite.Require().NoError(suite.State.Update(suite.ctx, int2Resource))
+
+	suite.Assert().NoError(retry.Constant(10*time.Second, retry.WithUnits(10*time.Millisecond)).Retry(
+		suite.assertStrObjects(targetNS, StrResourceType,
+			[]string{"id1", "id2", "id3"},
+			[]string{"1", "22", "3"},
+		),
+	))
+
+	// teardown without dst finalizers
+	ready, err := suite.State.Teardown(suite.ctx, resource.NewMetadata(srcNS, IntResourceType, "id1", resource.VersionUndefined))
+	suite.Require().NoError(err)
+	suite.Assert().False(ready)
+
+	_, err = suite.State.WatchFor(suite.ctx, resource.NewMetadata(srcNS, IntResourceType, "id1", resource.VersionUndefined), state.WithFinalizerEmpty())
+	suite.Require().NoError(err)
+
+	suite.Require().NoError(suite.State.Destroy(suite.ctx, resource.NewMetadata(srcNS, IntResourceType, "id1", resource.VersionUndefined)))
+
+	suite.Assert().NoError(retry.Constant(10*time.Second, retry.WithUnits(10*time.Millisecond)).Retry(
+		suite.assertStrObjects(targetNS, StrResourceType,
+			[]string{"id2", "id3"},
+			[]string{"22", "3"},
+		),
+	))
+
+	// teardown with dst finalizers
+	suite.Require().NoError(suite.State.AddFinalizer(suite.ctx, resource.NewMetadata(targetNS, StrResourceType, "id2", resource.VersionUndefined), "my-finalizer"))
+
+	ready, err = suite.State.Teardown(suite.ctx, resource.NewMetadata(srcNS, IntResourceType, "id2", resource.VersionUndefined))
+	suite.Require().NoError(err)
+	suite.Assert().False(ready)
+
+	// resource should stay
+	watchCtx, watchCancel := context.WithTimeout(suite.ctx, 1*time.Second)
+	defer watchCancel()
+
+	_, err = suite.State.WatchFor(watchCtx, resource.NewMetadata(srcNS, IntResourceType, "id1", resource.VersionUndefined), state.WithFinalizerEmpty())
+	suite.Require().Error(err)
+	suite.Assert().ErrorIs(err, context.DeadlineExceeded)
+
+	// now remove our finalizer, and the resource should be gone
+	suite.Require().NoError(suite.State.RemoveFinalizer(suite.ctx, resource.NewMetadata(targetNS, StrResourceType, "id2", resource.VersionUndefined), "my-finalizer"))
+
+	_, err = suite.State.WatchFor(suite.ctx, resource.NewMetadata(srcNS, IntResourceType, "id2", resource.VersionUndefined), state.WithFinalizerEmpty())
+	suite.Require().NoError(err)
+
+	suite.Require().NoError(suite.State.Destroy(suite.ctx, resource.NewMetadata(srcNS, IntResourceType, "id2", resource.VersionUndefined)))
+
+	suite.Assert().NoError(retry.Constant(10*time.Second, retry.WithUnits(10*time.Millisecond)).Retry(
+		suite.assertStrObjects(targetNS, StrResourceType,
+			[]string{"id3"},
+			[]string{"3"},
+		),
+	))
+}
+
+// TestQFailingController ...
+func (suite *RuntimeSuite) TestQFailingController() {
+	srcNS := "q-fail-in"
+	targetNS := "q-fail-out"
+
+	suite.Require().NoError(suite.Runtime.RegisterQController(&QFailingController{
+		SourceNamespace: srcNS,
+		TargetNamespace: targetNS,
+	}))
+
+	suite.Require().NoError(suite.State.Create(suite.ctx, NewStrResource(srcNS, "id1", "fail")))
+	suite.Require().NoError(suite.State.Create(suite.ctx, NewStrResource(srcNS, "id2", "panic")))
+
+	suite.startRuntime()
+
+	suite.Require().NoError(suite.State.Create(suite.ctx, NewStrResource(srcNS, "id3", "requeue_no_error")))
+	suite.Require().NoError(suite.State.Create(suite.ctx, NewStrResource(srcNS, "id4", "requeue_with_error")))
+	suite.Require().NoError(suite.State.Create(suite.ctx, NewStrResource(srcNS, "id5", "ok")))
+
+	suite.Assert().NoError(retry.Constant(10*time.Second, retry.WithUnits(10*time.Millisecond)).Retry(
+		suite.assertStrObjects(targetNS, StrResourceType,
+			[]string{"id5"},
+			[]string{"ok"},
+		),
+	))
+
+	makeNoFail := func(id resource.ID) {
+		str3Resource, err := safe.StateGet[*StrResource](suite.ctx, suite.State, resource.NewMetadata(srcNS, StrResourceType, id, resource.VersionUndefined))
+		suite.Require().NoError(err)
+
+		str3Resource.SetValue("no fail")
+		suite.Require().NoError(suite.State.Update(suite.ctx, str3Resource))
+	}
+
+	makeNoFail("id3")
+
+	suite.Assert().NoError(retry.Constant(10*time.Second, retry.WithUnits(10*time.Millisecond)).Retry(
+		suite.assertStrObjects(targetNS, StrResourceType,
+			[]string{"id3", "id5"},
+			[]string{"no fail", "ok"},
+		),
+	))
+
+	makeNoFail("id4")
+	makeNoFail("id2")
+
+	suite.Assert().NoError(retry.Constant(10*time.Second, retry.WithUnits(10*time.Millisecond)).Retry(
+		suite.assertStrObjects(targetNS, StrResourceType,
+			[]string{"id2", "id3", "id4", "id5"},
+			[]string{"no fail", "no fail", "no fail", "ok"},
+		),
+	))
+}

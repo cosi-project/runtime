@@ -2,10 +2,5 @@
 // License, v. 2.0. If a copy of the MPL was not distributed with this
 // file, You can obtain one at http://mozilla.org/MPL/2.0/.
 
-package runtime
-
-import "github.com/cosi-project/runtime/pkg/resource"
-
-func filterDestroyReady(md *reducedMetadata) bool {
-	return md.phase == resource.PhaseTearingDown && md.finalizersEmpty
-}
+// Package containers provides helper containers for qruntime.
+package containers

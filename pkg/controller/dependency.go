@@ -21,6 +21,9 @@ const (
 	EdgeInputStrong
 	EdgeInputWeak
 	EdgeInputDestroyReady
+	EdgeInputQPrimary
+	EdgeInputQMapped
+	EdgeInputQMappedDestroyReady
 )
 
 // DependencyEdge represents relationship between controller and resource(s).

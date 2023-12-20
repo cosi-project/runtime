@@ -295,6 +295,12 @@ func (db *Database) Export() (*controller.DependencyGraph, error) {
 				edgeType = controller.EdgeInputWeak
 			case controller.InputDestroyReady:
 				edgeType = controller.EdgeInputDestroyReady
+			case controller.InputQPrimary:
+				edgeType = controller.EdgeInputQPrimary
+			case controller.InputQMapped:
+				edgeType = controller.EdgeInputQMapped
+			case controller.InputQMappedDestroyReady:
+				edgeType = controller.EdgeInputQMappedDestroyReady
 			}
 
 			graph.Edges = append(graph.Edges, controller.DependencyEdge{
