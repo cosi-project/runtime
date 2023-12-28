@@ -308,6 +308,55 @@ func TestDestroy(t *testing.T) {
 	})
 }
 
+func TestDestroyWithIgnoreTeardownUntil(t *testing.T) {
+	setup(t, func(ctx context.Context, st state.State, runtime *runtime.Runtime) {
+		require.NoError(t, runtime.RegisterQController(NewABCController(qtransform.WithIgnoreTeardownUntil("extra-finalizer"))))
+
+		for _, a := range []*A{
+			NewA("1", ASpec{}),
+			NewA("2", ASpec{}),
+			NewA("3", ASpec{}),
+		} {
+			require.NoError(t, st.Create(ctx, a))
+		}
+
+		rtestutils.AssertResources(ctx, t, st, []resource.ID{"transformed-1", "transformed-2", "transformed-3"}, func(r *B, assert *assert.Assertions) {})
+
+		// destroy without extra finalizers should work immediately
+		rtestutils.Destroy[*A](ctx, t, st, []resource.ID{"1"})
+		rtestutils.AssertNoResource[*B](ctx, t, st, "transformed-1")
+
+		// add two finalizers to '2'
+		require.NoError(t, st.AddFinalizer(ctx, NewA("2", ASpec{}).Metadata(), "extra-finalizer", "other-finalizer"))
+
+		// teardown input '2'
+		_, err := st.Teardown(ctx, NewA("2", ASpec{}).Metadata())
+		require.NoError(t, err)
+
+		// the output 'transformed-2' should not be torn down yet
+		rtestutils.AssertResources(ctx, t, st, []resource.ID{"transformed-2", "transformed-3"}, func(r *B, asrt *assert.Assertions) {
+			asrt.Equal(resource.PhaseRunning, r.Metadata().Phase())
+		})
+
+		// remove other-finalizer
+		require.NoError(t, st.RemoveFinalizer(ctx, NewA("2", ASpec{}).Metadata(), "other-finalizer"))
+
+		// the output 'transformed-2' should be destroyed now
+		rtestutils.AssertNoResource[*B](ctx, t, st, "transformed-2")
+
+		// the input '2' should no longer have controller finalizer
+		rtestutils.AssertResources(ctx, t, st, []resource.ID{"2"}, func(r *A, asrt *assert.Assertions) {
+			asrt.False(r.Metadata().Finalizers().Has("QTransformABCController"))
+		})
+
+		// remove extra-finalizer
+		require.NoError(t, st.RemoveFinalizer(ctx, NewA("2", ASpec{}).Metadata(), "extra-finalizer"))
+
+		// the input '2' should be destroyed now
+		rtestutils.Destroy[*A](ctx, t, st, []resource.ID{"2"})
+	})
+}
+
 func TestDestroyOutputFinalizers(t *testing.T) {
 	setup(t, func(ctx context.Context, st state.State, runtime *runtime.Runtime) {
 		require.NoError(t, runtime.RegisterQController(NewABNoFinalizerRemovalController()))

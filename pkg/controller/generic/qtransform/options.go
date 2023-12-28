@@ -26,6 +26,24 @@ type mapperFunc func(context.Context, *zap.Logger, controller.QRuntime, resource
 // MapperFuncGeneric is a generic version of mapperFunc.
 type MapperFuncGeneric[I generic.ResourceWithRD] func(context.Context, *zap.Logger, controller.QRuntime, I) ([]resource.Pointer, error)
 
+// MapperSameID is a mapper that returns the same namespace ID as the input resource, but uses output resource type.
+func MapperSameID[I generic.ResourceWithRD, O generic.ResourceWithRD]() MapperFuncGeneric[I] {
+	var zeroOutput O
+
+	outputType := zeroOutput.ResourceDefinition().Type
+
+	return func(_ context.Context, _ *zap.Logger, _ controller.QRuntime, v I) ([]resource.Pointer, error) {
+		return []resource.Pointer{resource.NewMetadata(v.Metadata().Namespace(), outputType, v.Metadata().ID(), resource.VersionUndefined)}, nil
+	}
+}
+
+// MapperNone is a mapper that returns no pointers.
+func MapperNone[I generic.ResourceWithRD]() MapperFuncGeneric[I] {
+	return func(context.Context, *zap.Logger, controller.QRuntime, I) ([]resource.Pointer, error) {
+		return nil, nil
+	}
+}
+
 func mapperFuncFromGeneric[I generic.ResourceWithRD](generic MapperFuncGeneric[I]) mapperFunc {
 	return func(ctx context.Context, logger *zap.Logger, r controller.QRuntime, res resource.Resource) ([]resource.Pointer, error) {
 		v, ok := res.(I)
@@ -39,11 +57,12 @@ func mapperFuncFromGeneric[I generic.ResourceWithRD](generic MapperFuncGeneric[I
 
 // ControllerOptions configures QTransformController.
 type ControllerOptions struct {
-	mappers           map[namespaceType]mapperFunc
-	extraInputs       []controller.Input
-	extraOutputs      []controller.Output
-	primaryOutputKind controller.OutputKind
-	concurrency       optional.Optional[uint]
+	mappers            map[namespaceType]mapperFunc
+	leftoverFinalizers map[resource.Finalizer]struct{}
+	extraInputs        []controller.Input
+	extraOutputs       []controller.Output
+	primaryOutputKind  controller.OutputKind
+	concurrency        optional.Optional[uint]
 }
 
 // ControllerOption is an option for QTransformController.
@@ -95,5 +114,23 @@ func WithOutputKind(kind controller.OutputKind) ControllerOption {
 func WithConcurrency(n uint) ControllerOption {
 	return func(o *ControllerOptions) {
 		o.concurrency = optional.Some(n)
+	}
+}
+
+// WithIgnoreTeardownUntil ignores input resource teardown until the input resource has only mentioned finalizers left.
+//
+// This allows to keep output resources not destroyed until other controllers remove their finalizers.
+//
+// Implicitly the controller will also ignore its own finalizer, so if the list is empty, the controller will wait
+// to be the last one not done with the resource.
+func WithIgnoreTeardownUntil(finalizers ...resource.Finalizer) ControllerOption {
+	return func(o *ControllerOptions) {
+		if o.leftoverFinalizers == nil {
+			o.leftoverFinalizers = map[resource.Finalizer]struct{}{}
+		}
+
+		for _, fin := range finalizers {
+			o.leftoverFinalizers[fin] = struct{}{}
+		}
 	}
 }

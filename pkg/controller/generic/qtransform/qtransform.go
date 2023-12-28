@@ -188,6 +188,30 @@ func (ctrl *QController[Input, Output]) Reconcile(ctx context.Context, logger *z
 	case resource.PhaseRunning:
 		return ctrl.reconcileRunning(ctx, logger, r, in, mappedOut)
 	case resource.PhaseTearingDown:
+		ignoreTearingDown := false
+
+		// if there's an option to ignore finalizers, check if we should ignore tearing down
+		// and perform "normal" reconcile instead
+		if ctrl.options.leftoverFinalizers != nil {
+			for _, fin := range *in.Metadata().Finalizers() {
+				if fin == ctrl.ControllerName {
+					continue
+				}
+
+				if _, present := ctrl.options.leftoverFinalizers[fin]; present {
+					continue
+				}
+
+				ignoreTearingDown = true
+
+				break
+			}
+		}
+
+		if ignoreTearingDown {
+			return ctrl.reconcileRunning(ctx, logger, r, in, mappedOut)
+		}
+
 		return ctrl.reconcileTearingDown(ctx, logger, r, in, mappedOut.Metadata())
 	default:
 		panic(fmt.Sprintf("invalid input phase: %s", in.Metadata().Phase()))
@@ -195,7 +219,7 @@ func (ctrl *QController[Input, Output]) Reconcile(ctx context.Context, logger *z
 }
 
 func (ctrl *QController[Input, Output]) reconcileRunning(ctx context.Context, logger *zap.Logger, r controller.QRuntime, in Input, mappedOut Output) error {
-	if !in.Metadata().Finalizers().Has(ctrl.Name()) {
+	if !in.Metadata().Finalizers().Has(ctrl.Name()) && in.Metadata().Phase() == resource.PhaseRunning {
 		if err := r.AddFinalizer(ctx, in.Metadata(), ctrl.Name()); err != nil {
 			return fmt.Errorf("error adding input finalizer: %w", err)
 		}
