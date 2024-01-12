@@ -177,6 +177,28 @@ func TestRemoveWithOutputs(t *testing.T) {
 			assert.True(r.Metadata().Finalizers().Has(ctrl.Name()))
 		})
 
+		for _, resID := range []resource.ID{"1", "3"} {
+			require.NoError(t, st.AddFinalizer(ctx, NewB(resID).Metadata(), "custom-finalizer"))
+		}
+
+		rtestutils.Teardown[*A](ctx, t, st, []resource.ID{"1", "2"})
+
+		// B("2") should be removed immediately, because it has no finalizers
+		rtestutils.AssertNoResource[*B](ctx, t, st, "2")
+
+		// B("1", "3") should be in tearing down, waiting for finalizers to be removed
+		rtestutils.AssertResources(ctx, t, st, []resource.ID{"1", "3"}, func(r *B, assert *assert.Assertions) {
+			assert.Equal(resource.PhaseTearingDown, r.Metadata().Phase())
+		})
+
+		rtestutils.AssertResources(ctx, t, st, []resource.ID{"1", "2"}, func(r *A, assert *assert.Assertions) {
+			assert.True(r.Metadata().Finalizers().Has(ctrl.Name()))
+		})
+
+		for _, resID := range []resource.ID{"1", "3"} {
+			require.NoError(t, st.RemoveFinalizer(ctx, NewB(resID).Metadata(), "custom-finalizer"))
+		}
+
 		rtestutils.Destroy[*A](ctx, t, st, []resource.ID{"1", "2"})
 
 		for _, resID := range []resource.ID{"1", "2", "3"} {

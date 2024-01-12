@@ -341,11 +341,11 @@ func RemoveOutputs[O generic.ResourceWithRD, I generic.ResourceWithRD](
 					multiErr = multierror.Append(multiErr, fmt.Errorf("error destroying %q resource %q: %w", zeroOutputType, out.Metadata().ID(), err))
 				}
 
-				logger.Info("removed dependant output", zap.String("resource", zeroOutputType), zap.String("id", out.Metadata().ID()))
+				logger.Info("removed dependent output", zap.String("resource", zeroOutputType), zap.String("id", out.Metadata().ID()))
 			}
 
 			if multiErr != nil {
-				return fmt.Errorf("error removing dependant outputs: %w", multiErr)
+				return fmt.Errorf("error removing dependent outputs: %w", multiErr)
 			}
 
 			if inTearDown > 0 {
@@ -366,14 +366,14 @@ func RemoveOutputs[O generic.ResourceWithRD, I generic.ResourceWithRD](
 			return []controller.Input{{
 				Namespace: zeroOutput.ResourceDefinition().DefaultNamespace,
 				Type:      zeroOutput.ResourceDefinition().Type,
-				Kind:      controller.InputWeak,
+				Kind:      controller.InputDestroyReady,
 			}}
 		},
 		outputs: func() []controller.Output {
-			var zeroInput O
+			var zeroOutput O
 
 			return []controller.Output{{
-				Type: zeroInput.ResourceDefinition().Type,
+				Type: zeroOutput.ResourceDefinition().Type,
 				Kind: controller.OutputShared,
 			}}
 		},
