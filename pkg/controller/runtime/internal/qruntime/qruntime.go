@@ -226,14 +226,18 @@ func (adapter *Adapter) runReconcile(ctx context.Context) {
 
 			reconcileError := adapter.runOnce(ctx, logger, item.Value())
 
+			busy := time.Since(start)
+
 			var (
 				requeueError *controller.RequeueError
 				interval     time.Duration
+				requeued     bool
 			)
 
 			if errors.As(reconcileError, &requeueError) {
 				reconcileError = requeueError.Err()
 				interval = requeueError.Interval()
+				requeued = true
 			}
 
 			if adapter.metricsEnabled {
@@ -244,20 +248,31 @@ func (adapter *Adapter) runReconcile(ctx context.Context) {
 				}
 
 				if item.Value().job == QJobReconcile {
-					metrics.QControllerReconcileBusy.AddFloat(adapter.StateAdapter.Name, time.Since(start).Seconds())
+					metrics.QControllerReconcileBusy.AddFloat(adapter.StateAdapter.Name, busy.Seconds())
 				} else {
-					metrics.QControllerMapBusy.AddFloat(adapter.StateAdapter.Name, time.Since(start).Seconds())
+					metrics.QControllerMapBusy.AddFloat(adapter.StateAdapter.Name, busy.Seconds())
 				}
 			}
 
 			if reconcileError != nil {
-				logger.Error("controller failed", zap.Error(reconcileError))
-
 				if interval == 0 {
 					interval = adapter.getBackoffInterval(item.Value())
 				}
+
+				logger.Error("reconcile failed",
+					zap.Error(reconcileError),
+					zap.Duration("interval", interval),
+					zap.Duration("busy", busy),
+					zapSkipIfZero(requeued, zap.Bool("requeued", requeued)),
+				)
 			} else {
 				adapter.clearBackoff(item.Value())
+
+				logger.Info("reconcile succeeded",
+					zap.Duration("busy", busy),
+					zapSkipIfZero(interval, zap.Duration("interval", interval)),
+					zapSkipIfZero(requeued, zap.Bool("requeued", requeued)),
+				)
 			}
 
 			if interval != 0 {
@@ -265,6 +280,16 @@ func (adapter *Adapter) runReconcile(ctx context.Context) {
 			}
 		}()
 	}
+}
+
+func zapSkipIfZero[T comparable](val T, f zap.Field) zap.Field {
+	var zero T
+
+	if val == zero {
+		return zap.Skip()
+	}
+
+	return f
 }
 
 func (adapter *Adapter) runOnce(ctx context.Context, logger *zap.Logger, item QItem) (err error) {
