@@ -94,7 +94,7 @@ func (queue *Queue[T]) Run(ctx context.Context) {
 			}
 
 			if onHoldQueue.Remove(released.Value) {
-				if !pqueue.Push(released.Value, time.Time{}) {
+				if !pqueue.Push(released.Value, time.Now()) {
 					queue.length.Add(-1)
 				}
 			}
@@ -109,7 +109,7 @@ func (queue *Queue[T]) Run(ctx context.Context) {
 				continue
 			}
 
-			if pqueue.Push(item, time.Time{}) {
+			if pqueue.Push(item, time.Now()) {
 				queue.length.Add(1)
 			}
 		}
