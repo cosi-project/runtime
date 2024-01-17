@@ -7,6 +7,7 @@ package qtransform
 
 import (
 	"context"
+	"errors"
 	"fmt"
 
 	"github.com/siderolabs/gen/optional"
@@ -225,8 +226,17 @@ func (ctrl *QController[Input, Output]) reconcileRunning(ctx context.Context, lo
 		}
 	}
 
+	var requeueError *controller.RequeueError
+
 	if err := safe.WriterModify(ctx, r, mappedOut, func(out Output) error {
-		return ctrl.transformFunc(ctx, r, logger, in, out)
+		transformError := ctrl.transformFunc(ctx, r, logger, in, out)
+
+		// unwrap requeue error, so that we don't fail the modify if requeue was done without an explicit error
+		if errors.As(transformError, &requeueError) {
+			return requeueError.Err()
+		}
+
+		return transformError
 	}); err != nil {
 		if state.IsConflictError(err) {
 			// conflict due to wrong phase, skip it
@@ -237,7 +247,17 @@ func (ctrl *QController[Input, Output]) reconcileRunning(ctx context.Context, lo
 			return nil
 		}
 
+		if requeueError != nil && requeueError.Err() == err { //nolint:errorlint
+			// if requeueError was specified, and Modify returned it unmodified, return it
+			// otherwise Modify failed for its own reasons, and use that error
+			return requeueError
+		}
+
 		return err
+	}
+
+	if requeueError != nil {
+		return requeueError
 	}
 
 	return nil

@@ -14,6 +14,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/siderolabs/gen/channel"
 	"github.com/siderolabs/gen/optional"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -35,7 +36,7 @@ import (
 
 type ABController = qtransform.QController[*A, *B]
 
-func NewABController(reconcileTeardownCh <-chan string, opts ...qtransform.ControllerOption) *ABController {
+func NewABController(reconcileTeardownCh <-chan string, requeueErrorCh <-chan error, opts ...qtransform.ControllerOption) *ABController {
 	var allowedFinalizerRemovals sync.Map
 
 	return qtransform.NewQController(
@@ -58,6 +59,15 @@ func NewABController(reconcileTeardownCh <-chan string, opts ...qtransform.Contr
 
 				out.TypedSpec().Out = fmt.Sprintf("%q-%d", in.TypedSpec().Str, in.TypedSpec().Int)
 				out.TypedSpec().TransformCount++
+
+				if requeueErrorCh != nil {
+					select {
+					case err := <-requeueErrorCh:
+						return err
+					case <-ctx.Done():
+						return ctx.Err()
+					}
+				}
 
 				return nil
 			},
@@ -401,7 +411,7 @@ func TestDestroyInputFinalizers(t *testing.T) {
 	setup(t, func(ctx context.Context, st state.State, runtime *runtime.Runtime) {
 		teardownCh := make(chan string)
 
-		require.NoError(t, runtime.RegisterQController(NewABController(teardownCh)))
+		require.NoError(t, runtime.RegisterQController(NewABController(teardownCh, nil)))
 
 		for _, a := range []*A{
 			NewA("1", ASpec{Str: "reconcile-teardown"}),
@@ -466,7 +476,7 @@ func TestDestroyReconcileTeardown(t *testing.T) {
 	setup(t, func(ctx context.Context, st state.State, runtime *runtime.Runtime) {
 		teardownCh := make(chan string)
 
-		require.NoError(t, runtime.RegisterQController(NewABController(teardownCh)))
+		require.NoError(t, runtime.RegisterQController(NewABController(teardownCh, nil)))
 
 		for _, a := range []*A{
 			NewA("1", ASpec{Str: "reconcile-teardown"}),
@@ -514,7 +524,7 @@ func TestDestroyReconcileTeardown(t *testing.T) {
 
 func TestOutputShared(t *testing.T) {
 	setup(t, func(ctx context.Context, st state.State, runtime *runtime.Runtime) {
-		require.NoError(t, runtime.RegisterQController(NewABController(nil, qtransform.WithOutputKind(controller.OutputShared))))
+		require.NoError(t, runtime.RegisterQController(NewABController(nil, nil, qtransform.WithOutputKind(controller.OutputShared))))
 		require.NoError(t, runtime.RegisterQController(NewABNoFinalizerRemovalController(qtransform.WithOutputKind(controller.OutputShared))))
 	})
 }
@@ -559,6 +569,48 @@ func TestRemappedInput(t *testing.T) {
 	})
 }
 
+func TestRequeueErrorBackoff(t *testing.T) {
+	setup(t, func(ctx context.Context, st state.State, runtime *runtime.Runtime) {
+		errorCh := make(chan error, 1)
+
+		require.NoError(t, runtime.RegisterQController(NewABController(nil, errorCh)))
+
+		// send a RequeueError containing an actual error - the output resource must not be created
+
+		if !channel.SendWithContext[error](ctx, errorCh, controller.NewRequeueError(fmt.Errorf("first error"), 100*time.Millisecond)) {
+			t.FailNow()
+		}
+
+		require.NoError(t, st.Create(ctx, NewA("1", ASpec{Str: "foo", Int: 1})))
+
+		sleep(ctx, 250*time.Millisecond)
+
+		rtestutils.AssertNoResource[*B](ctx, t, st, "transformed-1")
+
+		// send a RequeueError without an inner error (simple requeue request) - the output must be created
+
+		if !channel.SendWithContext[error](ctx, errorCh, controller.NewRequeueInterval(100*time.Millisecond)) {
+			t.FailNow()
+		}
+
+		rtestutils.AssertResource(ctx, t, st, "transformed-1", func(r *B, assert *assert.Assertions) {
+			assert.Equal(`"foo"-1`, r.TypedSpec().Out)
+			assert.Equal(1, r.TypedSpec().TransformCount)
+		})
+
+		// send a nil error - because a requeue was requested above, transform is called again, waiting to receive on the errorCh
+
+		if !channel.SendWithContext[error](ctx, errorCh, nil) {
+			t.FailNow()
+		}
+
+		rtestutils.AssertResource(ctx, t, st, "transformed-1", func(r *B, assert *assert.Assertions) {
+			assert.Equal(`"foo"-1`, r.TypedSpec().Out)
+			assert.Equal(2, r.TypedSpec().TransformCount)
+		})
+	})
+}
+
 func setup(t *testing.T, f func(ctx context.Context, st state.State, rt *runtime.Runtime)) {
 	defer goleak.VerifyNone(t, goleak.IgnoreCurrent())
 
@@ -586,4 +638,14 @@ func setup(t *testing.T, f func(ctx context.Context, st state.State, rt *runtime
 	})
 
 	f(ctx, st, rt)
+}
+
+func sleep(ctx context.Context, d time.Duration) {
+	timer := time.NewTimer(d)
+	defer timer.Stop()
+
+	select {
+	case <-ctx.Done():
+	case <-timer.C:
+	}
 }
