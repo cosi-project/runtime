@@ -113,7 +113,6 @@ type Output struct {
 type Reader interface {
 	Get(context.Context, resource.Pointer, ...state.GetOption) (resource.Resource, error)
 	List(context.Context, resource.Kind, ...state.ListOption) (resource.List, error)
-	WatchFor(context.Context, resource.Pointer, ...state.WatchForConditionFunc) (resource.Resource, error)
 }
 
 // Writer provides write access to the state.

@@ -456,7 +456,13 @@ func (collection *ResourceCollection) WatchAll(ctx context.Context, singleCh cha
 					}
 				}
 
-				if !channel.SendWithContext(ctx, singleCh, state.Event{Type: state.Bootstrapped}) {
+				if !channel.SendWithContext(
+					ctx, singleCh,
+					state.Event{
+						Type:     state.Bootstrapped,
+						Resource: resource.NewTombstone(resource.NewMetadata(collection.ns, collection.typ, "", resource.VersionUndefined)),
+					},
+				) {
 					return
 				}
 			case aggCh != nil:
@@ -467,7 +473,10 @@ func (collection *ResourceCollection) WatchAll(ctx context.Context, singleCh cha
 					}
 				})
 
-				events = append(events, state.Event{Type: state.Bootstrapped})
+				events = append(events, state.Event{
+					Type:     state.Bootstrapped,
+					Resource: resource.NewTombstone(resource.NewMetadata(collection.ns, collection.typ, "", resource.VersionUndefined)),
+				})
 
 				if !channel.SendWithContext(ctx, aggCh, events) {
 					return

@@ -38,7 +38,7 @@ jobs:
         name: codecov
         uses: codecov/codecov-action@v3.1.4
         with:
-          files: ./_out/coverage.txt
+          files: ./_out/coverage-unit-tests.txt
       -
         name: unit-tests-race
         run: make unit-tests-race

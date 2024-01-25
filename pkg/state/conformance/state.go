@@ -294,6 +294,8 @@ func (suite *StateSuite) testWatchKind(useAggregated bool) {
 	select {
 	case event := <-chWithBootstrap:
 		suite.Assert().Equal(state.Bootstrapped, event.Type)
+		suite.Assert().Equal(path1.Metadata().Namespace(), event.Resource.Metadata().Namespace())
+		suite.Assert().Equal(path1.Metadata().Type(), event.Resource.Metadata().Type())
 	case <-time.After(time.Second):
 		suite.FailNow("timed out waiting for event")
 	}
@@ -489,6 +491,8 @@ func (suite *StateSuite) testWatchKindWithLabels(useAggregated bool) {
 		select {
 		case event := <-ch:
 			suite.Assert().Equal(state.Bootstrapped, event.Type)
+			suite.Assert().Equal(path1.Metadata().Namespace(), event.Resource.Metadata().Namespace())
+			suite.Assert().Equal(path1.Metadata().Type(), event.Resource.Metadata().Type())
 		case <-time.After(time.Second):
 			suite.FailNow("timed out waiting for event")
 		}
@@ -1101,6 +1105,8 @@ func (suite *StateSuite) TestIDQuery() {
 	select {
 	case event := <-watchCh:
 		suite.Assert().Equal(state.Bootstrapped, event.Type)
+		suite.Assert().Equal(NewPathResource(ns, "").Metadata().Namespace(), event.Resource.Metadata().Namespace())
+		suite.Assert().Equal(NewPathResource(ns, "").Metadata().Type(), event.Resource.Metadata().Type())
 	case <-time.After(1 * time.Second):
 		suite.Require().FailNow("timeout waiting for event")
 	}

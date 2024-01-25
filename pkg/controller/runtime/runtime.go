@@ -16,6 +16,7 @@ import (
 
 	"github.com/cosi-project/runtime/pkg/controller"
 	"github.com/cosi-project/runtime/pkg/controller/runtime/internal/adapter"
+	"github.com/cosi-project/runtime/pkg/controller/runtime/internal/cache"
 	"github.com/cosi-project/runtime/pkg/controller/runtime/internal/dependency"
 	"github.com/cosi-project/runtime/pkg/controller/runtime/internal/qruntime"
 	"github.com/cosi-project/runtime/pkg/controller/runtime/internal/reduced"
@@ -32,12 +33,13 @@ type Runtime struct { //nolint:govet
 	depDB *dependency.Database
 
 	state  state.State
+	cache  *cache.ResourceCache
 	logger *zap.Logger
 
 	watchCh     chan []state.Event
 	watchErrors chan error
 	watchedMu   sync.Mutex
-	watched     map[watchKey]struct{}
+	watched     map[watchKey]bool // value is true if the watch populates the cache
 
 	controllersMu      sync.RWMutex
 	controllersCond    *sync.Cond
@@ -68,7 +70,7 @@ func NewRuntime(st state.State, logger *zap.Logger, opt ...options.Option) (*Run
 		controllers: map[string]adapter.Adapter{},
 		watchCh:     make(chan []state.Event, watchBuffer),
 		watchErrors: make(chan error, 1),
-		watched:     map[watchKey]struct{}{},
+		watched:     map[watchKey]bool{},
 		options:     options.DefaultOptions(),
 	}
 
@@ -83,6 +85,16 @@ func NewRuntime(st state.State, logger *zap.Logger, opt ...options.Option) (*Run
 	runtime.depDB, err = dependency.NewDatabase()
 	if err != nil {
 		return nil, fmt.Errorf("error creating dependency database: %w", err)
+	}
+
+	runtime.cache = cache.NewResourceCache(runtime.options.CachedResources)
+
+	for _, cachedRead := range runtime.options.CachedResources {
+		// mark the cached resources as watched & cached
+		runtime.watched[watchKey{
+			Namespace: cachedRead.Namespace,
+			Type:      cachedRead.Type,
+		}] = true
 	}
 
 	return runtime, nil
@@ -103,6 +115,7 @@ func (runtime *Runtime) RegisterController(ctrl controller.Controller) error {
 		adapter.Options{
 			Logger:         runtime.logger,
 			State:          runtime.state,
+			Cache:          runtime.cache,
 			DepDB:          runtime.depDB,
 			RuntimeOptions: runtime.options,
 			RegisterWatch:  runtime.watch,
@@ -133,6 +146,7 @@ func (runtime *Runtime) RegisterQController(ctrl controller.QController) error {
 		adapter.Options{
 			Logger:         runtime.logger,
 			State:          runtime.state,
+			Cache:          runtime.cache,
 			DepDB:          runtime.depDB,
 			RuntimeOptions: runtime.options,
 			RegisterWatch:  runtime.watch,
@@ -243,10 +257,10 @@ func (runtime *Runtime) setupWatches() error {
 	runtime.watchedMu.Lock()
 	defer runtime.watchedMu.Unlock()
 
-	for key := range runtime.watched {
+	for key, cached := range runtime.watched {
 		kind := resource.NewMetadata(key.Namespace, key.Type, "", resource.Version{})
 
-		if err := runtime.state.WatchKindAggregated(runtime.runCtx, kind, runtime.watchCh); err != nil {
+		if err := runtime.state.WatchKindAggregated(runtime.runCtx, kind, runtime.watchCh, state.WithBootstrapContents(cached)); err != nil {
 			return err
 		}
 	}
@@ -267,7 +281,7 @@ func (runtime *Runtime) watch(resourceNamespace resource.Namespace, resourceType
 		return nil
 	}
 
-	runtime.watched[key] = struct{}{}
+	runtime.watched[key] = false
 
 	// watch is called with controllersMu locked, so this access is synchronized
 	if runtime.runCtx == nil {
@@ -314,8 +328,60 @@ func (runtime *Runtime) processWatched() {
 	go runtime.deliverDeduplicatedEvents(ch, empty)
 }
 
+// processEvents processes a group of watch events producing deduplicated map of reducedMetadata.
+//
+// processEvents returns false if the watch failed and the runtime should abort.
+func (runtime *Runtime) processEvents(events []state.Event, m dedup) bool {
+eventLoop:
+	for _, e := range events {
+		if e.Type == state.Errored {
+			// watch failed, we need to abort
+			runtime.watchErrors <- e.Error
+
+			return false
+		}
+
+		// if the resource is cached, we activated a watch with BootstrapContents option, so we need some special handling:
+		// - before Bootstrapped event is received, we ignore events from the point of controller notification, but call Append on the cache
+		// - on Bootstrapped event, we notify the cache that it can start serving reads
+		// - after Bootstrapped event, we process events normally, and notify cache about updated/deleted resources
+		//
+		// if the resource is not cached, this section is noop
+		if e.Type == state.Bootstrapped {
+			runtime.logger.Debug("bootstrapped event received",
+				zap.String("namespace", e.Resource.Metadata().Namespace()),
+				zap.String("type", e.Resource.Metadata().Type()),
+				zap.Int("cache_size", runtime.cache.Len(e.Resource.Metadata().Namespace(), e.Resource.Metadata().Type())),
+			)
+
+			runtime.cache.MarkBootstrapped(e.Resource.Metadata().Namespace(), e.Resource.Metadata().Type())
+
+			continue eventLoop
+		}
+
+		cacheHandled, cacheBootstrapped := runtime.cache.IsHandledBootstrapped(e.Resource.Metadata().Namespace(), e.Resource.Metadata().Type())
+		if cacheHandled {
+			switch {
+			case !cacheBootstrapped:
+				runtime.cache.CacheAppend(e.Resource)
+
+				// if bootstrapping is not finished, we ignore those events from the point of notifying the caller
+				continue eventLoop
+			case e.Type == state.Created || e.Type == state.Updated:
+				runtime.cache.CachePut(e.Resource)
+			case e.Type == state.Destroyed:
+				runtime.cache.CacheRemove(e.Resource)
+			}
+		}
+
+		m[reduced.NewMetadata(e.Resource.Metadata())] = struct{}{}
+	}
+
+	return true
+}
+
 // deduplicateWatchEvents deduplicates events from the watch channel into the map sent to the channel ch.
-func (runtime *Runtime) deduplicateWatchEvents(ch chan dedup, empty <-chan dedup) {
+func (runtime *Runtime) deduplicateWatchEvents(ch chan dedup, empty chan dedup) {
 	for {
 		var events []state.Event
 
@@ -336,23 +402,17 @@ func (runtime *Runtime) deduplicateWatchEvents(ch chan dedup, empty <-chan dedup
 			return
 		}
 
-		processEvents := func(events []state.Event, m dedup) bool {
-			for _, e := range events {
-				if e.Type == state.Errored {
-					// watch failed, we need to abort
-					runtime.watchErrors <- e.Error
-
-					return false
-				}
-
-				m[reduced.NewMetadata(e.Resource.Metadata())] = struct{}{}
-			}
-
-			return true
+		if !runtime.processEvents(events, m) {
+			return
 		}
 
-		if !processEvents(events, m) {
-			return
+		// we might have not accumulated any events
+		if len(m) == 0 {
+			if !channel.SendWithContext(runtime.runCtx, empty, m) {
+				return
+			}
+
+			continue
 		}
 
 		// drain the watchCh by consuming all immediately available events
@@ -360,7 +420,7 @@ func (runtime *Runtime) deduplicateWatchEvents(ch chan dedup, empty <-chan dedup
 		for {
 			select {
 			case events = <-runtime.watchCh:
-				if !processEvents(events, m) {
+				if !runtime.processEvents(events, m) {
 					return
 				}
 			case <-runtime.runCtx.Done():

@@ -10,6 +10,7 @@ import (
 
 	"go.uber.org/zap"
 
+	"github.com/cosi-project/runtime/pkg/controller/runtime/internal/cache"
 	"github.com/cosi-project/runtime/pkg/controller/runtime/internal/dependency"
 	"github.com/cosi-project/runtime/pkg/controller/runtime/internal/reduced"
 	"github.com/cosi-project/runtime/pkg/controller/runtime/options"
@@ -31,6 +32,7 @@ type Adapter interface {
 type Options struct {
 	Logger         *zap.Logger
 	State          state.State
+	Cache          *cache.ResourceCache
 	DepDB          *dependency.Database
 	RegisterWatch  func(resourceNamespace resource.Namespace, resourceType resource.Type) error
 	RuntimeOptions options.Options

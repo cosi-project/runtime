@@ -99,27 +99,3 @@ func ReaderListAll[T generic.ResourceWithRD](ctx context.Context, rdr controller
 
 	return ReaderList[T](ctx, rdr, md, opts...)
 }
-
-// ReaderWatchFor is a type safe wrapper around Reader.WatchFor.
-func ReaderWatchFor[T resource.Resource](ctx context.Context, rdr controller.Reader, ptr resource.Pointer, conds ...state.WatchForConditionFunc) (T, error) { //nolint:ireturn
-	got, err := rdr.WatchFor(ctx, ptr, conds...)
-	if err != nil {
-		var zero T
-
-		return zero, err
-	}
-
-	result, ok := got.(T)
-	if !ok {
-		var zero T
-
-		return zero, fmt.Errorf("type mismatch: expected %T, got %T", result, got)
-	}
-
-	return result, nil
-}
-
-// ReaderWatchForResource is a type safe wrapper around Reader.WatchFor which accepts typed resource.Resource and gets the metadata from it.
-func ReaderWatchForResource[T resource.Resource](ctx context.Context, rdr controller.Reader, r T, conds ...state.WatchForConditionFunc) (T, error) { //nolint:ireturn
-	return ReaderWatchFor[T](ctx, rdr, r.Metadata(), conds...)
-}

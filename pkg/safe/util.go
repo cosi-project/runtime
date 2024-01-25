@@ -9,6 +9,7 @@ import (
 
 	"github.com/cosi-project/runtime/pkg/controller"
 	"github.com/cosi-project/runtime/pkg/controller/generic"
+	"github.com/cosi-project/runtime/pkg/controller/runtime/options"
 	"github.com/cosi-project/runtime/pkg/resource"
 )
 
@@ -51,4 +52,11 @@ func CleanupOutputs[R generic.ResourceWithRD](ctx context.Context, tracker contr
 			resource.VersionUndefined,
 		),
 	)
+}
+
+// WithResourceCache returns a controller runtime options.WithResourceCache.
+func WithResourceCache[R generic.ResourceWithRD]() options.Option {
+	var r R
+
+	return options.WithCachedResource(r.ResourceDefinition().DefaultNamespace, r.ResourceDefinition().Type)
 }

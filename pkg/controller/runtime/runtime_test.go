@@ -30,8 +30,9 @@ import (
 
 func TestRuntimeConformance(t *testing.T) {
 	for _, tt := range []struct {
-		name string
-		opts []options.Option
+		name                    string
+		opts                    []options.Option
+		metricsReadCacheEnabled bool
 	}{
 		{
 			name: "defaults",
@@ -42,11 +43,34 @@ func TestRuntimeConformance(t *testing.T) {
 				options.WithChangeRateLimit(10, 20),
 			},
 		},
+		{
+			name:                    "watch cached",
+			metricsReadCacheEnabled: true,
+			opts: []options.Option{
+				options.WithCachedResource("default", conformance.IntResourceType),
+				options.WithCachedResource("default", conformance.StrResourceType),
+				options.WithCachedResource("ints", conformance.IntResourceType),
+				options.WithCachedResource("strings", conformance.StrResourceType),
+				options.WithCachedResource("sentences", conformance.SentenceResourceType),
+				options.WithCachedResource("source", conformance.IntResourceType),
+				options.WithCachedResource("target", conformance.IntResourceType),
+				options.WithCachedResource("source1", conformance.IntResourceType),
+				options.WithCachedResource("source2", conformance.IntResourceType),
+				options.WithCachedResource("modify-with-result-source", conformance.StrResourceType),
+				options.WithCachedResource("modify-with-result-target", conformance.StrResourceType),
+				options.WithCachedResource("q-int", conformance.IntResourceType),
+				options.WithCachedResource("q-str", conformance.StrResourceType),
+				options.WithCachedResource("metrics", conformance.IntResourceType),
+				options.WithCachedResource("metrics", conformance.StrResourceType),
+			},
+		},
 	} {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Cleanup(func() { goleak.VerifyNone(t, goleak.IgnoreCurrent()) })
 
-			suite := &conformance.RuntimeSuite{}
+			suite := &conformance.RuntimeSuite{
+				MetricsReadCacheEnabled: tt.metricsReadCacheEnabled,
+			}
 			suite.SetupRuntime = func() {
 				suite.State = state.WrapCore(namespaced.NewState(inmem.Build))
 

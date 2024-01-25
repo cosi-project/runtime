@@ -13,13 +13,17 @@ import (
 	"golang.org/x/time/rate"
 
 	"github.com/cosi-project/runtime/pkg/controller"
+	"github.com/cosi-project/runtime/pkg/controller/runtime/internal/cache"
 	"github.com/cosi-project/runtime/pkg/resource"
 	"github.com/cosi-project/runtime/pkg/state"
 )
 
 // StateAdapter implements filtered access to the resource state by controller inputs/outputs.
+//
+// If the read cache is enabled for a resource type, controller.Reader interface will be redirected to the cache.
 type StateAdapter struct {
 	State state.State
+	Cache *cache.ResourceCache
 	Name  string
 
 	UpdateLimiter *rate.Limiter
@@ -95,6 +99,10 @@ func (adapter *StateAdapter) Get(ctx context.Context, resourcePointer resource.P
 		return nil, err
 	}
 
+	if cacheHandled := adapter.Cache.IsHandled(resourcePointer.Namespace(), resourcePointer.Type()); cacheHandled {
+		return adapter.Cache.Get(ctx, resourcePointer, opts...)
+	}
+
 	return adapter.State.Get(ctx, resourcePointer, opts...)
 }
 
@@ -104,16 +112,11 @@ func (adapter *StateAdapter) List(ctx context.Context, resourceKind resource.Kin
 		return resource.List{}, err
 	}
 
-	return adapter.State.List(ctx, resourceKind, opts...)
-}
-
-// WatchFor implements controller.Runtime interface.
-func (adapter *StateAdapter) WatchFor(ctx context.Context, resourcePointer resource.Pointer, opts ...state.WatchForConditionFunc) (resource.Resource, error) { //nolint:ireturn
-	if err := adapter.checkReadAccess(resourcePointer.Namespace(), resourcePointer.Type(), optional.None[resource.ID]()); err != nil {
-		return nil, err
+	if cacheHandled := adapter.Cache.IsHandled(resourceKind.Namespace(), resourceKind.Type()); cacheHandled {
+		return adapter.Cache.List(ctx, resourceKind, opts...)
 	}
 
-	return adapter.State.WatchFor(ctx, resourcePointer, opts...)
+	return adapter.State.List(ctx, resourceKind, opts...)
 }
 
 // Create implements controller.Runtime interface.

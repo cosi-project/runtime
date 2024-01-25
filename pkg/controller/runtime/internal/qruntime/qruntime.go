@@ -93,6 +93,7 @@ func NewAdapter(
 	return &Adapter{
 		StateAdapter: controllerstate.StateAdapter{
 			State:         state,
+			Cache:         adapterOptions.Cache,
 			Name:          name,
 			UpdateLimiter: rate.NewLimiter(adapterOptions.RuntimeOptions.ChangeRateLimit, adapterOptions.RuntimeOptions.ChangeBurst),
 			Inputs:        settings.Inputs,
@@ -159,7 +160,8 @@ func (adapter *Adapter) listPrimary(ctx context.Context, resourceNamespace resou
 	backoff.MaxElapsedTime = 0
 
 	for {
-		items, err := adapter.StateAdapter.State.List(ctx, resource.NewMetadata(resourceNamespace, resourceType, "", resource.VersionUndefined))
+		// use StateAdapter.List here, so that if the resource is cached, it would be listed from the cache
+		items, err := adapter.StateAdapter.List(ctx, resource.NewMetadata(resourceNamespace, resourceType, "", resource.VersionUndefined))
 		if err != nil {
 			if errors.Is(err, context.Canceled) {
 				return err

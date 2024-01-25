@@ -65,6 +65,7 @@ func NewAdapter(
 		StateAdapter: controllerstate.StateAdapter{
 			Name:          ctrl.Name(),
 			State:         state,
+			Cache:         adapterOptions.Cache,
 			Outputs:       slices.Clone(ctrl.Outputs()),
 			UpdateLimiter: rate.NewLimiter(adapterOptions.RuntimeOptions.ChangeRateLimit, adapterOptions.RuntimeOptions.ChangeBurst),
 		},
