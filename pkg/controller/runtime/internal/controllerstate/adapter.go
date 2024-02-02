@@ -10,6 +10,7 @@ import (
 	"fmt"
 
 	"github.com/siderolabs/gen/optional"
+	"go.uber.org/zap"
 	"golang.org/x/time/rate"
 
 	"github.com/cosi-project/runtime/pkg/controller"
@@ -27,9 +28,12 @@ type StateAdapter struct {
 	Name  string
 
 	UpdateLimiter *rate.Limiter
+	Logger        *zap.Logger
 
 	Inputs  []controller.Input
 	Outputs []controller.Output
+
+	WarnOnUncachedReads bool
 }
 
 // Check interfaces.
@@ -103,6 +107,10 @@ func (adapter *StateAdapter) Get(ctx context.Context, resourcePointer resource.P
 		return adapter.Cache.Get(ctx, resourcePointer, opts...)
 	}
 
+	if adapter.WarnOnUncachedReads {
+		adapter.Logger.Warn("get uncached resource", zap.String("namespace", resourcePointer.Namespace()), zap.String("type", resourcePointer.Type()), zap.String("id", resourcePointer.ID()))
+	}
+
 	return adapter.State.Get(ctx, resourcePointer, opts...)
 }
 
@@ -114,6 +122,10 @@ func (adapter *StateAdapter) List(ctx context.Context, resourceKind resource.Kin
 
 	if cacheHandled := adapter.Cache.IsHandled(resourceKind.Namespace(), resourceKind.Type()); cacheHandled {
 		return adapter.Cache.List(ctx, resourceKind, opts...)
+	}
+
+	if adapter.WarnOnUncachedReads {
+		adapter.Logger.Warn("list uncached resource", zap.String("namespace", resourceKind.Namespace()), zap.String("type", resourceKind.Type()))
 	}
 
 	return adapter.State.List(ctx, resourceKind, opts...)

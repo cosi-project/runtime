@@ -90,18 +90,22 @@ func NewAdapter(
 		metrics.QControllerQueueLength.Set(name, queueLenExpVar)
 	}
 
+	logger := adapterOptions.Logger.With(zap.String("controller", name))
+
 	return &Adapter{
 		StateAdapter: controllerstate.StateAdapter{
-			State:         state,
-			Cache:         adapterOptions.Cache,
-			Name:          name,
-			UpdateLimiter: rate.NewLimiter(adapterOptions.RuntimeOptions.ChangeRateLimit, adapterOptions.RuntimeOptions.ChangeBurst),
-			Inputs:        settings.Inputs,
-			Outputs:       settings.Outputs,
+			State:               state,
+			Cache:               adapterOptions.Cache,
+			Name:                name,
+			UpdateLimiter:       rate.NewLimiter(adapterOptions.RuntimeOptions.ChangeRateLimit, adapterOptions.RuntimeOptions.ChangeBurst),
+			Logger:              logger,
+			Inputs:              settings.Inputs,
+			Outputs:             settings.Outputs,
+			WarnOnUncachedReads: adapterOptions.RuntimeOptions.WarnOnUncachedReads,
 		},
 		queue:          queue.NewQueue[QItem](),
 		backoffs:       map[QItem]*backoff.ExponentialBackOff{},
-		logger:         adapterOptions.Logger.With(zap.String("controller", name)),
+		logger:         logger,
 		controller:     ctrl,
 		queueLenExpVar: queueLenExpVar,
 		concurrency:    concurrency,

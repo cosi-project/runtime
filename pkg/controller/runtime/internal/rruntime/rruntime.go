@@ -63,11 +63,13 @@ func NewAdapter(
 
 	adapter := &Adapter{
 		StateAdapter: controllerstate.StateAdapter{
-			Name:          ctrl.Name(),
-			State:         state,
-			Cache:         adapterOptions.Cache,
-			Outputs:       slices.Clone(ctrl.Outputs()),
-			UpdateLimiter: rate.NewLimiter(adapterOptions.RuntimeOptions.ChangeRateLimit, adapterOptions.RuntimeOptions.ChangeBurst),
+			Name:                ctrl.Name(),
+			State:               state,
+			Cache:               adapterOptions.Cache,
+			Outputs:             slices.Clone(ctrl.Outputs()),
+			UpdateLimiter:       rate.NewLimiter(adapterOptions.RuntimeOptions.ChangeRateLimit, adapterOptions.RuntimeOptions.ChangeBurst),
+			Logger:              adapterOptions.Logger,
+			WarnOnUncachedReads: adapterOptions.RuntimeOptions.WarnOnUncachedReads,
 		},
 		runtimeOptions: adapterOptions.RuntimeOptions,
 		logger:         adapterOptions.Logger,

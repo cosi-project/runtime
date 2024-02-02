@@ -20,6 +20,8 @@ type Options struct {
 	ChangeBurst     int
 	// MetricsEnabled enables runtime metrics to be exposed via metrics package.
 	MetricsEnabled bool
+	// WarnOnUncachedReads adds a warning log when a controller reads an uncached resource.
+	WarnOnUncachedReads bool
 }
 
 // CachedResource is a resource that should be cached by controller runtime.
@@ -55,6 +57,13 @@ func WithCachedResource(namespace resource.Namespace, typ resource.Type) Option 
 			Namespace: namespace,
 			Type:      typ,
 		})
+	}
+}
+
+// WithWarnOnUncachedReads adds a warning log when a controller reads an uncached resource.
+func WithWarnOnUncachedReads(warn bool) Option {
+	return func(options *Options) {
+		options.WarnOnUncachedReads = warn
 	}
 }
 
