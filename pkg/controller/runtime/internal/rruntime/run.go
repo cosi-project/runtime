@@ -20,9 +20,10 @@ import (
 // Run the controller loop via the adapter.
 func (adapter *Adapter) Run(ctx context.Context) {
 	logger := adapter.logger.With(logging.Controller(adapter.StateAdapter.Name))
+	userLogger := adapter.runtimeOptions.UserLogger.With(logging.Controller(adapter.StateAdapter.Name))
 
 	for {
-		err := adapter.runOnce(ctx, logger)
+		err := adapter.runOnce(ctx, logger, userLogger)
 		if err == nil {
 			return
 		}
@@ -46,7 +47,7 @@ func (adapter *Adapter) Run(ctx context.Context) {
 	}
 }
 
-func (adapter *Adapter) runOnce(ctx context.Context, logger *zap.Logger) (err error) {
+func (adapter *Adapter) runOnce(ctx context.Context, logger, userLogger *zap.Logger) (err error) {
 	defer func() {
 		if err != nil && errors.Is(err, context.Canceled) {
 			err = nil
@@ -70,5 +71,7 @@ func (adapter *Adapter) runOnce(ctx context.Context, logger *zap.Logger) (err er
 
 	logger.Debug("controller starting")
 
-	return adapter.ctrl.Run(ctx, adapter, logger)
+	ctx = context.WithValue(ctx, logging.InternalLoggerContextKey{}, logger)
+
+	return adapter.ctrl.Run(ctx, adapter, userLogger)
 }

@@ -31,6 +31,7 @@ type Adapter interface {
 // Options are options for creating a new Adapter.
 type Options struct {
 	Logger         *zap.Logger
+	UserLogger     *zap.Logger
 	State          state.State
 	Cache          *cache.ResourceCache
 	DepDB          *dependency.Database

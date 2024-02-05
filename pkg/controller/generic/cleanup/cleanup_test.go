@@ -13,9 +13,11 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"go.uber.org/goleak"
+	"go.uber.org/zap"
 
 	"github.com/cosi-project/runtime/pkg/controller/generic/cleanup"
 	"github.com/cosi-project/runtime/pkg/controller/runtime"
+	"github.com/cosi-project/runtime/pkg/controller/runtime/options"
 	"github.com/cosi-project/runtime/pkg/future"
 	"github.com/cosi-project/runtime/pkg/logging"
 	"github.com/cosi-project/runtime/pkg/resource"
@@ -30,9 +32,10 @@ func runTest(t *testing.T, f func(ctx context.Context, t *testing.T, st state.St
 
 	st := state.WrapCore(namespaced.NewState(inmem.Build))
 
-	logger := logging.DefaultLogger()
+	logger := logging.DefaultLogger().With(zap.String("type", "internal"))
+	userLogger := logging.DefaultLogger().With(zap.String("type", "user"))
 
-	rt, err := runtime.NewRuntime(st, logger)
+	rt, err := runtime.NewRuntime(st, logger, options.WithUserLogger(userLogger))
 	require.NoError(t, err)
 
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)

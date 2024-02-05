@@ -16,6 +16,7 @@ import (
 
 	"github.com/cosi-project/runtime/pkg/controller"
 	"github.com/cosi-project/runtime/pkg/controller/generic"
+	"github.com/cosi-project/runtime/pkg/logging"
 	"github.com/cosi-project/runtime/pkg/resource"
 	"github.com/cosi-project/runtime/pkg/safe"
 	"github.com/cosi-project/runtime/pkg/state"
@@ -200,9 +201,14 @@ type runState struct {
 // Run implements controller.Controller interface.
 func (ctrl *Controller[Input, Output]) Run(ctx context.Context, r controller.Runtime, logger *zap.Logger) error {
 	var (
-		zeroInput  Input
-		zeroOutput Output
+		internalLogger = logger
+		zeroInput      Input
+		zeroOutput     Output
 	)
+
+	if internalLoggerInCtx, ok := ctx.Value(logging.InternalLoggerContextKey{}).(*zap.Logger); ok {
+		internalLogger = internalLoggerInCtx
+	}
 
 	ctx, cancel := context.WithCancel(ctx)
 	defer cancel()
@@ -247,16 +253,14 @@ func (ctrl *Controller[Input, Output]) Run(ctx context.Context, r controller.Run
 		}
 
 		if err := ctrl.processInputs(
-			ctx, r, logger,
+			ctx, r, logger, internalLogger,
 			&state,
 			resource.NewMetadata(zeroInput.ResourceDefinition().DefaultNamespace, zeroInput.ResourceDefinition().Type, "", resource.VersionUndefined),
 		); err != nil {
 			return err
 		}
 
-		if err := ctrl.cleanupOutputs(
-			ctx, r, logger,
-			&state,
+		if err := ctrl.cleanupOutputs(ctx, r, internalLogger, &state,
 			resource.NewMetadata(zeroOutput.ResourceDefinition().DefaultNamespace, zeroOutput.ResourceDefinition().Type, "", resource.VersionUndefined),
 		); err != nil {
 			return err
@@ -281,7 +285,7 @@ func (ctrl *Controller[Input, Output]) Run(ctx context.Context, r controller.Run
 func (ctrl *Controller[Input, Output]) processInputs(
 	ctx context.Context,
 	r controller.Runtime,
-	logger *zap.Logger,
+	logger, internalLogger *zap.Logger,
 	runState *runState,
 	inputMetadata resource.Metadata,
 ) error {
@@ -320,7 +324,7 @@ func (ctrl *Controller[Input, Output]) processInputs(
 					continue
 				}
 
-				logger.Debug("added finalizer to input resource",
+				internalLogger.Debug("added finalizer to input resource",
 					zap.Stringer("input", in.Metadata()),
 					zap.String("finalizer", ctrl.Name()),
 				)
@@ -389,7 +393,7 @@ func (ctrl *Controller[Input, Output]) reconcileTearingDownInput(
 func (ctrl *Controller[Input, Output]) cleanupOutputs(
 	ctx context.Context,
 	r controller.Runtime,
-	logger *zap.Logger,
+	internalLogger *zap.Logger,
 	runState *runState,
 	outputMetadata resource.Metadata,
 ) error {
@@ -434,7 +438,7 @@ func (ctrl *Controller[Input, Output]) cleanupOutputs(
 			continue
 		}
 
-		logger.Debug("triggered teardown of output resource",
+		internalLogger.Debug("triggered teardown of output resource",
 			zap.Stringer("output", out.Metadata()),
 			zap.Bool("ready", ready),
 		)
@@ -460,7 +464,7 @@ func (ctrl *Controller[Input, Output]) cleanupOutputs(
 		if err = r.RemoveFinalizer(ctx, inMd, ctrl.Name()); err != nil {
 			runState.multiErr = multierror.Append(runState.multiErr, err)
 		} else {
-			logger.Debug("removed finalizer to input resource",
+			internalLogger.Debug("removed finalizer to input resource",
 				zap.Stringer("input", inMd),
 				zap.String("finalizer", ctrl.Name()),
 			)

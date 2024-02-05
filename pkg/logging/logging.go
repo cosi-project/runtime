@@ -10,6 +10,9 @@ import (
 	"go.uber.org/zap/zapcore"
 )
 
+// InternalLoggerContextKey is the context key for the internal logger.
+type InternalLoggerContextKey struct{}
+
 // Controller creates controller zap field.
 func Controller(name string) zap.Field {
 	return zap.String("controller", name)

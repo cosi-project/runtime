@@ -29,6 +29,7 @@ type StateAdapter struct {
 
 	UpdateLimiter *rate.Limiter
 	Logger        *zap.Logger
+	UserLogger    *zap.Logger
 
 	Inputs  []controller.Input
 	Outputs []controller.Output

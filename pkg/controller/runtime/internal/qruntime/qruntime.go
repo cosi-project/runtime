@@ -31,6 +31,7 @@ import (
 type Adapter struct {
 	queue          *queue.Queue[QItem]
 	logger         *zap.Logger
+	userLogger     *zap.Logger
 	controller     controller.QController
 	queueLenExpVar *expvar.Int
 
@@ -91,6 +92,7 @@ func NewAdapter(
 	}
 
 	logger := adapterOptions.Logger.With(zap.String("controller", name))
+	userLogger := adapterOptions.UserLogger.With(zap.String("controller", name))
 
 	return &Adapter{
 		StateAdapter: controllerstate.StateAdapter{
@@ -99,6 +101,7 @@ func NewAdapter(
 			Name:                name,
 			UpdateLimiter:       rate.NewLimiter(adapterOptions.RuntimeOptions.ChangeRateLimit, adapterOptions.RuntimeOptions.ChangeBurst),
 			Logger:              logger,
+			UserLogger:          userLogger,
 			Inputs:              settings.Inputs,
 			Outputs:             settings.Outputs,
 			WarnOnUncachedReads: adapterOptions.RuntimeOptions.WarnOnUncachedReads,
@@ -106,6 +109,7 @@ func NewAdapter(
 		queue:          queue.NewQueue[QItem](),
 		backoffs:       map[QItem]*backoff.ExponentialBackOff{},
 		logger:         logger,
+		userLogger:     userLogger,
 		controller:     ctrl,
 		queueLenExpVar: queueLenExpVar,
 		concurrency:    concurrency,
@@ -221,16 +225,19 @@ func (adapter *Adapter) runReconcile(ctx context.Context) {
 		func() {
 			defer item.Release()
 
-			logger := adapter.logger.With(
+			loggerFields := []zap.Field{
 				zap.String("namespace", item.Value().Namespace()),
 				zap.String("type", item.Value().Type()),
 				zap.String("id", item.Value().ID()),
 				zap.String("job", item.Value().job.String()),
-			)
+			}
+
+			logger := adapter.logger.With(loggerFields...)
+			userLogger := adapter.userLogger.With(loggerFields...)
 
 			start := time.Now()
 
-			reconcileError := adapter.runOnce(ctx, logger, item.Value())
+			reconcileError := adapter.runOnce(ctx, userLogger, item.Value())
 
 			busy := time.Since(start)
 
@@ -298,7 +305,7 @@ func zapSkipIfZero[T comparable](val T, f zap.Field) zap.Field {
 	return f
 }
 
-func (adapter *Adapter) runOnce(ctx context.Context, logger *zap.Logger, item QItem) (err error) {
+func (adapter *Adapter) runOnce(ctx context.Context, userLogger *zap.Logger, item QItem) (err error) {
 	defer func() {
 		if err != nil && errors.Is(err, context.Canceled) {
 			err = nil
@@ -317,11 +324,11 @@ func (adapter *Adapter) runOnce(ctx context.Context, logger *zap.Logger, item QI
 			metrics.QControllerProcessed.Add(adapter.StateAdapter.Name, 1)
 		}
 
-		err = adapter.controller.Reconcile(ctx, logger, adapter, item)
+		err = adapter.controller.Reconcile(ctx, userLogger, adapter, item)
 	case QJobMap:
 		var mappedItems []resource.Pointer
 
-		mappedItems, err = adapter.controller.MapInput(ctx, logger, adapter, item)
+		mappedItems, err = adapter.controller.MapInput(ctx, userLogger, adapter, item)
 
 		if adapter.metricsEnabled {
 			metrics.QControllerMappedIn.Add(adapter.StateAdapter.Name, 1)

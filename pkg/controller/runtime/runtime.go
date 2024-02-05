@@ -78,6 +78,10 @@ func NewRuntime(st state.State, logger *zap.Logger, opt ...options.Option) (*Run
 		o(&runtime.options)
 	}
 
+	if runtime.options.UserLogger == nil {
+		runtime.options.UserLogger = logger
+	}
+
 	runtime.controllersCond = sync.NewCond(&runtime.controllersMu)
 
 	var err error
@@ -145,6 +149,7 @@ func (runtime *Runtime) RegisterQController(ctrl controller.QController) error {
 		ctrl,
 		adapter.Options{
 			Logger:         runtime.logger,
+			UserLogger:     runtime.options.UserLogger,
 			State:          runtime.state,
 			Cache:          runtime.cache,
 			DepDB:          runtime.depDB,

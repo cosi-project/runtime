@@ -23,6 +23,7 @@ import (
 	"github.com/cosi-project/runtime/pkg/controller"
 	"github.com/cosi-project/runtime/pkg/controller/generic/transform"
 	"github.com/cosi-project/runtime/pkg/controller/runtime"
+	"github.com/cosi-project/runtime/pkg/controller/runtime/options"
 	"github.com/cosi-project/runtime/pkg/future"
 	"github.com/cosi-project/runtime/pkg/logging"
 	"github.com/cosi-project/runtime/pkg/resource"
@@ -47,6 +48,8 @@ func NewABController(reconcileTeardownCh <-chan struct{}, opts ...transform.Cont
 				return optional.Some(NewB("transformed-"+in.Metadata().ID(), BSpec{}))
 			},
 			TransformFunc: func(ctx context.Context, r controller.Reader, l *zap.Logger, in *A, out *B) error {
+				l.Info("some user log in TransformFunc")
+
 				if in.TypedSpec().Int < 0 {
 					return fmt.Errorf("hate negative numbers")
 				}
@@ -57,6 +60,8 @@ func NewABController(reconcileTeardownCh <-chan struct{}, opts ...transform.Cont
 				return nil
 			},
 			FinalizerRemovalFunc: func(ctx context.Context, r controller.Reader, l *zap.Logger, in *A) error {
+				l.Info("some user log in FinalizerRemovalFunc")
+
 				if in.TypedSpec().Str != "reconcile-teardown" {
 					return fmt.Errorf("not allowed to reconcile teardown")
 				}
@@ -636,9 +641,10 @@ func setup(t *testing.T, f func(ctx context.Context, st state.State, rt *runtime
 
 	st := state.WrapCore(namespaced.NewState(inmem.Build))
 
-	logger := logging.DefaultLogger()
+	internalLogger := logging.DefaultLogger().With(zap.String("type", "internal"))
+	userLogger := logging.DefaultLogger().With(zap.String("type", "user"))
 
-	rt, err := runtime.NewRuntime(st, logger)
+	rt, err := runtime.NewRuntime(st, internalLogger, options.WithUserLogger(userLogger))
 	require.NoError(t, err)
 
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)

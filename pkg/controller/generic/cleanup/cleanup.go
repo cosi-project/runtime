@@ -17,6 +17,7 @@ import (
 
 	"github.com/cosi-project/runtime/pkg/controller"
 	"github.com/cosi-project/runtime/pkg/controller/generic"
+	"github.com/cosi-project/runtime/pkg/logging"
 	"github.com/cosi-project/runtime/pkg/resource"
 	"github.com/cosi-project/runtime/pkg/safe"
 	"github.com/cosi-project/runtime/pkg/state"
@@ -85,6 +86,10 @@ func (ctrl *Controller[I]) Outputs() []controller.Output {
 
 // Run implements controller.Controller interface.
 func (ctrl *Controller[I]) Run(ctx context.Context, r controller.Runtime, logger *zap.Logger) error {
+	if internalLogger, ok := ctx.Value(logging.InternalLoggerContextKey{}).(*zap.Logger); ok {
+		logger = internalLogger
+	}
+
 	for {
 		select {
 		case <-ctx.Done():

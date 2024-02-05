@@ -6,6 +6,7 @@
 package options
 
 import (
+	"go.uber.org/zap"
 	"golang.org/x/time/rate"
 
 	"github.com/cosi-project/runtime/pkg/resource"
@@ -13,6 +14,8 @@ import (
 
 // Options configures controller runtime.
 type Options struct {
+	// UserLogger is the logger to be passed to the controller.Run reconciliation function. If not set, the default runtime logger will be used.
+	UserLogger *zap.Logger
 	// CachedResources is a list of resources that should be cached by controller runtime.
 	CachedResources []CachedResource
 	// ChangeRateLimit and ChangeBurst configure rate limiting of changes performed by controllers.
@@ -64,6 +67,13 @@ func WithCachedResource(namespace resource.Namespace, typ resource.Type) Option 
 func WithWarnOnUncachedReads(warn bool) Option {
 	return func(options *Options) {
 		options.WarnOnUncachedReads = warn
+	}
+}
+
+// WithUserLogger sets the logger to be passed to the controller/qcontroller functions where the control is passed to the user (Run, Transform, MapInput, etc).
+func WithUserLogger(logger *zap.Logger) Option {
+	return func(options *Options) {
+		options.UserLogger = logger
 	}
 }
 
