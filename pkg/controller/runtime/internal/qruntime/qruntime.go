@@ -16,6 +16,7 @@ import (
 
 	"github.com/cenkalti/backoff/v4"
 	"go.uber.org/zap"
+	"go.uber.org/zap/zapcore"
 	"golang.org/x/sync/errgroup"
 	"golang.org/x/time/rate"
 
@@ -274,7 +275,13 @@ func (adapter *Adapter) runReconcile(ctx context.Context) {
 			} else {
 				adapter.clearBackoff(item.Value())
 
-				logger.Info("reconcile succeeded",
+				level := zapcore.InfoLevel
+
+				if item.Value().job == QJobMap {
+					level = zapcore.DebugLevel
+				}
+
+				logger.Log(level, "reconcile succeeded",
 					zap.Duration("busy", busy),
 					zapSkipIfZero(interval, zap.Duration("interval", interval)),
 					zapSkipIfZero(requeued, zap.Bool("requeued", requeued)),
