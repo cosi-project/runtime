@@ -68,10 +68,14 @@ type ControllerOptions struct {
 // ControllerOption is an option for QTransformController.
 type ControllerOption func(*ControllerOptions)
 
-// WithExtraMappedInput adds an extra  mapped inputs to the controller.
-func WithExtraMappedInput[I generic.ResourceWithRD](mapFunc MapperFuncGeneric[I]) ControllerOption {
+// WithExtraMappedInputKind adds an extra input with the given kind to the controller.
+func WithExtraMappedInputKind[I generic.ResourceWithRD](mapFunc MapperFuncGeneric[I], inputKind controller.InputKind) ControllerOption {
 	return func(o *ControllerOptions) {
 		var zeroInput I
+
+		if inputKind != controller.InputQMapped && inputKind != controller.InputQMappedDestroyReady {
+			panic(fmt.Errorf("unexpected input kind for QController %q", inputKind))
+		}
 
 		if o.mappers == nil {
 			o.mappers = map[namespaceType]mapperFunc{}
@@ -91,9 +95,19 @@ func WithExtraMappedInput[I generic.ResourceWithRD](mapFunc MapperFuncGeneric[I]
 		o.extraInputs = append(o.extraInputs, controller.Input{
 			Namespace: zeroInput.ResourceDefinition().DefaultNamespace,
 			Type:      zeroInput.ResourceDefinition().Type,
-			Kind:      controller.InputQMapped,
+			Kind:      inputKind,
 		})
 	}
+}
+
+// WithExtraMappedInput adds an extra mapped input to the controller.
+func WithExtraMappedInput[I generic.ResourceWithRD](mapFunc MapperFuncGeneric[I]) ControllerOption {
+	return WithExtraMappedInputKind(mapFunc, controller.InputQMapped)
+}
+
+// WithExtraMappedDestroyReadyInput adds an extra mapped destroy-ready input to the controller.
+func WithExtraMappedDestroyReadyInput[I generic.ResourceWithRD](mapFunc MapperFuncGeneric[I]) ControllerOption {
+	return WithExtraMappedInputKind(mapFunc, controller.InputQMappedDestroyReady)
 }
 
 // WithExtraOutputs adds extra outputs to the controller.
