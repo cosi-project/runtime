@@ -26,7 +26,7 @@ type PriorityQueue[T comparable] struct {
 // Push item to the queue with releaseAfter time.
 //
 // If the item is not in the queue, it will be added.
-// If the item is in the queue, and releaseAfter is greater than the existing releaseAfter, it will be re-added in the new position.
+// If the item is in the queue, and releaseAfter is less than the existing releaseAfter, it will be re-added in the new position.
 //
 // Push returns true if the item was added, and false if the existing item in the queue was updated (or skipped).
 func (queue *PriorityQueue[T]) Push(item T, releaseAfter time.Time) bool {
@@ -35,8 +35,8 @@ func (queue *PriorityQueue[T]) Push(item T, releaseAfter time.Time) bool {
 	})
 
 	if idx != -1 { // the item is already in the queue
-		// if new releaseAfter <= existing releaseAfter, do nothing
-		if releaseAfter.Compare(queue.items[idx].ReleaseAfter) <= 0 {
+		// if new releaseAfter > existing releaseAfter, do nothing
+		if releaseAfter.Compare(queue.items[idx].ReleaseAfter) > 0 {
 			return false
 		}
 

@@ -107,14 +107,50 @@ func TestPriorityQueueDeduplicateSimple(t *testing.T) {
 	assert.Equal(t, 0, q.Len())
 }
 
-func TestPriorityQueueDeduplicateWithReleaseAfter(t *testing.T) {
+func TestPriorityQueueDeduplicateWithReleaseAfterGreater(t *testing.T) {
 	var q containers.PriorityQueue[int]
 
+	var base time.Time
+
 	for _, i := range []int{1, 2, 3, 4, 5} {
-		assert.True(t, q.Push(i, time.Time{}))
+		assert.True(t, q.Push(i, base.Add(time.Duration(30-i))))
 	}
 
+	for _, i := range []int{1, 2, 3, 4, 5} {
+		assert.False(t, q.Push(i, base.Add(time.Duration(50-i))))
+	}
+
+	for _, i := range []int{5, 4, 3, 2, 1} {
+		item, delay := q.Peek(base)
+		require.False(t, item.IsPresent())
+		assert.Equal(t, time.Duration(30-i), delay)
+
+		item, delay = q.Peek(base.Add(time.Hour))
+
+		queueItem, ok := item.Get()
+		require.True(t, ok)
+		assert.Equal(t, i, queueItem)
+		assert.Zero(t, delay)
+
+		q.Pop()
+	}
+
+	item, delay := q.Peek(time.Now())
+	_, ok := item.Get()
+	require.False(t, ok)
+	assert.Zero(t, delay)
+
+	assert.Equal(t, 0, q.Len())
+}
+
+func TestPriorityQueueDeduplicateWithReleaseAfterLess(t *testing.T) {
+	var q containers.PriorityQueue[int]
+
 	var base time.Time
+
+	for _, i := range []int{1, 2, 3, 4, 5} {
+		assert.True(t, q.Push(i, base.Add(time.Duration(30-i))))
+	}
 
 	// add 1,2,3,4,5 but release after is 10, 9, 8, 7, 6, respectively
 	for _, i := range []int{1, 2, 3, 4, 5} {
