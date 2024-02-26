@@ -18,7 +18,7 @@ require (
 	github.com/siderolabs/go-retry v0.3.3
 	github.com/siderolabs/protoenc v0.2.1
 	github.com/stretchr/testify v1.8.4
-	go.etcd.io/bbolt v1.3.8
+	go.etcd.io/bbolt v1.3.9
 	go.uber.org/goleak v1.3.0
 	go.uber.org/zap v1.26.0
 	golang.org/x/sync v0.6.0
