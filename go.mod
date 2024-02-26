@@ -20,7 +20,7 @@ require (
 	github.com/stretchr/testify v1.8.4
 	go.etcd.io/bbolt v1.3.8
 	go.uber.org/goleak v1.3.0
-	go.uber.org/zap v1.26.0
+	go.uber.org/zap v1.27.0
 	golang.org/x/sync v0.6.0
 	golang.org/x/time v0.5.0
 	google.golang.org/grpc v1.61.0
