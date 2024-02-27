@@ -62,6 +62,8 @@ func TestRuntimeConformance(t *testing.T) {
 				options.WithCachedResource("q-str", conformance.StrResourceType),
 				options.WithCachedResource("metrics", conformance.IntResourceType),
 				options.WithCachedResource("metrics", conformance.StrResourceType),
+				options.WithCachedResource("q-sleep-in", conformance.IntResourceType),
+				options.WithCachedResource("q-sleep-out", conformance.StrResourceType),
 				options.WithWarnOnUncachedReads(true),
 			},
 		},

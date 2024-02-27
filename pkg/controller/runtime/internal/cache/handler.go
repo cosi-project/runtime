@@ -29,8 +29,9 @@ type cacheHandler struct {
 	key          cacheKey
 	bootstrapped chan struct{}
 
-	resources []resource.Resource
-	mu        sync.Mutex
+	teardownWaiters map[resource.ID]chan struct{}
+	resources       []resource.Resource
+	mu              sync.Mutex
 }
 
 func newCacheHandler(key cacheKey) *cacheHandler {
@@ -79,6 +80,60 @@ func (h *cacheHandler) get(ctx context.Context, id resource.ID, opts ...state.Ge
 
 	// return a copy of the resource to satisfy State semantics
 	return h.resources[idx].DeepCopy(), nil
+}
+
+func (h *cacheHandler) contextWithTeardown(ctx context.Context, id resource.ID) (context.Context, error) {
+	// wait for bootstrap
+	select {
+	case <-ctx.Done():
+		return nil, ctx.Err()
+	case <-h.bootstrapped:
+	}
+
+	// lock here, as binary search is fast
+	h.mu.Lock()
+	defer h.mu.Unlock()
+
+	ctx, cancel := context.WithCancel(ctx)
+
+	idx, found := slices.BinarySearchFunc(h.resources, id, func(r resource.Resource, id resource.ID) int {
+		return cmp.Compare(r.Metadata().ID(), id)
+	})
+
+	if !found {
+		cancel()
+
+		return ctx, nil
+	}
+
+	r := h.resources[idx]
+
+	if r.Metadata().Phase() == resource.PhaseTearingDown {
+		cancel()
+
+		return ctx, nil
+	}
+
+	if h.teardownWaiters == nil {
+		h.teardownWaiters = make(map[resource.ID]chan struct{})
+	}
+
+	ch, ok := h.teardownWaiters[id]
+	if !ok {
+		ch = make(chan struct{})
+		h.teardownWaiters[id] = ch
+	}
+
+	go func() {
+		defer cancel()
+
+		select {
+		case <-ctx.Done():
+		case <-ch:
+		}
+	}()
+
+	return ctx, nil
 }
 
 func (h *cacheHandler) list(ctx context.Context, opts ...state.ListOption) (resource.List, error) {
@@ -136,6 +191,13 @@ func (h *cacheHandler) put(r resource.Resource) {
 	} else {
 		h.resources = slices.Insert(h.resources, idx, r)
 	}
+
+	if r.Metadata().Phase() == resource.PhaseTearingDown {
+		if ch, ok := h.teardownWaiters[r.Metadata().ID()]; ok {
+			close(ch)
+			delete(h.teardownWaiters, r.Metadata().ID())
+		}
+	}
 }
 
 func (h *cacheHandler) remove(r resource.Resource) {
@@ -148,6 +210,11 @@ func (h *cacheHandler) remove(r resource.Resource) {
 
 	if found {
 		h.resources = slices.Delete(h.resources, idx, idx+1)
+	}
+
+	if ch, ok := h.teardownWaiters[r.Metadata().ID()]; ok {
+		close(ch)
+		delete(h.teardownWaiters, r.Metadata().ID())
 	}
 }
 

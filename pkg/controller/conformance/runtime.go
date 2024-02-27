@@ -710,3 +710,73 @@ func (suite *RuntimeSuite) TestQFailingController() {
 		),
 	))
 }
+
+// TestQIntToStrSleepingController ...
+func (suite *RuntimeSuite) TestQIntToStrSleepingController() {
+	srcNS := "q-sleep-in"
+	targetNS := "q-sleep-out"
+
+	suite.Require().NoError(suite.Runtime.RegisterQController(&QIntToStrSleepingController{
+		SourceNamespace: srcNS,
+		TargetNamespace: targetNS,
+	}))
+
+	// will be reconciled fast
+	suite.Require().NoError(suite.State.Create(suite.ctx, NewIntResource(srcNS, "id1", 1)))
+	suite.Require().NoError(suite.State.Create(suite.ctx, NewIntResource(srcNS, "id2", 2)))
+
+	suite.startRuntime()
+
+	suite.Assert().NoError(retry.Constant(10*time.Second, retry.WithUnits(10*time.Millisecond)).Retry(
+		suite.assertStrObjects(targetNS, StrResourceType,
+			[]string{"id1", "id2"},
+			[]string{"1", "2"},
+		),
+	))
+
+	suite.Require().NoError(suite.State.Create(suite.ctx, NewIntResource(srcNS, "id3", 3)))
+
+	suite.Assert().NoError(retry.Constant(10*time.Second, retry.WithUnits(10*time.Millisecond)).Retry(
+		suite.assertStrObjects(targetNS, StrResourceType,
+			[]string{"id1", "id2", "id3"},
+			[]string{"1", "2", "3"},
+		),
+	))
+
+	// create a large int value, it will cause the controller to block for a long time
+	suite.Require().NoError(suite.State.Create(suite.ctx, NewIntResource(srcNS, "id10s", 10*1000)))
+
+	// sleep a bit here, to make sure that the controller queue gets 'id10s' before id4/id5
+	time.Sleep(500 * time.Millisecond)
+
+	suite.Require().NoError(suite.State.Create(suite.ctx, NewIntResource(srcNS, "id4", 4)))
+	suite.Require().NoError(suite.State.Create(suite.ctx, NewIntResource(srcNS, "id5", 5)))
+
+	// sleep a bit to make sure the controller entered the wait on id10s
+	time.Sleep(500 * time.Millisecond)
+
+	// id4 and id5 won't show up, as the controller is blocked on id10s
+	suite.Assert().NoError(retry.Constant(10*time.Second, retry.WithUnits(10*time.Millisecond)).Retry(
+		suite.assertStrObjects(targetNS, StrResourceType,
+			[]string{"id1", "id2", "id3"},
+			[]string{"1", "2", "3"},
+		),
+	))
+
+	// teardown and destroy the large int value
+	_, err := suite.State.Teardown(suite.ctx, resource.NewMetadata(srcNS, IntResourceType, "id10s", resource.VersionUndefined))
+	suite.Require().NoError(err)
+
+	_, err = suite.State.WatchFor(suite.ctx, resource.NewMetadata(srcNS, IntResourceType, "id10s", resource.VersionUndefined), state.WithFinalizerEmpty())
+	suite.Require().NoError(err)
+
+	suite.Require().NoError(suite.State.Destroy(suite.ctx, resource.NewMetadata(srcNS, IntResourceType, "id10s", resource.VersionUndefined)))
+
+	// id4 and id5 should show up
+	suite.Assert().NoError(retry.Constant(3*time.Second, retry.WithUnits(10*time.Millisecond)).Retry(
+		suite.assertStrObjects(targetNS, StrResourceType,
+			[]string{"id1", "id2", "id3", "id4", "id5"},
+			[]string{"1", "2", "3", "4", "5"},
+		),
+	))
+}

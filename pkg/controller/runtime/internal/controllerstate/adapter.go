@@ -131,6 +131,23 @@ func (adapter *StateAdapter) List(ctx context.Context, resourceKind resource.Kin
 	return adapter.State.List(ctx, resourceKind, opts...)
 }
 
+// ContextWithTeardown implements controller.Runtime interface.
+func (adapter *StateAdapter) ContextWithTeardown(ctx context.Context, resourcePointer resource.Pointer) (context.Context, error) {
+	if err := adapter.checkReadAccess(resourcePointer.Namespace(), resourcePointer.Type(), optional.Some(resourcePointer.ID())); err != nil {
+		return nil, err
+	}
+
+	if cacheHandled := adapter.Cache.IsHandled(resourcePointer.Namespace(), resourcePointer.Type()); cacheHandled {
+		return adapter.Cache.ContextWithTeardown(ctx, resourcePointer)
+	}
+
+	if adapter.WarnOnUncachedReads {
+		adapter.Logger.Warn("context with teardown on uncached resource", zap.String("namespace", resourcePointer.Namespace()), zap.String("type", resourcePointer.Type()))
+	}
+
+	return adapter.State.ContextWithTeardown(ctx, resourcePointer)
+}
+
 // Create implements controller.Runtime interface.
 func (adapter *StateAdapter) Create(ctx context.Context, r resource.Resource) error {
 	if err := adapter.UpdateLimiter.Wait(ctx); err != nil {

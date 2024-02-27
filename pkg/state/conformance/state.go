@@ -11,6 +11,7 @@ import (
 	"regexp"
 	"sort"
 	"sync"
+	"testing"
 	"time"
 
 	"github.com/siderolabs/gen/xslices"
@@ -1123,6 +1124,64 @@ func (suite *StateSuite) TestIDQuery() {
 		case <-time.After(1 * time.Second):
 			suite.Require().FailNow("timeout waiting for event")
 		}
+	}
+}
+
+// TestContextWithTeardown verifies ContextWithTeardown.
+func (suite *StateSuite) TestContextWithTeardown() {
+	path1 := NewPathResource(suite.getNamespace(), "ctx/r1")
+	path2 := NewPathResource(suite.getNamespace(), "ctx/r2")
+
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	ctx1, err := suite.State.ContextWithTeardown(ctx, path1.Metadata())
+	suite.Require().NoError(err)
+
+	assertContextIsCanceled(suite.T(), ctx1)
+
+	suite.Require().NoError(suite.State.Create(ctx, path1))
+	suite.Require().NoError(suite.State.Create(ctx, path2))
+
+	ctx1, err = suite.State.ContextWithTeardown(ctx, path1.Metadata())
+	suite.Require().NoError(err)
+
+	ctx2, err := suite.State.ContextWithTeardown(ctx, path2.Metadata())
+	suite.Require().NoError(err)
+
+	assertContextIsNotCanceled(suite.T(), ctx1)
+	assertContextIsNotCanceled(suite.T(), ctx2)
+
+	suite.Require().NoError(suite.State.Destroy(ctx1, path1.Metadata()))
+
+	assertContextIsCanceled(suite.T(), ctx1)
+	assertContextIsNotCanceled(suite.T(), ctx2)
+
+	_, err = suite.State.Teardown(ctx, path2.Metadata())
+	suite.Require().NoError(err)
+
+	assertContextIsCanceled(suite.T(), ctx2)
+}
+
+func assertContextIsCanceled(t *testing.T, ctx context.Context) { //nolint:revive
+	t.Helper()
+
+	select {
+	case <-ctx.Done():
+		// ok
+	case <-time.After(time.Second):
+		t.Fatal("context is not canceled")
+	}
+}
+
+func assertContextIsNotCanceled(t *testing.T, ctx context.Context) { //nolint:revive
+	t.Helper()
+
+	select {
+	case <-time.After(100 * time.Millisecond):
+		// ok
+	case <-ctx.Done():
+		t.Fatal("context is not canceled")
 	}
 }
 

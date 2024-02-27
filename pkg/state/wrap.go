@@ -168,3 +168,43 @@ func (state coreWrapper) RemoveFinalizer(ctx context.Context, resourcePointer re
 
 	return err
 }
+
+// ContextWithTeardown returns a new context with a cancel function that will be called when the resource is torn down or destroyed.
+func (state coreWrapper) ContextWithTeardown(ctx context.Context, resourcePointer resource.Pointer) (context.Context, error) {
+	watchCh := make(chan Event)
+
+	if err := state.Watch(ctx, resourcePointer, watchCh); err != nil {
+		return nil, err
+	}
+
+	ctx, cancel := context.WithCancelCause(ctx)
+
+	go func() {
+		defer cancel(nil)
+
+		for {
+			select {
+			case <-ctx.Done():
+				return
+			case ev := <-watchCh:
+				switch ev.Type {
+				case Created, Updated:
+					if ev.Resource.Metadata().Phase() == resource.PhaseTearingDown {
+						return
+					}
+				case Destroyed:
+					return
+				case Bootstrapped:
+					// ignored, should not happen
+				case Errored:
+					// watch failed, cancel the context
+					cancel(ev.Error)
+
+					return
+				}
+			}
+		}
+	}()
+
+	return ctx, nil
+}

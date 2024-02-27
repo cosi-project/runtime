@@ -124,4 +124,10 @@ type State interface {
 
 	// RemoveFinalizer removes finalizer from resource metadata handling conflicts.
 	RemoveFinalizer(context.Context, resource.Pointer, ...resource.Finalizer) error
+
+	// ContextWithTeardown returns a new context which will be canceled when the resource is torn down or destroyed.
+	//
+	// The passed in context should be canceled, otherwise the goroutine might leak from this call.
+	// If the resource doesn't exist, the context is canceled immediately.
+	ContextWithTeardown(context.Context, resource.Pointer) (context.Context, error)
 }

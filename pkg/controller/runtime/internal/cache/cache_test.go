@@ -19,6 +19,7 @@ import (
 	"github.com/cosi-project/runtime/pkg/controller/runtime/options"
 	"github.com/cosi-project/runtime/pkg/resource"
 	"github.com/cosi-project/runtime/pkg/state"
+	"github.com/cosi-project/runtime/pkg/state/conformance"
 )
 
 func resourceIDGenerator(i int) resource.ID {
@@ -165,6 +166,84 @@ func TestCacheOperations(t *testing.T) {
 	assert.Panics(t, func() {
 		c.List(ctx, resource.NewMetadata("c", "C", "", resource.VersionUndefined)) //nolint:errcheck
 	})
+}
+
+func TestCacheContextWithTeardown(t *testing.T) {
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+
+	// pre-fill the cache with some resources
+	c := cache.NewResourceCache([]options.CachedResource{
+		{
+			Namespace: "a",
+			Type:      conformance.PathResourceType,
+		},
+		{
+			Namespace: "b",
+			Type:      conformance.PathResourceType,
+		},
+	})
+
+	p1 := conformance.NewPathResource("a", "ctx/1")
+	p2 := conformance.NewPathResource("a", "ctx/2")
+	p3 := conformance.NewPathResource("b", "ctx/3")
+
+	c.CacheAppend(p1.DeepCopy())
+	c.CacheAppend(p2.DeepCopy())
+
+	c.MarkBootstrapped("a", conformance.PathResourceType)
+	c.MarkBootstrapped("b", conformance.PathResourceType)
+
+	ctx3, err := c.ContextWithTeardown(ctx, p3.Metadata())
+	require.NoError(t, err)
+
+	assertContextIsCanceled(t, ctx3)
+
+	ctx1, err := c.ContextWithTeardown(ctx, p1.Metadata())
+	require.NoError(t, err)
+
+	assertContextIsNotCanceled(t, ctx1)
+
+	p1.Metadata().SetPhase(resource.PhaseTearingDown)
+	c.CachePut(p1.DeepCopy())
+
+	assertContextIsCanceled(t, ctx1)
+
+	ctx1, err = c.ContextWithTeardown(ctx, p1.Metadata())
+	require.NoError(t, err)
+
+	assertContextIsCanceled(t, ctx1)
+
+	ctx2, err := c.ContextWithTeardown(ctx, p2.Metadata())
+	require.NoError(t, err)
+
+	assertContextIsNotCanceled(t, ctx2)
+
+	c.CacheRemove(p3)
+
+	assertContextIsCanceled(t, ctx3)
+}
+
+func assertContextIsCanceled(t *testing.T, ctx context.Context) { //nolint:revive
+	t.Helper()
+
+	select {
+	case <-ctx.Done():
+		// ok
+	case <-time.After(time.Second):
+		t.Fatal("context is not canceled")
+	}
+}
+
+func assertContextIsNotCanceled(t *testing.T, ctx context.Context) { //nolint:revive
+	t.Helper()
+
+	select {
+	case <-time.After(100 * time.Millisecond):
+		// ok
+	case <-ctx.Done():
+		t.Fatal("context is not canceled")
+	}
 }
 
 func BenchmarkAppend(b *testing.B) {

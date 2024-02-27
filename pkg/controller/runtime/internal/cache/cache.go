@@ -116,6 +116,11 @@ func (cache *ResourceCache) List(ctx context.Context, kind resource.Kind, opts .
 	return cache.getHandler(kind.Namespace(), kind.Type()).list(ctx, opts...)
 }
 
+// ContextWithTeardown implements controller.Reader interface.
+func (cache *ResourceCache) ContextWithTeardown(ctx context.Context, ptr resource.Pointer) (context.Context, error) {
+	return cache.getHandler(ptr.Namespace(), ptr.Type()).contextWithTeardown(ctx, ptr.ID())
+}
+
 // CacheAppend appends the value to the cached list.
 //
 // CacheAppend should be called in the bootstrapped phase, with resources coming in sorted by ID order.
