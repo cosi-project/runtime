@@ -59,7 +59,7 @@ func TestBboltStore(t *testing.T) { //nolint:tparallel
 	t.Run("Load", func(t *testing.T) {
 		var resources []resource.Resource
 
-		require.NoError(t, store.WithNamespace(path1.Metadata().Namespace()).Load(context.Background(), func(resourceType resource.Type, resource resource.Resource) error {
+		require.NoError(t, store.WithNamespace(path1.Metadata().Namespace()).Load(context.Background(), func(_ resource.Type, resource resource.Resource) error {
 			resources = append(resources, resource)
 
 			return nil
@@ -70,7 +70,7 @@ func TestBboltStore(t *testing.T) { //nolint:tparallel
 
 		resources = nil
 
-		require.NoError(t, store.WithNamespace(path3.Metadata().Namespace()).Load(context.Background(), func(resourceType resource.Type, resource resource.Resource) error {
+		require.NoError(t, store.WithNamespace(path3.Metadata().Namespace()).Load(context.Background(), func(_ resource.Type, resource resource.Resource) error {
 			resources = append(resources, resource)
 
 			return nil

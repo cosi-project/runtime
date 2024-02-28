@@ -1,7 +1,7 @@
 ---
 # THIS FILE WAS AUTOMATICALLY GENERATED, PLEASE DO NOT EDIT.
 #
-# Generated on 2023-11-22T09:34:57Z by kres latest.
+# Generated on 2024-02-28T13:50:02Z by kres latest.
 
 kind: pipeline
 type: kubernetes
@@ -68,11 +68,11 @@ steps:
   depends_on:
   - base
 
-- name: unit-tests-race
+- name: unit-tests%!(EXTRA string=-race)
   pull: always
   image: autonomy/build-container:latest
   commands:
-  - make unit-tests-race
+  - make unit-tests%!(EXTRA string=-race)
   volumes:
   - name: outer-docker-socket
     path: /var/outer-run
@@ -270,7 +270,7 @@ steps:
 
 services:
 - name: docker
-  image: docker:24.0-dind
+  image: docker:25.0-dind
   entrypoint:
   - dockerd
   commands:

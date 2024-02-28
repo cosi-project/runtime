@@ -16,7 +16,7 @@ import (
 func TestGo(t *testing.T) {
 	t.Parallel()
 
-	ctx, res := future.GoContext(context.Background(), func(ctx context.Context) int {
+	ctx, res := future.GoContext(context.Background(), func(context.Context) int {
 		return 42
 	})
 
@@ -33,6 +33,7 @@ func TestGo(t *testing.T) {
 
 	_, newRes := future.GoContext(ctx, func(ctx context.Context) result {
 		<-ctx.Done()
+
 		if ctx.Err() != nil {
 			return result{err: ctx.Err()}
 		}

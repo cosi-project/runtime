@@ -48,7 +48,7 @@ func TestFilterSingleResource(t *testing.T) {
 	resources := state.WrapCore(
 		state.Filter(
 			namespaced.NewState(inmem.Build),
-			func(ctx context.Context, access state.Access) error {
+			func(_ context.Context, access state.Access) error {
 				if access.ResourceNamespace != namespace || access.ResourceType != resourceType || access.ResourceID != resourceID {
 					return fmt.Errorf("access denied")
 				}

@@ -115,7 +115,7 @@ func TestNoRemovalUntilNoOutputs(t *testing.T) {
 		rtestutils.Destroy[*B](ctx, t, st, []resource.ID{"1", "2", "3"})
 		rtestutils.Destroy[*A](ctx, t, st, []resource.ID{"1", "2"})
 
-		rtestutils.AssertResources(ctx, t, st, []resource.ID{"4", "5"}, func(r *B, assert *assert.Assertions) {})
+		rtestutils.AssertResources(ctx, t, st, []resource.ID{"4", "5"}, func(*B, *assert.Assertions) {})
 		rtestutils.AssertResources(ctx, t, st, []resource.ID{"3"}, func(r *A, assert *assert.Assertions) {
 			assert.True(r.Metadata().Finalizers().Has(ctrl.Name()))
 		})
@@ -209,7 +209,7 @@ func TestRemoveWithOutputs(t *testing.T) {
 			rtestutils.AssertNoResource[*A](ctx, t, st, resID)
 		}
 
-		rtestutils.AssertResources(ctx, t, st, []resource.ID{"4", "5"}, func(r *B, assert *assert.Assertions) {})
+		rtestutils.AssertResources(ctx, t, st, []resource.ID{"4", "5"}, func(*B, *assert.Assertions) {})
 		rtestutils.AssertResources(ctx, t, st, []resource.ID{"3"}, func(r *A, assert *assert.Assertions) {
 			assert.True(r.Metadata().Finalizers().Has(ctrl.Name()))
 		})
@@ -266,7 +266,7 @@ func TestRemoveWithExtraOwners(t *testing.T) {
 			rtestutils.AssertNoResource[*A](ctx, t, st, resID)
 		}
 
-		rtestutils.AssertResources(ctx, t, st, []resource.ID{"3"}, func(r *B, assert *assert.Assertions) {})
+		rtestutils.AssertResources(ctx, t, st, []resource.ID{"3"}, func(*B, *assert.Assertions) {})
 	})
 }
 
@@ -354,8 +354,8 @@ func TestNoRemovalUntilNoOutputsMultiple(t *testing.T) {
 		rtestutils.Destroy[*C](ctx, t, st, []resource.ID{"1", "2", "3"})
 		rtestutils.Destroy[*A](ctx, t, st, []resource.ID{"1", "2"})
 
-		rtestutils.AssertResources(ctx, t, st, []resource.ID{"4", "5"}, func(r *B, assert *assert.Assertions) {})
-		rtestutils.AssertResources(ctx, t, st, []resource.ID{"4", "5"}, func(r *C, assert *assert.Assertions) {})
+		rtestutils.AssertResources(ctx, t, st, []resource.ID{"4", "5"}, func(*B, *assert.Assertions) {})
+		rtestutils.AssertResources(ctx, t, st, []resource.ID{"4", "5"}, func(*C, *assert.Assertions) {})
 		rtestutils.AssertResources(ctx, t, st, []resource.ID{"3"}, func(r *A, assert *assert.Assertions) {
 			assert.True(r.Metadata().Finalizers().Has(ctrl.Name()))
 		})

@@ -42,7 +42,7 @@ func TestCompare(t *testing.T) {
 		{
 			left:  "1 1",
 			right: "2000 3",
-			check: func(assertions *require.Assertions, left, right int64, ok bool) {
+			check: func(assertions *require.Assertions, _, _ int64, ok bool) {
 				assertions.False(ok)
 			},
 		},
@@ -59,20 +59,20 @@ func TestCompare(t *testing.T) {
 		{
 			left:  "-1 k",
 			right: "2000",
-			check: func(assertions *require.Assertions, left, right int64, ok bool) {
+			check: func(assertions *require.Assertions, left, _ int64, ok bool) {
 				assertions.True(ok)
 				assertions.Equal(int64(-1000), left)
 			},
 		},
 		{
 			left: "1.1 k",
-			check: func(assertions *require.Assertions, left, right int64, ok bool) {
+			check: func(assertions *require.Assertions, _, _ int64, ok bool) {
 				assertions.False(ok)
 			},
 		},
 		{
 			left: "1 i",
-			check: func(assertions *require.Assertions, left, right int64, ok bool) {
+			check: func(assertions *require.Assertions, _, _ int64, ok bool) {
 				assertions.False(ok)
 			},
 		},

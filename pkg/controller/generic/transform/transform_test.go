@@ -46,7 +46,7 @@ func NewABController(reconcileTeardownCh <-chan struct{}, opts ...transform.Cont
 
 				return optional.Some(NewB("transformed-"+in.Metadata().ID(), BSpec{}))
 			},
-			TransformFunc: func(ctx context.Context, r controller.Reader, l *zap.Logger, in *A, out *B) error {
+			TransformFunc: func(_ context.Context, _ controller.Reader, _ *zap.Logger, in *A, out *B) error {
 				if in.TypedSpec().Int < 0 {
 					return fmt.Errorf("hate negative numbers")
 				}
@@ -56,7 +56,7 @@ func NewABController(reconcileTeardownCh <-chan struct{}, opts ...transform.Cont
 
 				return nil
 			},
-			FinalizerRemovalFunc: func(ctx context.Context, r controller.Reader, l *zap.Logger, in *A) error {
+			FinalizerRemovalFunc: func(ctx context.Context, _ controller.Reader, _ *zap.Logger, in *A) error {
 				if in.TypedSpec().Str != "reconcile-teardown" {
 					return fmt.Errorf("not allowed to reconcile teardown")
 				}
@@ -84,7 +84,7 @@ func NewACController(opts ...transform.ControllerOption) *ABController {
 
 				return optional.Some(NewB("transformed-"+in.Metadata().ID(), BSpec{}))
 			},
-			TransformFunc: func(ctx context.Context, r controller.Reader, l *zap.Logger, in *A, out *B) error {
+			TransformFunc: func(_ context.Context, _ controller.Reader, _ *zap.Logger, in *A, out *B) error {
 				if in.TypedSpec().Int < 0 {
 					return fmt.Errorf("hate negative numbers")
 				}
@@ -224,12 +224,12 @@ func TestDestroy(t *testing.T) {
 			require.NoError(t, st.Create(ctx, a))
 		}
 
-		rtestutils.AssertResources(ctx, t, st, []resource.ID{"transformed-1", "transformed-2", "transformed-3"}, func(r *B, assert *assert.Assertions) {})
+		rtestutils.AssertResources(ctx, t, st, []resource.ID{"transformed-1", "transformed-2", "transformed-3"}, func(*B, *assert.Assertions) {})
 
 		require.NoError(t, st.Destroy(ctx, NewA("1", ASpec{}).Metadata()))
 
 		rtestutils.AssertNoResource[*B](ctx, t, st, "transformed-1")
-		rtestutils.AssertResources(ctx, t, st, []resource.ID{"transformed-2", "transformed-3"}, func(r *B, assert *assert.Assertions) {})
+		rtestutils.AssertResources(ctx, t, st, []resource.ID{"transformed-2", "transformed-3"}, func(*B, *assert.Assertions) {})
 
 		ready, err := st.Teardown(ctx, NewA("3", ASpec{}).Metadata())
 		require.NoError(t, err)
@@ -239,7 +239,7 @@ func TestDestroy(t *testing.T) {
 		require.NoError(t, st.Destroy(ctx, NewA("3", ASpec{}).Metadata()))
 
 		rtestutils.AssertNoResource[*B](ctx, t, st, "transformed-3")
-		rtestutils.AssertResources(ctx, t, st, []resource.ID{"transformed-2"}, func(r *B, assert *assert.Assertions) {})
+		rtestutils.AssertResources(ctx, t, st, []resource.ID{"transformed-2"}, func(*B, *assert.Assertions) {})
 	})
 }
 
@@ -255,7 +255,7 @@ func TestDestroyOutputFinalizers(t *testing.T) {
 			require.NoError(t, st.Create(ctx, a))
 		}
 
-		rtestutils.AssertResources(ctx, t, st, []resource.ID{"transformed-1", "transformed-2", "transformed-3"}, func(r *B, assert *assert.Assertions) {})
+		rtestutils.AssertResources(ctx, t, st, []resource.ID{"transformed-1", "transformed-2", "transformed-3"}, func(*B, *assert.Assertions) {})
 
 		// add finalizers
 		const finalizer = "foo.cosi"
@@ -300,7 +300,7 @@ func TestDestroyInputFinalizers(t *testing.T) {
 			require.NoError(t, st.Create(ctx, a))
 		}
 
-		rtestutils.AssertResources(ctx, t, st, []resource.ID{"transformed-1", "transformed-2", "transformed-3"}, func(r *B, assert *assert.Assertions) {})
+		rtestutils.AssertResources(ctx, t, st, []resource.ID{"transformed-1", "transformed-2", "transformed-3"}, func(*B, *assert.Assertions) {})
 
 		// controller should set finalizers on inputs
 		rtestutils.AssertResources(ctx, t, st, []resource.ID{"1", "2", "3"}, func(r *A, assert *assert.Assertions) {
@@ -370,7 +370,7 @@ func TestDestroyReconcileTeardown(t *testing.T) {
 			require.NoError(t, st.Create(ctx, a))
 		}
 
-		rtestutils.AssertResources(ctx, t, st, []resource.ID{"transformed-1", "transformed-2"}, func(r *B, assert *assert.Assertions) {})
+		rtestutils.AssertResources(ctx, t, st, []resource.ID{"transformed-1", "transformed-2"}, func(*B, *assert.Assertions) {})
 
 		// controller should set finalizers on inputs
 		rtestutils.AssertResources(ctx, t, st, []resource.ID{"1", "2"}, func(r *A, assert *assert.Assertions) {
@@ -480,13 +480,13 @@ func TestWithIgnoreTearingDownInputs(t *testing.T) {
 			require.NoError(t, st.Create(ctx, a))
 		}
 
-		rtestutils.AssertResources(ctx, t, st, []resource.ID{"transformed-1", "transformed-2", "transformed-3"}, func(r *B, assert *assert.Assertions) {})
+		rtestutils.AssertResources(ctx, t, st, []resource.ID{"transformed-1", "transformed-2", "transformed-3"}, func(*B, *assert.Assertions) {})
 
 		_, err := st.Teardown(ctx, NewA("2", ASpec{}).Metadata())
 		require.NoError(t, err)
 
 		// controller should ignore tearing down input "2" and keep the output
-		rtestutils.AssertResources(ctx, t, st, []resource.ID{"transformed-1", "transformed-2", "transformed-3"}, func(r *B, assert *assert.Assertions) {})
+		rtestutils.AssertResources(ctx, t, st, []resource.ID{"transformed-1", "transformed-2", "transformed-3"}, func(*B, *assert.Assertions) {})
 
 		require.NoError(t, st.Destroy(ctx, NewA("2", ASpec{}).Metadata()))
 
@@ -551,18 +551,18 @@ func TestWithOnShutdownCallback(t *testing.T) {
 	})
 
 	setup(t, func(ctx context.Context, st state.State, runtime *runtime.Runtime) {
-		require.NoError(t, runtime.RegisterController(NewABController(nil, transform.WithOnShutdownCallback(func(_ context.Context, _ controller.ReaderWriter, logger *zap.Logger) {
+		require.NoError(t, runtime.RegisterController(NewABController(nil, transform.WithOnShutdownCallback(func(context.Context, controller.ReaderWriter, *zap.Logger) {
 			called.Store(true)
 		}))))
 
 		require.NoError(t, st.Create(ctx, NewA("1", ASpec{Str: "foo", Int: 1})))
 
-		rtestutils.AssertResources(ctx, t, st, []resource.ID{"transformed-1"}, func(r *B, assert *assert.Assertions) {})
+		rtestutils.AssertResources(ctx, t, st, []resource.ID{"transformed-1"}, func(*B, *assert.Assertions) {})
 	})
 }
 
 func TestOutputShared(t *testing.T) {
-	setup(t, func(ctx context.Context, st state.State, runtime *runtime.Runtime) {
+	setup(t, func(_ context.Context, _ state.State, runtime *runtime.Runtime) {
 		require.NoError(t, runtime.RegisterController(NewABController(nil, transform.WithOutputKind(controller.OutputShared))))
 		require.NoError(t, runtime.RegisterController(NewACController(transform.WithOutputKind(controller.OutputShared))))
 	})
@@ -581,7 +581,7 @@ func TestHooks(t *testing.T) {
 				MapMetadataOptionalFunc: func(in *A) optional.Optional[*B] {
 					return optional.Some(NewB("transformed-"+in.Metadata().ID(), BSpec{}))
 				},
-				TransformFunc: func(ctx context.Context, r controller.Reader, l *zap.Logger, in *A, out *B) error {
+				TransformFunc: func(_ context.Context, _ controller.Reader, _ *zap.Logger, in *A, out *B) error {
 					out.TypedSpec().Out = fmt.Sprintf("%q-%d", in.TypedSpec().Str, in.TypedSpec().Int)
 
 					return nil

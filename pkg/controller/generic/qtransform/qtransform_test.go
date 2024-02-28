@@ -52,7 +52,7 @@ func NewABController(reconcileTeardownCh <-chan string, requeueErrorCh <-chan er
 			UnmapMetadataFunc: func(in *B) *A {
 				return NewA(strings.TrimPrefix(in.Metadata().ID(), "transformed-"), ASpec{})
 			},
-			TransformFunc: func(ctx context.Context, r controller.Reader, l *zap.Logger, in *A, out *B) error {
+			TransformFunc: func(ctx context.Context, _ controller.Reader, _ *zap.Logger, in *A, out *B) error {
 				if in.TypedSpec().Int < 0 {
 					return fmt.Errorf("hate negative numbers")
 				}
@@ -71,7 +71,7 @@ func NewABController(reconcileTeardownCh <-chan string, requeueErrorCh <-chan er
 
 				return nil
 			},
-			FinalizerRemovalFunc: func(ctx context.Context, r controller.Reader, l *zap.Logger, in *A) error {
+			FinalizerRemovalFunc: func(ctx context.Context, _ controller.Reader, _ *zap.Logger, in *A) error {
 				if in.TypedSpec().Str != "reconcile-teardown" {
 					return fmt.Errorf("not allowed to reconcile teardown")
 				}
@@ -112,7 +112,7 @@ func NewABNoFinalizerRemovalController(opts ...qtransform.ControllerOption) *ABC
 			UnmapMetadataFunc: func(in *B) *A {
 				return NewA(strings.TrimPrefix(in.Metadata().ID(), "transformed-"), ASpec{})
 			},
-			TransformFunc: func(ctx context.Context, r controller.Reader, l *zap.Logger, in *A, out *B) error {
+			TransformFunc: func(_ context.Context, _ controller.Reader, _ *zap.Logger, in *A, out *B) error {
 				if in.TypedSpec().Int < 0 {
 					return fmt.Errorf("hate negative numbers")
 				}
@@ -136,7 +136,7 @@ func NewABCController(opts ...qtransform.ControllerOption) *ABController {
 			UnmapMetadataFunc: func(in *B) *A {
 				return NewA(strings.TrimPrefix(in.Metadata().ID(), "transformed-"), ASpec{})
 			},
-			TransformFunc: func(ctx context.Context, r controller.Reader, l *zap.Logger, in *A, out *B) error {
+			TransformFunc: func(ctx context.Context, r controller.Reader, _ *zap.Logger, in *A, out *B) error {
 				c, err := safe.ReaderGetByID[*C](ctx, r, in.Metadata().ID())
 				if err != nil && !state.IsNotFoundError(err) {
 					return err
@@ -290,7 +290,7 @@ func TestDestroy(t *testing.T) {
 			require.NoError(t, st.Create(ctx, a))
 		}
 
-		rtestutils.AssertResources(ctx, t, st, []resource.ID{"transformed-1", "transformed-2", "transformed-3"}, func(r *B, assert *assert.Assertions) {})
+		rtestutils.AssertResources(ctx, t, st, []resource.ID{"transformed-1", "transformed-2", "transformed-3"}, func(*B, *assert.Assertions) {})
 
 		ready, err := st.Teardown(ctx, NewA("1", ASpec{}).Metadata())
 		require.NoError(t, err)
@@ -302,7 +302,7 @@ func TestDestroy(t *testing.T) {
 		require.NoError(t, st.Destroy(ctx, NewA("1", ASpec{}).Metadata()))
 
 		rtestutils.AssertNoResource[*B](ctx, t, st, "transformed-1")
-		rtestutils.AssertResources(ctx, t, st, []resource.ID{"transformed-2", "transformed-3"}, func(r *B, assert *assert.Assertions) {})
+		rtestutils.AssertResources(ctx, t, st, []resource.ID{"transformed-2", "transformed-3"}, func(*B, *assert.Assertions) {})
 
 		ready, err = st.Teardown(ctx, NewA("3", ASpec{}).Metadata())
 		require.NoError(t, err)
@@ -314,7 +314,7 @@ func TestDestroy(t *testing.T) {
 		require.NoError(t, st.Destroy(ctx, NewA("3", ASpec{}).Metadata()))
 
 		rtestutils.AssertNoResource[*B](ctx, t, st, "transformed-3")
-		rtestutils.AssertResources(ctx, t, st, []resource.ID{"transformed-2"}, func(r *B, assert *assert.Assertions) {})
+		rtestutils.AssertResources(ctx, t, st, []resource.ID{"transformed-2"}, func(*B, *assert.Assertions) {})
 	})
 }
 
@@ -330,7 +330,7 @@ func TestDestroyWithIgnoreTeardownUntil(t *testing.T) {
 			require.NoError(t, st.Create(ctx, a))
 		}
 
-		rtestutils.AssertResources(ctx, t, st, []resource.ID{"transformed-1", "transformed-2", "transformed-3"}, func(r *B, assert *assert.Assertions) {})
+		rtestutils.AssertResources(ctx, t, st, []resource.ID{"transformed-1", "transformed-2", "transformed-3"}, func(*B, *assert.Assertions) {})
 
 		// destroy without extra finalizers should work immediately
 		rtestutils.Destroy[*A](ctx, t, st, []resource.ID{"1"})
@@ -379,7 +379,7 @@ func TestDestroyOutputFinalizers(t *testing.T) {
 			require.NoError(t, st.Create(ctx, a))
 		}
 
-		rtestutils.AssertResources(ctx, t, st, []resource.ID{"transformed-1", "transformed-2", "transformed-3"}, func(r *B, assert *assert.Assertions) {})
+		rtestutils.AssertResources(ctx, t, st, []resource.ID{"transformed-1", "transformed-2", "transformed-3"}, func(*B, *assert.Assertions) {})
 
 		// add finalizers
 		const finalizer = "foo.cosi"
@@ -421,7 +421,7 @@ func TestDestroyInputFinalizers(t *testing.T) {
 			require.NoError(t, st.Create(ctx, a))
 		}
 
-		rtestutils.AssertResources(ctx, t, st, []resource.ID{"transformed-1", "transformed-2", "transformed-3"}, func(r *B, assert *assert.Assertions) {})
+		rtestutils.AssertResources(ctx, t, st, []resource.ID{"transformed-1", "transformed-2", "transformed-3"}, func(*B, *assert.Assertions) {})
 
 		// controller should set finalizers on inputs
 		rtestutils.AssertResources(ctx, t, st, []resource.ID{"1", "2", "3"}, func(r *A, assert *assert.Assertions) {
@@ -485,7 +485,7 @@ func TestDestroyReconcileTeardown(t *testing.T) {
 			require.NoError(t, st.Create(ctx, a))
 		}
 
-		rtestutils.AssertResources(ctx, t, st, []resource.ID{"transformed-1", "transformed-2"}, func(r *B, assert *assert.Assertions) {})
+		rtestutils.AssertResources(ctx, t, st, []resource.ID{"transformed-1", "transformed-2"}, func(*B, *assert.Assertions) {})
 
 		// controller should set finalizers on inputs
 		rtestutils.AssertResources(ctx, t, st, []resource.ID{"1", "2"}, func(r *A, assert *assert.Assertions) {
@@ -523,7 +523,7 @@ func TestDestroyReconcileTeardown(t *testing.T) {
 }
 
 func TestOutputShared(t *testing.T) {
-	setup(t, func(ctx context.Context, st state.State, runtime *runtime.Runtime) {
+	setup(t, func(_ context.Context, _ state.State, runtime *runtime.Runtime) {
 		require.NoError(t, runtime.RegisterQController(NewABController(nil, nil, qtransform.WithOutputKind(controller.OutputShared))))
 		require.NoError(t, runtime.RegisterQController(NewABNoFinalizerRemovalController(qtransform.WithOutputKind(controller.OutputShared))))
 	})

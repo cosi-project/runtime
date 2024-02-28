@@ -77,7 +77,7 @@ func (store *NamespacedBackingStore) Load(_ context.Context, handler inmem.LoadH
 			typeBucket := bucket.Bucket(typeKey)
 			resourceType := resource.Type(typeKey)
 
-			return typeBucket.ForEach(func(id, marshaled []byte) error {
+			return typeBucket.ForEach(func(_, marshaled []byte) error {
 				res, err := store.store.marshaler.UnmarshalResource(marshaled)
 				if err != nil {
 					return err
