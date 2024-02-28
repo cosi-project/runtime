@@ -170,7 +170,7 @@ func TestRemoveWithOutputs(t *testing.T) {
 				c.res.Metadata().Labels().Set(l.key, l.value)
 			}
 
-			require.NoError(t, st.Create(ctx, c.res), state.WithCreateOwner("user-owner"))
+			require.NoError(t, st.Create(ctx, c.res))
 		}
 
 		rtestutils.AssertResources(ctx, t, st, []resource.ID{"1", "2", "3"}, func(r *A, assert *assert.Assertions) {
