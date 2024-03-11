@@ -8,7 +8,8 @@ package namespaced
 import (
 	"context"
 
-	"github.com/cosi-project/runtime/pkg/internal/xutil"
+	"github.com/siderolabs/gen/containers"
+
 	"github.com/cosi-project/runtime/pkg/resource"
 	"github.com/cosi-project/runtime/pkg/state"
 )
@@ -22,7 +23,7 @@ var _ state.CoreState = (*State)(nil)
 type State struct {
 	builder StateBuilder
 
-	namespaces xutil.SyncMap[resource.Namespace, state.CoreState]
+	namespaces containers.SyncMap[resource.Namespace, state.CoreState]
 }
 
 // NewState initializes new namespaced State.

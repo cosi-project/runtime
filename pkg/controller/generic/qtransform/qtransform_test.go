@@ -10,11 +10,11 @@ import (
 	"errors"
 	"fmt"
 	"strings"
-	"sync"
 	"testing"
 	"time"
 
 	"github.com/siderolabs/gen/channel"
+	"github.com/siderolabs/gen/containers"
 	"github.com/siderolabs/gen/optional"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -37,7 +37,7 @@ import (
 type ABController = qtransform.QController[*A, *B]
 
 func NewABController(reconcileTeardownCh <-chan string, requeueErrorCh <-chan error, opts ...qtransform.ControllerOption) *ABController {
-	var allowedFinalizerRemovals sync.Map
+	var allowedFinalizerRemovals containers.SyncMap[string, struct{}]
 
 	return qtransform.NewQController(
 		qtransform.Settings[*A, *B]{
@@ -83,7 +83,7 @@ func NewABController(reconcileTeardownCh <-chan string, requeueErrorCh <-chan er
 				for {
 					select {
 					case id := <-reconcileTeardownCh:
-						allowedFinalizerRemovals.Store(id, nil)
+						allowedFinalizerRemovals.Store(id, struct{}{})
 
 						if id == in.Metadata().ID() {
 							return nil

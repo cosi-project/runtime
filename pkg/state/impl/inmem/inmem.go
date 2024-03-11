@@ -10,7 +10,8 @@ import (
 	"sync"
 	"sync/atomic"
 
-	"github.com/cosi-project/runtime/pkg/internal/xutil"
+	"github.com/siderolabs/gen/containers"
+
 	"github.com/cosi-project/runtime/pkg/resource"
 	"github.com/cosi-project/runtime/pkg/state"
 )
@@ -19,7 +20,7 @@ var _ state.CoreState = &State{}
 
 // State implements state.CoreState.
 type State struct {
-	collections xutil.SyncMap[resource.Type, *ResourceCollection]
+	collections containers.SyncMap[resource.Type, *ResourceCollection]
 	store       BackingStore
 
 	ns resource.Namespace
