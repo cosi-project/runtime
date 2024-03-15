@@ -7,6 +7,7 @@ package safe
 import (
 	"context"
 	"fmt"
+	"iter"
 
 	"github.com/siderolabs/gen/channel"
 	"github.com/siderolabs/gen/xslices"
@@ -283,8 +284,25 @@ func (l *List[T]) Find(fn func(T) bool) (T, bool) {
 }
 
 // Iterator returns a new iterator over the list.
+//
+// Deprecated: use [List.Iter] instead.
 func (l *List[T]) Iterator() ListIterator[T] {
 	return ListIterator[T]{pos: 0, list: *l}
+}
+
+// Iter returns a new rangefunc iterator over the list.
+func (l *List[T]) Iter() iter.Seq[T] {
+	return func(yield func(T) bool) {
+		iterator := ListIterator[T]{pos: 0, list: *l}
+
+		for iterator.Next() {
+			res := iterator.Value()
+
+			if !yield(res) {
+				return
+			}
+		}
+	}
 }
 
 // ListIterator is a generic iterator over resource.Resource slice.
@@ -295,7 +313,7 @@ type ListIterator[T any] struct {
 
 // IteratorFromList returns a new iterator over the given list.
 //
-// Deprecated: use [List.Iterator] instead.
+// Deprecated: use [List.Iter] instead.
 func IteratorFromList[T any](list List[T]) ListIterator[T] {
 	return ListIterator[T]{pos: 0, list: list}
 }
