@@ -75,9 +75,7 @@ func (ctrl *IntToStrController) Run(ctx context.Context, r controller.Runtime, _
 			return fmt.Errorf("error listing objects: %w", err)
 		}
 
-		for iter := intList.Iterator(); iter.Next(); {
-			intRes := iter.Value()
-
+		for intRes := range intList.All() {
 			strRes := NewStrResource(ctrl.TargetNamespace, intRes.Metadata().ID(), "")
 
 			switch intRes.Metadata().Phase() {
@@ -183,9 +181,7 @@ func (ctrl *StrToSentenceController) Run(ctx context.Context, r controller.Runti
 			return fmt.Errorf("error listing objects: %w", err)
 		}
 
-		for iter := strList.Iterator(); iter.Next(); {
-			strRes := iter.Value()
-
+		for strRes := range strList.All() {
 			sentenceRes := NewSentenceResource(ctrl.TargetNamespace, strRes.Metadata().ID(), "")
 
 			switch strRes.Metadata().Phase() {
@@ -287,8 +283,8 @@ func (ctrl *SumController) Run(ctx context.Context, r controller.Runtime, _ *zap
 
 		var sum int
 
-		for iter := intList.Iterator(); iter.Next(); {
-			sum += iter.Value().Value()
+		for val := range intList.All() {
+			sum += val.Value()
 		}
 
 		if err = safe.WriterModify(ctx, r, NewIntResource(ctrl.TargetNamespace, ctrl.TargetID, 0), func(r *IntResource) error {
@@ -409,9 +405,7 @@ func (ctrl *IntDoublerController) Run(ctx context.Context, r controller.Runtime,
 			return fmt.Errorf("error listing objects: %w", err)
 		}
 
-		for iter := intList.Iterator(); iter.Next(); {
-			intRes := iter.Value()
-
+		for intRes := range intList.All() {
 			outRes := NewIntResource(ctrl.TargetNamespace, intRes.Metadata().ID(), 0)
 
 			if err = safe.WriterModify(ctx, r, outRes, func(r *IntResource) error {
@@ -480,9 +474,7 @@ func (ctrl *ModifyWithResultController) Run(ctx context.Context, r controller.Ru
 			return fmt.Errorf("error listing objects: %w", err)
 		}
 
-		for iter := strList.Iterator(); iter.Next(); {
-			strRes := iter.Value()
-
+		for strRes := range strList.All() {
 			id := strRes.Metadata().ID() + "-out"
 			val := strRes.Value() + "-modified"
 
@@ -575,9 +567,7 @@ func (ctrl *MetricsController) Run(ctx context.Context, r controller.Runtime, _ 
 			return fmt.Errorf("error listing objects: %w", err)
 		}
 
-		for iter := intList.Iterator(); iter.Next(); {
-			intRes := iter.Value()
-
+		for intRes := range intList.All() {
 			if intRes.Value() == 42 {
 				return fmt.Errorf("magic number caused controller to crash")
 			}

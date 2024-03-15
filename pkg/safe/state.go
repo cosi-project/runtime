@@ -7,10 +7,11 @@ package safe
 import (
 	"context"
 	"fmt"
+	"iter" //nolint:gci
 	"slices"
 
 	"github.com/siderolabs/gen/channel"
-	"github.com/siderolabs/gen/xslices"
+	"github.com/siderolabs/gen/xslices" //nolint:gci
 
 	"github.com/cosi-project/runtime/pkg/controller/generic"
 	"github.com/cosi-project/runtime/pkg/resource"
@@ -294,8 +295,21 @@ func (l *List[T]) Find(fn func(T) bool) (T, bool) {
 func (l *List[T]) Swap(i, j int) { l.list.Items[i], l.list.Items[j] = l.list.Items[j], l.list.Items[i] }
 
 // Iterator returns a new iterator over the list.
+//
+// Deprecated: use [List.All] instead.
 func (l *List[T]) Iterator() ListIterator[T] {
 	return ListIterator[T]{pos: 0, list: *l}
+}
+
+// All returns a new rangefunc iterator over the list.
+func (l *List[T]) All() iter.Seq[T] {
+	return func(yield func(T) bool) {
+		for i := range l.list.Items {
+			if !yield(l.Get(i)) {
+				return
+			}
+		}
+	}
 }
 
 // ListIterator is a generic iterator over resource.Resource slice.
@@ -306,7 +320,7 @@ type ListIterator[T any] struct {
 
 // IteratorFromList returns a new iterator over the given list.
 //
-// Deprecated: use [List.Iterator] instead.
+// Deprecated: use [List.All] instead.
 func IteratorFromList[T any](list List[T]) ListIterator[T] {
 	return ListIterator[T]{pos: 0, list: list}
 }
