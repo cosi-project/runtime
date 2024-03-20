@@ -187,11 +187,11 @@ func BenchmarkPriorityQueue(b *testing.B) {
 
 	now := time.Now()
 
-	for i := 0; i < b.N; i++ {
+	for i := range b.N {
 		q.Push(i, time.Time{})
 	}
 
-	for i := 0; i < b.N; i++ {
+	for range b.N {
 		q.Peek(now)
 		q.Pop()
 	}

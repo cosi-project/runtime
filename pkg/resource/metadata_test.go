@@ -263,14 +263,14 @@ func BenchmarkMetadataEqual(b *testing.B) {
 			md := resource.NewMetadata("default", "type", "aaa", resource.VersionUndefined)
 			other := resource.NewMetadata("default", "type", "aaa", resource.VersionUndefined)
 
-			for i := 0; i < l; i++ {
+			for i := range l {
 				md.Finalizers().Add(fmt.Sprintf("finalizer-%d", i))
 				other.Finalizers().Add(fmt.Sprintf("finalizer-%d", l-i-1))
 			}
 
 			b.ResetTimer()
 
-			for i := 0; i < b.N; i++ {
+			for range b.N {
 				if !md.Equal(other) {
 					b.FailNow()
 				}

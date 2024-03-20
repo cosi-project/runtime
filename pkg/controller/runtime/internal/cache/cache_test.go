@@ -47,14 +47,14 @@ func TestCacheOperations(t *testing.T) {
 		NB = 10000
 	)
 
-	for i := 0; i < NA; i++ {
+	for i := range NA {
 		r := resource.NewTombstone(resource.NewMetadata("a", "A", "r-"+resourceIDGenerator(i), resource.VersionUndefined))
 		r.Metadata().Labels().Set("number", strconv.Itoa(i))
 
 		c.CacheAppend(r)
 	}
 
-	for i := 0; i < NB; i++ {
+	for i := range NB {
 		c.CacheAppend(resource.NewTombstone(resource.NewMetadata("b", "B", resourceIDGenerator(i), resource.VersionUndefined)))
 	}
 
@@ -103,7 +103,7 @@ func TestCacheOperations(t *testing.T) {
 	}
 
 	// try simple Get operations
-	for i := 0; i < NA; i++ {
+	for i := range NA {
 		r, err := c.Get(ctx, resource.NewMetadata("a", "A", "r-"+resourceIDGenerator(i), resource.VersionUndefined))
 		require.NoError(t, err)
 
@@ -145,7 +145,7 @@ func TestCacheOperations(t *testing.T) {
 	assert.Len(t, list.Items, NB/2)
 
 	// mutate A items, so that label: number = number + 1
-	for i := 0; i < NA; i++ {
+	for i := range NA {
 		r := resource.NewTombstone(resource.NewMetadata("a", "A", "r-"+resourceIDGenerator(i), resource.VersionUndefined))
 		r.Metadata().Labels().Set("number", strconv.Itoa(i+1))
 
@@ -258,7 +258,7 @@ func BenchmarkAppend(b *testing.B) {
 
 	b.ResetTimer()
 
-	for i := 0; i < b.N; i++ {
+	for i := range b.N {
 		c.CacheAppend(resource.NewTombstone(resource.NewMetadata("a", "A", resourceIDGenerator(i), resource.VersionUndefined)))
 	}
 }
@@ -275,13 +275,13 @@ func BenchmarkPut(b *testing.B) {
 
 	const N = 10000
 
-	for i := 0; i < N; i++ {
+	for i := range N {
 		c.CacheAppend(resource.NewTombstone(resource.NewMetadata("a", "A", resourceIDGenerator(i), resource.VersionUndefined)))
 	}
 
 	b.ResetTimer()
 
-	for i := 0; i < b.N; i++ {
+	for i := range b.N {
 		c.CachePut(resource.NewTombstone(resource.NewMetadata("a", "A", resourceIDGenerator(i%(N*2)), resource.VersionUndefined)))
 	}
 }
@@ -298,13 +298,13 @@ func BenchmarkRemove(b *testing.B) {
 
 	const N = 10000
 
-	for i := 0; i < N; i++ {
+	for i := range N {
 		c.CacheAppend(resource.NewTombstone(resource.NewMetadata("a", "A", resourceIDGenerator(i), resource.VersionUndefined)))
 	}
 
 	b.ResetTimer()
 
-	for i := 0; i < b.N; i++ {
+	for i := range b.N {
 		c.CacheRemove(resource.NewTombstone(resource.NewMetadata("a", "A", resourceIDGenerator(i%N), resource.VersionUndefined)))
 	}
 }

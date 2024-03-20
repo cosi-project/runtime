@@ -53,8 +53,6 @@ func TestMarshaler_Key(t *testing.T) {
 	}
 
 	for name, test := range tests {
-		test := test
-
 		t.Run(name, func(t *testing.T) {
 			t.Parallel()
 
@@ -87,8 +85,6 @@ func TestMarshaler_MarshalUnmarshalParallel(t *testing.T) {
 
 	// This is also tests for race conditions if there are any.
 	for _, path := range paths {
-		path := path
-
 		t.Run(path.Metadata().ID(), func(t *testing.T) {
 			t.Parallel()
 
@@ -155,8 +151,6 @@ func TestMarshaler_CorruptedData(t *testing.T) {
 	}
 
 	for name, test := range tests {
-		test := test
-
 		t.Run(name, func(t *testing.T) {
 			t.Parallel()
 

@@ -77,8 +77,6 @@ func TestCompare(t *testing.T) {
 			Expected: 1,
 		},
 	} {
-		testCase := testCase
-
 		t.Run(testCase.Name, func(t *testing.T) {
 			t.Parallel()
 
@@ -187,8 +185,6 @@ func TestEqual(t *testing.T) {
 			Expected: false,
 		},
 	} {
-		testCase := testCase
-
 		t.Run(testCase.Name, func(t *testing.T) {
 			t.Parallel()
 
@@ -269,8 +265,6 @@ func TestEqualKeys(t *testing.T) {
 			Expected: false,
 		},
 	} {
-		testCase := testCase
-
 		t.Run(testCase.Name, func(t *testing.T) {
 			t.Parallel()
 

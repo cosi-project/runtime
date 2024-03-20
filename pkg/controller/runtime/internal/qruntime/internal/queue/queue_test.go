@@ -71,9 +71,7 @@ func TestQueue(t *testing.T) {
 		return nil
 	})
 
-	for i := 0; i < numWorkers; i++ {
-		i := i
-
+	for i := range numWorkers {
 		eg.Go(func() error {
 			for {
 				select {
@@ -100,8 +98,8 @@ func TestQueue(t *testing.T) {
 		})
 	}
 
-	for j := 0; j < numIterations; j++ {
-		for i := 0; i < numItems; i++ {
+	for range numIterations {
+		for i := range numItems {
 			q.Put(i)
 
 			time.Sleep(time.Millisecond)
@@ -125,7 +123,7 @@ waitLoop:
 
 	assert.Equal(t, int64(0), q.Len())
 
-	for i := 0; i < numItems; i++ {
+	for i := range numItems {
 		assert.GreaterOrEqual(t, tracker.processed[i], 50)
 	}
 }

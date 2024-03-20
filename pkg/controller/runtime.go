@@ -109,7 +109,7 @@ type Output struct {
 
 // Reader provides read-only access to the state.
 //
-// state.State also satisfies this interface.
+// Interface [state.State] also satisfies this interface.
 type Reader interface {
 	Get(context.Context, resource.Pointer, ...state.GetOption) (resource.Resource, error)
 	List(context.Context, resource.Kind, ...state.ListOption) (resource.List, error)

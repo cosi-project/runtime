@@ -59,7 +59,7 @@ type watchKey struct {
 
 // watchBuffer provides a buffer to aggregate multiple match events.
 //
-// this improves efficiency of a deduplication algorithm.
+// This improves efficiency of a deduplication algorithm.
 const watchBuffer = 16
 
 // NewRuntime initializes controller runtime object.
@@ -204,8 +204,6 @@ func (runtime *Runtime) Run(ctx context.Context) error {
 		go runtime.processWatched()
 
 		for _, adapter := range runtime.controllers {
-			adapter := adapter
-
 			runtime.controllersRunning++
 
 			go func() {

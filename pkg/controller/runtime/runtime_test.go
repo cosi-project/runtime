@@ -116,7 +116,7 @@ func TestRuntimeWatchError(t *testing.T) {
 	}))
 
 	// overfill the history buffer
-	for i := 0; i < 10000; i++ {
+	for i := range 10000 {
 		require.NoError(t, st.Create(ctx, conformance.NewIntResource("default", strconv.Itoa(i), i)))
 	}
 
@@ -149,7 +149,7 @@ func TestRuntimeWatchOverrun(t *testing.T) {
 		TargetNamespace: "default",
 	}))
 
-	for i := 0; i < 10; i++ {
+	for i := range 10 {
 		for _, ns := range []resource.Namespace{"default"} {
 			require.NoError(t, st.Create(ctx, conformance.NewIntResource(ns, strconv.Itoa(i), i)))
 		}
@@ -160,7 +160,7 @@ func TestRuntimeWatchOverrun(t *testing.T) {
 	require.NoError(t, err)
 
 	for j := 1; j < 2000; j++ {
-		for i := 0; i < 10; i++ {
+		for i := range 10 {
 			for _, ns := range []resource.Namespace{"default"} {
 				_, err = safe.StateUpdateWithConflicts(ctx, st, conformance.NewIntResource(ns, strconv.Itoa(i), i).Metadata(),
 					func(r *conformance.IntResource) error {

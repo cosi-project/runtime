@@ -46,7 +46,7 @@ func BenchmarkGetDependentControllers(b *testing.B) {
 
 	b.ResetTimer()
 
-	for i := 0; i < b.N; i++ {
+	for range b.N {
 		_, err := db.GetDependentControllers(in)
 		if err != nil {
 			b.FailNow()
@@ -60,7 +60,7 @@ func BenchmarkBuildDatabase(b *testing.B) {
 
 	b.ResetTimer()
 
-	for i := 0; i < b.N; i++ {
+	for i := range b.N {
 		iS := strconv.Itoa(i)
 		ctrl := "ConfigController" + iS
 		typ := "Resource" + iS

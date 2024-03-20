@@ -129,7 +129,7 @@ func (adapter *Adapter) Run(ctx context.Context) {
 		return nil
 	})
 
-	for i := uint(0); i < adapter.concurrency; i++ {
+	for range adapter.concurrency {
 		eg.Go(func() error {
 			adapter.runReconcile(ctx)
 

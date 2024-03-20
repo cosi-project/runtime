@@ -68,7 +68,7 @@ func BenchmarkZstd(b *testing.B) {
 	b.ReportAllocs()
 	b.ResetTimer()
 
-	for i := 0; i < b.N; i++ {
+	for range b.N {
 		_, err := marshaler.MarshalResource(path)
 		require.NoError(b, err)
 	}
@@ -104,14 +104,14 @@ func memStats() runtime.MemStats {
 func generateString(lines int) string {
 	var builder strings.Builder
 
-	for i := 0; i < lines; i++ {
+	for i := range lines {
 		if i > 0 {
 			builder.WriteByte('\n')
 		}
 
 		builder.WriteString("    # ")
 
-		for j := 0; j < 128; j++ {
+		for range 128 {
 			builder.WriteByte('0' + byte(rand.Int31n('z'-'0')))
 		}
 	}

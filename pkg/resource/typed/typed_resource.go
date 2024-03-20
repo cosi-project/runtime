@@ -79,7 +79,7 @@ func (t *Resource[T, E]) makeRD() (any, bool) {
 // LookupExtension looks up for the [Maker] interface on the resource extension.
 // It will call Make method on it, if it has one, passing [resource.Metadata] and typed spec as arguments,
 // before returning the result of Make call and attempting to cast it to the provided type parameter I.
-// I should be an interface with a single method
+// Type Parameter I should be an interface with a single method.
 //
 // The common usage is to define `Make(...) any` on extension type, and return custom type which implements I.
 func LookupExtension[I any](res resource.Resource) (I, bool) {

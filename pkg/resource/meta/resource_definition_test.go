@@ -93,8 +93,6 @@ func TestRDSpecValidation(t *testing.T) {
 			expectedError: "name should be plural",
 		},
 	} {
-		tt := tt
-
 		t.Run(tt.name, func(t *testing.T) {
 			assert.EqualError(t, tt.spec.Fill(), tt.expectedError)
 		})

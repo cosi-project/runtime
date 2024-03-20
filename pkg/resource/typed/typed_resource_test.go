@@ -97,7 +97,7 @@ func TestAllocations(t *testing.T) {
 	res := NewTest(md, spec)
 
 	benchRes := testing.Benchmark(func(b *testing.B) {
-		for i := 0; i < b.N; i++ {
+		for range b.N {
 			extension, ok := typed.LookupExtension[interface{ Match(string) bool }](res)
 			if !ok {
 				b.FailNow()
@@ -175,7 +175,7 @@ func TestCopyAllocations(t *testing.T) {
 	)
 
 	benchRes := testing.Benchmark(func(b *testing.B) {
-		for i := 0; i < b.N; i++ {
+		for range b.N {
 			BenchStore = res.DeepCopy()
 		}
 	})

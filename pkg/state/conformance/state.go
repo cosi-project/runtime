@@ -610,16 +610,12 @@ func (suite *StateSuite) TestConcurrentFinalizers() {
 	var eg errgroup.Group
 
 	for _, fin := range []resource.Finalizer{"A", "B", "C", "D", "E", "F", "G", "H"} {
-		fin := fin
-
 		eg.Go(func() error {
 			return suite.State.AddFinalizer(ctx, path.Metadata(), fin)
 		})
 	}
 
 	for _, fin := range []resource.Finalizer{"A", "B", "C"} {
-		fin := fin
-
 		eg.Go(func() error {
 			return suite.State.RemoveFinalizer(ctx, path.Metadata(), fin)
 		})
@@ -630,8 +626,6 @@ func (suite *StateSuite) TestConcurrentFinalizers() {
 	eg = errgroup.Group{}
 
 	for _, fin := range []resource.Finalizer{"A", "B", "C"} {
-		fin := fin
-
 		eg.Go(func() error {
 			return suite.State.RemoveFinalizer(ctx, path.Metadata(), fin)
 		})
@@ -1066,7 +1060,7 @@ func (suite *StateSuite) TestLabels() {
 func (suite *StateSuite) TestIDQuery() {
 	ns := suite.getNamespace()
 
-	for i := 0; i < 10; i++ {
+	for i := range 10 {
 		path := NewPathResource(ns, fmt.Sprintf("idquery/path%d", i))
 
 		suite.Require().NoError(suite.State.Create(context.Background(), path))
@@ -1112,7 +1106,7 @@ func (suite *StateSuite) TestIDQuery() {
 		suite.Require().FailNow("timeout waiting for event")
 	}
 
-	for i := 0; i < 10; i++ {
+	for i := range 10 {
 		suite.Require().NoError(suite.State.Destroy(ctx, NewPathResource(ns, fmt.Sprintf("idquery/path%d", i)).Metadata()))
 	}
 

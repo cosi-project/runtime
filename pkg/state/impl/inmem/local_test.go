@@ -51,8 +51,6 @@ func TestLocalConformance(t *testing.T) {
 			)("default"),
 		},
 	} {
-		tt := tt
-
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
 
@@ -89,13 +87,13 @@ func TestBufferOverrun(t *testing.T) {
 	require.NoError(t, err)
 
 	// insert 10 resources
-	for i := 0; i < 10; i++ {
+	for i := range 10 {
 		err := st.Create(ctx, conformance.NewPathResource(namespace, strconv.Itoa(i)))
 		require.NoError(t, err)
 	}
 
 	// update 0th resource 20 times
-	for i := 0; i < 20; i++ {
+	for i := range 20 {
 		_, err := st.UpdateWithConflicts(ctx, conformance.NewPathResource(namespace, "0").Metadata(), func(r resource.Resource) error {
 			r.Metadata().Finalizers().Add(strconv.Itoa(i))
 
@@ -180,7 +178,7 @@ func TestNoBufferOverrunDynamic(t *testing.T) {
 	require.NoError(t, err)
 
 	// insert N resources
-	for i := 0; i < N; i++ {
+	for i := range N {
 		err := st.Create(ctx, conformance.NewPathResource(namespace, strconv.Itoa(i)))
 		require.NoError(t, err)
 	}

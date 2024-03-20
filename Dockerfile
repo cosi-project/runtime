@@ -2,7 +2,7 @@
 
 # THIS FILE WAS AUTOMATICALLY GENERATED, PLEASE DO NOT EDIT.
 #
-# Generated on 2024-03-07T11:03:57Z by kres latest.
+# Generated on 2024-03-20T17:26:24Z by kres latest.
 
 ARG TOOLCHAIN
 
@@ -11,7 +11,7 @@ FROM ghcr.io/siderolabs/ca-certificates:v1.6.0 AS image-ca-certificates
 FROM ghcr.io/siderolabs/fhs:v1.6.0 AS image-fhs
 
 # runs markdownlint
-FROM docker.io/node:21.6.2-alpine3.19 AS lint-markdown
+FROM docker.io/node:21.7.1-alpine3.19 AS lint-markdown
 WORKDIR /src
 RUN npm i -g markdownlint-cli@0.39.0
 RUN npm i sentences-per-line@0.2.1
@@ -105,6 +105,7 @@ FROM base AS lint-golangci-lint
 WORKDIR /src
 COPY .golangci.yml .
 ENV GOGC 50
+RUN golangci-lint config verify --config .golangci.yml
 RUN --mount=type=cache,target=/root/.cache/go-build --mount=type=cache,target=/root/.cache/golangci-lint --mount=type=cache,target=/go/pkg golangci-lint run --config .golangci.yml
 
 # runs govulncheck

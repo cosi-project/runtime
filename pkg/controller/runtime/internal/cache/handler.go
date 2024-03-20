@@ -20,11 +20,11 @@ import (
 
 // cacheHandler handles a single pair of resource namespace and type.
 //
-// when initialized, bootstrapped channel is open, so reading from it would block.
-// when marked as bootstrapped, the channel is closed, so reading from it would not block.
+// When initialized, bootstrapped channel is open, so reading from it would block.
+// When marked as bootstrapped, the channel is closed, so reading from it would not block.
 //
-// resources contains a sorted (by ID) list of resources.
-// mu protects resources slice.
+// Field resources contains a sorted (by ID) list of resources.
+// Field mu protects resources slice.
 type cacheHandler struct {
 	key          cacheKey
 	bootstrapped chan struct{}
