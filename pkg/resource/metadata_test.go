@@ -127,7 +127,7 @@ phase: running
 
 	out, err = yaml.Marshal(&md)
 	assert.NoError(t, err)
-	//nolint:goconst
+
 	assert.Equal(t, `namespace: default
 type: type
 id: aaa
