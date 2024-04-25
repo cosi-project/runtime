@@ -255,7 +255,9 @@ func (server *State) Destroy(ctx context.Context, req *v1alpha1.DestroyRequest) 
 //
 //nolint:gocognit,gocyclo,cyclop
 func (server *State) Watch(req *v1alpha1.WatchRequest, srv v1alpha1.State_WatchServer) error {
-	ctx := srv.Context()
+	ctx, cancel := context.WithCancel(srv.Context())
+	defer cancel()
+
 	singleCh := make(chan state.Event)
 	aggregatedCh := make(chan []state.Event)
 
