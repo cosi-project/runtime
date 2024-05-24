@@ -62,9 +62,11 @@ type QRuntime interface {
 
 // QSettings configures runtime for the QController.
 type QSettings struct {
-	Inputs      []Input
-	Outputs     []Output
-	Concurrency optional.Optional[uint]
+	RunHook      func(context.Context, *zap.Logger, QRuntime) error
+	ShutdownHook func()
+	Inputs       []Input
+	Outputs      []Output
+	Concurrency  optional.Optional[uint]
 }
 
 // RequeueError is returned by QController.Reconcile to requeue the item with specified backoff.

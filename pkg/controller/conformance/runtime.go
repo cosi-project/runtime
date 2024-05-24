@@ -51,13 +51,13 @@ func (suite *RuntimeSuite) SetupTest() {
 	}
 }
 
-func (suite *RuntimeSuite) startRuntime() {
+func (suite *RuntimeSuite) startRuntime(ctx context.Context) {
 	suite.wg.Add(1)
 
 	go func() {
 		defer suite.wg.Done()
 
-		suite.Assert().NoError(suite.Runtime.Run(suite.ctx))
+		suite.Assert().NoError(suite.Runtime.Run(ctx))
 	}()
 }
 
@@ -168,7 +168,7 @@ func (suite *RuntimeSuite) TearDownTest() {
 // TestNoControllers ...
 func (suite *RuntimeSuite) TestNoControllers() {
 	// no controllers registered
-	suite.startRuntime()
+	suite.startRuntime(suite.ctx)
 }
 
 // TestIntToStrControllers ...
@@ -180,7 +180,7 @@ func (suite *RuntimeSuite) TestIntToStrControllers() {
 
 	suite.Assert().NoError(suite.State.Create(suite.ctx, NewIntResource("default", "one", 1)))
 
-	suite.startRuntime()
+	suite.startRuntime(suite.ctx)
 
 	suite.Assert().NoError(suite.State.Create(suite.ctx, NewIntResource("default", "two", 2)))
 
@@ -236,7 +236,7 @@ func (suite *RuntimeSuite) TestIntToStrToSentenceControllers() {
 	one := NewIntResource("ints", "one", 1)
 	suite.Assert().NoError(suite.State.Create(suite.ctx, one))
 
-	suite.startRuntime()
+	suite.startRuntime(suite.ctx)
 
 	suite.Assert().NoError(suite.State.Create(suite.ctx, NewIntResource("ints", "two", 2)))
 
@@ -286,7 +286,7 @@ func (suite *RuntimeSuite) TestSumControllers() {
 		ControllerName:  "SumController",
 	}))
 
-	suite.startRuntime()
+	suite.startRuntime(suite.ctx)
 
 	suite.Assert().NoError(retry.Constant(10*time.Second, retry.WithUnits(10*time.Millisecond)).
 		Retry(suite.assertIntObjects([]string{"sum"}, []int{0})))
@@ -325,7 +325,7 @@ func (suite *RuntimeSuite) TestSumControllersFiltered() {
 		ControllerName:  "SumController",
 	}))
 
-	suite.startRuntime()
+	suite.startRuntime(suite.ctx)
 
 	suite.Assert().NoError(retry.Constant(10*time.Second, retry.WithUnits(10*time.Millisecond)).
 		Retry(suite.assertIntObjects([]string{"sum"}, []int{0})))
@@ -360,7 +360,7 @@ func (suite *RuntimeSuite) TestSumControllersFiltered() {
 
 // TestCascadingSumControllers ...
 func (suite *RuntimeSuite) TestCascadingSumControllers() {
-	suite.startRuntime()
+	suite.startRuntime(suite.ctx)
 
 	suite.Require().NoError(suite.Runtime.RegisterController(&SumController{
 		SourceNamespace: "source1",
@@ -399,7 +399,7 @@ func (suite *RuntimeSuite) TestFailingController() {
 		TargetNamespace: "target",
 	}))
 
-	suite.startRuntime()
+	suite.startRuntime(suite.ctx)
 
 	suite.Assert().NoError(retry.Constant(5*time.Second, retry.WithUnits(10*time.Millisecond)).
 		Retry(suite.assertIntObjects([]string{"0"}, []int{0})))
@@ -415,7 +415,7 @@ func (suite *RuntimeSuite) TestPanickingController() {
 		Panic:           true,
 	}))
 
-	suite.startRuntime()
+	suite.startRuntime(suite.ctx)
 
 	suite.Assert().NoError(retry.Constant(5*time.Second, retry.WithUnits(10*time.Millisecond)).
 		Retry(suite.assertIntObjects([]string{"0"}, []int{0})))
@@ -433,7 +433,7 @@ func (suite *RuntimeSuite) TestIntDoublerController() {
 
 	suite.Assert().NoError(suite.State.Create(suite.ctx, NewIntResource("default", "one", 1)))
 
-	suite.startRuntime()
+	suite.startRuntime(suite.ctx)
 
 	suite.Assert().NoError(suite.State.Create(suite.ctx, NewIntResource("default", "two", 2)))
 
@@ -462,7 +462,7 @@ func (suite *RuntimeSuite) TestModifyWithResultController() {
 		TargetNamespace: targetNS,
 	}))
 
-	suite.startRuntime()
+	suite.startRuntime(suite.ctx)
 
 	// test create
 
@@ -522,7 +522,7 @@ func (suite *RuntimeSuite) TestControllerRuntimeMetrics() {
 
 	suite.Assert().NoError(suite.State.Create(suite.ctx, intRes))
 
-	suite.startRuntime()
+	suite.startRuntime(suite.ctx)
 
 	suite.EventuallyWithT(func(collect *assert.CollectT) {
 		_, err := suite.State.Get(suite.ctx, NewStrResource("metrics", "one", "").Metadata())
@@ -570,15 +570,20 @@ func (suite *RuntimeSuite) TestQIntToStrController() {
 	srcNS := "q-int"
 	targetNS := "q-str"
 
-	suite.Require().NoError(suite.Runtime.RegisterQController(&QIntToStrController{
+	controller := &QIntToStrController{
 		SourceNamespace: srcNS,
 		TargetNamespace: targetNS,
-	}))
+	}
+
+	suite.Require().NoError(suite.Runtime.RegisterQController(controller))
 
 	suite.Require().NoError(suite.State.Create(suite.ctx, NewIntResource(srcNS, "id1", 1)))
 	suite.Require().NoError(suite.State.Create(suite.ctx, NewIntResource(srcNS, "id2", 2)))
 
-	suite.startRuntime()
+	ctx, cancel := context.WithCancel(suite.ctx)
+	defer cancel()
+
+	suite.startRuntime(ctx)
 
 	suite.Assert().NoError(retry.Constant(10*time.Second, retry.WithUnits(10*time.Millisecond)).Retry(
 		suite.assertStrObjects(targetNS, StrResourceType,
@@ -655,6 +660,32 @@ func (suite *RuntimeSuite) TestQIntToStrController() {
 			[]string{"3"},
 		),
 	))
+
+	suite.Assert().NoError(retry.Constant(10*time.Second, retry.WithUnits(10*time.Millisecond)).Retry(
+		func() error {
+			res, err := safe.StateGet[*StrResource](suite.ctx, suite.State, resource.NewMetadata("hooks", StrResourceType, "lastInvokation", resource.VersionUndefined))
+			if err != nil {
+				return retry.ExpectedError(err)
+			}
+
+			t, err := time.Parse(time.RFC3339, res.value.value)
+			if err != nil {
+				return err
+			}
+
+			if time.Since(t) > time.Second {
+				return retry.ExpectedErrorf("counter wasn't increased")
+			}
+
+			return nil
+		},
+	))
+
+	cancel()
+
+	suite.wg.Wait()
+
+	suite.Assert().True(controller.ShutdownCalled)
 }
 
 // TestQFailingController ...
@@ -670,7 +701,7 @@ func (suite *RuntimeSuite) TestQFailingController() {
 	suite.Require().NoError(suite.State.Create(suite.ctx, NewStrResource(srcNS, "id1", "fail")))
 	suite.Require().NoError(suite.State.Create(suite.ctx, NewStrResource(srcNS, "id2", "panic")))
 
-	suite.startRuntime()
+	suite.startRuntime(suite.ctx)
 
 	suite.Require().NoError(suite.State.Create(suite.ctx, NewStrResource(srcNS, "id3", "requeue_no_error")))
 	suite.Require().NoError(suite.State.Create(suite.ctx, NewStrResource(srcNS, "id4", "requeue_with_error")))
@@ -725,7 +756,7 @@ func (suite *RuntimeSuite) TestQIntToStrSleepingController() {
 	suite.Require().NoError(suite.State.Create(suite.ctx, NewIntResource(srcNS, "id1", 1)))
 	suite.Require().NoError(suite.State.Create(suite.ctx, NewIntResource(srcNS, "id2", 2)))
 
-	suite.startRuntime()
+	suite.startRuntime(suite.ctx)
 
 	suite.Assert().NoError(retry.Constant(10*time.Second, retry.WithUnits(10*time.Millisecond)).Retry(
 		suite.assertStrObjects(targetNS, StrResourceType,

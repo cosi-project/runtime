@@ -6,6 +6,7 @@ package conformance
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"strconv"
 	"time"
@@ -23,6 +24,7 @@ import (
 type QIntToStrController struct {
 	SourceNamespace resource.Namespace
 	TargetNamespace resource.Namespace
+	ShutdownCalled  bool
 }
 
 // Name implements controller.QController interface.
@@ -32,6 +34,8 @@ func (ctrl *QIntToStrController) Name() string {
 
 // Settings implements controller.QController interface.
 func (ctrl *QIntToStrController) Settings() controller.QSettings {
+	failRunHook := true
+
 	return controller.QSettings{
 		Inputs: []controller.Input{
 			{
@@ -52,6 +56,35 @@ func (ctrl *QIntToStrController) Settings() controller.QSettings {
 			},
 		},
 		Concurrency: optional.Some(uint(4)),
+		RunHook: func(ctx context.Context, _ *zap.Logger, r controller.QRuntime) error {
+			interval := time.NewTicker(time.Second)
+
+			defer interval.Stop()
+
+			if failRunHook {
+				failRunHook = false
+
+				return errors.New("oh no")
+			}
+
+			for {
+				select {
+				case <-ctx.Done():
+					return nil
+				case <-interval.C:
+					if err := safe.WriterModify(ctx, r, NewStrResource("hooks", "lastInvokation", ""), func(r *StrResource) error {
+						r.value.value = time.Now().Format(time.RFC3339)
+
+						return nil
+					}); err != nil {
+						return err
+					}
+				}
+			}
+		},
+		ShutdownHook: func() {
+			ctrl.ShutdownCalled = true
+		},
 	}
 }
 

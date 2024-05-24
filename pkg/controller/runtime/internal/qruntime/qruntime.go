@@ -25,6 +25,7 @@ import (
 	"github.com/cosi-project/runtime/pkg/controller/runtime/internal/controllerstate"
 	"github.com/cosi-project/runtime/pkg/controller/runtime/internal/qruntime/internal/queue"
 	"github.com/cosi-project/runtime/pkg/controller/runtime/metrics"
+	"github.com/cosi-project/runtime/pkg/logging"
 	"github.com/cosi-project/runtime/pkg/resource"
 )
 
@@ -137,6 +138,14 @@ func (adapter *Adapter) Run(ctx context.Context) {
 		})
 	}
 
+	if adapter.controller.Settings().RunHook != nil {
+		eg.Go(func() error {
+			adapter.runWithBackoff(ctx, adapter.controller.Settings().RunHook)
+
+			return nil
+		})
+	}
+
 	eg.Go(func() error {
 		for _, input := range adapter.StateAdapter.Inputs {
 			if input.Kind != controller.InputQPrimary {
@@ -156,6 +165,10 @@ func (adapter *Adapter) Run(ctx context.Context) {
 	})
 
 	eg.Wait() //nolint:errcheck
+
+	if adapter.controller.Settings().ShutdownHook != nil {
+		adapter.controller.Settings().ShutdownHook()
+	}
 
 	adapter.logger.Debug("controller finished")
 }
@@ -343,4 +356,59 @@ func (adapter *Adapter) runOnce(ctx context.Context, logger *zap.Logger, item QI
 	}
 
 	return err
+}
+
+func (adapter *Adapter) runWithBackoff(ctx context.Context, hook func(context.Context, *zap.Logger, controller.QRuntime) error) {
+	logger := adapter.logger.With(logging.Controller(adapter.StateAdapter.Name))
+
+	backoff := backoff.NewExponentialBackOff()
+	backoff.MaxElapsedTime = 0
+
+	for {
+		startTime := time.Now()
+
+		err := adapter.runWithPanicHandler(func() error {
+			return hook(ctx, adapter.logger, adapter)
+		})
+		if err == nil {
+			return
+		}
+
+		// automatially reset the interval if run time was long enough
+		if time.Since(startTime) > time.Minute {
+			backoff.Reset()
+		}
+
+		interval := backoff.NextBackOff()
+
+		logger.Sugar().Debugf("restarting the run hook in %s", interval)
+
+		select {
+		case <-ctx.Done():
+			return
+		case <-time.After(interval):
+		}
+	}
+}
+
+func (adapter *Adapter) runWithPanicHandler(f func() error) (err error) {
+	defer func() {
+		if err != nil && errors.Is(err, context.Canceled) {
+			err = nil
+		}
+
+		if err != nil {
+			adapter.logger.Error("run hook failed", zap.Error(err))
+		} else {
+			adapter.logger.Debug("run hook finished")
+		}
+	}()
+
+	defer func() {
+		if p := recover(); p != nil {
+			err = fmt.Errorf("run hook %q panicked: %s\n\n%s", adapter.StateAdapter.Name, p, string(debug.Stack()))
+		}
+	}()
+
+	return f()
 }
