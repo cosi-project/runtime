@@ -1,7 +1,7 @@
 ---
 # THIS FILE WAS AUTOMATICALLY GENERATED, PLEASE DO NOT EDIT.
 #
-# Generated on 2024-02-28T13:50:02Z by kres latest.
+# Generated on 2024-05-27T09:23:21Z by kres b5844f8.
 
 kind: pipeline
 type: kubernetes
@@ -191,7 +191,7 @@ steps:
   image: autonomy/build-container:latest
   commands:
   - docker login ghcr.io --username "$${GHCR_USERNAME}" --password "$${GHCR_PASSWORD}"
-  - make image-runtime TAG=latest
+  - make image-runtime IMAGE_TAG=latest
   environment:
     GHCR_PASSWORD:
       from_secret: ghcr_token
@@ -270,7 +270,7 @@ steps:
 
 services:
 - name: docker
-  image: docker:25.0-dind
+  image: docker:26.1-dind
   entrypoint:
   - dockerd
   commands:

@@ -58,7 +58,7 @@ func TestProtobufConformance(t *testing.T) {
 	defer func() { <-ch }() // ensure that gorotuine is stopped
 	defer grpcServer.Stop()
 
-	grpcConn, err := grpc.Dial("unix://"+sock.Name(), grpc.WithTransportCredentials(insecure.NewCredentials()))
+	grpcConn, err := grpc.NewClient("unix://"+sock.Name(), grpc.WithTransportCredentials(insecure.NewCredentials()))
 	require.NoError(t, err)
 
 	defer noError(t, (*grpc.ClientConn).Close, grpcConn, fs.ErrNotExist)
