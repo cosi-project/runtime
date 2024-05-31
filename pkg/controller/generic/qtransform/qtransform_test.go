@@ -16,6 +16,7 @@ import (
 	"github.com/siderolabs/gen/channel"
 	"github.com/siderolabs/gen/containers"
 	"github.com/siderolabs/gen/optional"
+	"github.com/siderolabs/gen/xerrors"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"go.uber.org/goleak"
@@ -59,6 +60,10 @@ func NewABController(reconcileTeardownCh <-chan string, requeueErrorCh <-chan er
 
 				out.TypedSpec().Out = fmt.Sprintf("%q-%d", in.TypedSpec().Str, in.TypedSpec().Int)
 				out.TypedSpec().TransformCount++
+
+				if in.TypedSpec().Str == "destroy-output" {
+					return xerrors.NewTaggedf[qtransform.DestroyOutputTag]("destroy-output")
+				}
 
 				if requeueErrorCh != nil {
 					select {
@@ -275,6 +280,74 @@ func TestMapWithErrors(t *testing.T) {
 				assert.Equal(`"baz"-3`, r.TypedSpec().Out)
 			}
 		})
+	})
+}
+
+func TestDestroyOutput(t *testing.T) {
+	setup(t, func(ctx context.Context, st state.State, runtime *runtime.Runtime) {
+		require.NoError(t, runtime.RegisterQController(NewABController(nil, nil)))
+
+		// prepare
+
+		res := NewA("1", ASpec{Str: "before"})
+
+		require.NoError(t, st.Create(ctx, res))
+
+		rtestutils.AssertResources(ctx, t, st, []resource.ID{"transformed-1"}, func(r *B, assert *assert.Assertions) {
+			assert.Equal(`"before"-0`, r.TypedSpec().Out)
+		})
+
+		// add a finalizer to the output
+		require.NoError(t, st.AddFinalizer(ctx, NewB("transformed-1", BSpec{}).Metadata(), "some-finalizer"))
+
+		// trigger the destroy-output
+		_, err := safe.StateUpdateWithConflicts(ctx, st, NewA("1", ASpec{}).Metadata(), func(a *A) error {
+			a.TypedSpec().Str = "destroy-output"
+
+			return nil
+		})
+		require.NoError(t, err)
+
+		rtestutils.AssertResource[*B](ctx, t, st, "transformed-1", func(r *B, assert *assert.Assertions) {
+			assert.Equal(resource.PhaseTearingDown, r.Metadata().Phase())
+		})
+
+		// update the input
+		_, err = safe.StateUpdateWithConflicts(ctx, st, NewA("1", ASpec{}).Metadata(), func(a *A) error {
+			a.TypedSpec().Str = "after"
+
+			return nil
+		})
+		require.NoError(t, err)
+
+		// no changes expected yet - there is a pending teardown
+		sleep(ctx, 250*time.Millisecond)
+
+		rtestutils.AssertResource[*B](ctx, t, st, "transformed-1", func(r *B, assert *assert.Assertions) {
+			assert.Equal(resource.PhaseTearingDown, r.Metadata().Phase())
+			assert.Equal(`"before"-0`, r.TypedSpec().Out)
+		})
+
+		// remove the finalizer on the output and trigger the destroy to be completed
+		require.NoError(t, st.RemoveFinalizer(ctx, NewB("transformed-1", BSpec{}).Metadata(), "some-finalizer"))
+
+		// the resource is destroyed - the new resource will be created due to the pending update
+		rtestutils.AssertResource[*B](ctx, t, st, "transformed-1", func(r *B, assert *assert.Assertions) {
+			assert.Equal(resource.PhaseRunning, r.Metadata().Phase())
+			assert.Equal(`"after"-0`, r.TypedSpec().Out)
+		})
+
+		// request destroy output one more time
+
+		_, err = safe.StateUpdateWithConflicts(ctx, st, NewA("1", ASpec{}).Metadata(), func(a *A) error {
+			a.TypedSpec().Str = "destroy-output"
+
+			return nil
+		})
+		require.NoError(t, err)
+
+		// resource should be destroyed this time, as there is no pending update
+		rtestutils.AssertNoResource[*B](ctx, t, st, "transformed-1")
 	})
 }
 

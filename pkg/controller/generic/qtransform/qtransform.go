@@ -21,10 +21,17 @@ import (
 	"github.com/cosi-project/runtime/pkg/state"
 )
 
+var errPendingOutputTeardown = errors.New("output is being torn down")
+
 // SkipReconcileTag is used to tag errors when reconciliation should be skipped without an error.
 //
 // It's useful when next reconcile event should bring things into order.
 type SkipReconcileTag struct{}
+
+// DestroyOutputTag is used to tag errors when output should be destroyed without an error.
+//
+// It's useful when output is not needed anymore.
+type DestroyOutputTag struct{}
 
 // QController provides a generic implementation of a QController which implements controller transforming Input resources into Output resources.
 //
@@ -226,6 +233,14 @@ func (ctrl *QController[Input, Output]) reconcileRunning(ctx context.Context, lo
 		}
 	}
 
+	if err := ctrl.handleOutputTearingDown(ctx, r, mappedOut); err != nil {
+		if errors.Is(err, errPendingOutputTeardown) {
+			return nil
+		}
+
+		return err
+	}
+
 	var requeueError *controller.RequeueError
 
 	if err := safe.WriterModify(ctx, r, mappedOut, func(out Output) error {
@@ -247,6 +262,10 @@ func (ctrl *QController[Input, Output]) reconcileRunning(ctx context.Context, lo
 			return nil
 		}
 
+		if xerrors.TagIs[DestroyOutputTag](err) {
+			return ctrl.handleDestroyOutput(ctx, r, mappedOut)
+		}
+
 		if requeueError != nil && requeueError.Err() == err { //nolint:errorlint
 			// if requeueError was specified, and Modify returned it unmodified, return it
 			// otherwise Modify failed for its own reasons, and use that error
@@ -258,6 +277,40 @@ func (ctrl *QController[Input, Output]) reconcileRunning(ctx context.Context, lo
 
 	if requeueError != nil {
 		return requeueError
+	}
+
+	return nil
+}
+
+// handleOutputTearingDown checks if output is being torn down. If it is, it will check if it is ready to be destroyed, will destroy it.
+func (ctrl *QController[Input, Output]) handleOutputTearingDown(ctx context.Context, r controller.QRuntime, mappedOut Output) error {
+	output, err := r.Get(ctx, mappedOut.Metadata())
+	if err != nil && !state.IsNotFoundError(err) {
+		return err
+	}
+
+	if output == nil || output.Metadata().Phase() != resource.PhaseTearingDown {
+		return nil
+	}
+
+	if !output.Metadata().Finalizers().Empty() {
+		return errPendingOutputTeardown
+	}
+
+	return r.Destroy(ctx, mappedOut.Metadata())
+}
+
+// handleDestroyOutput handles output destruction triggered by DestroyOutputTag.
+func (ctrl *QController[Input, Output]) handleDestroyOutput(ctx context.Context, r controller.QRuntime, mappedOut Output) error {
+	destroyReady, err := r.Teardown(ctx, mappedOut.Metadata())
+	if err != nil {
+		return fmt.Errorf("error checking if output is teardown ready: %w", err)
+	}
+
+	if destroyReady {
+		if err = r.Destroy(ctx, mappedOut.Metadata()); err != nil && !state.IsNotFoundError(err) {
+			return fmt.Errorf("error destroying output: %w", err)
+		}
 	}
 
 	return nil
