@@ -10,7 +10,7 @@ import (
 	"sync"
 	"sync/atomic"
 
-	"github.com/siderolabs/gen/containers"
+	"github.com/siderolabs/gen/concurrent"
 
 	"github.com/cosi-project/runtime/pkg/resource"
 	"github.com/cosi-project/runtime/pkg/state"
@@ -20,7 +20,7 @@ var _ state.CoreState = &State{}
 
 // State implements state.CoreState.
 type State struct {
-	collections containers.SyncMap[resource.Type, *ResourceCollection]
+	collections *concurrent.HashTrieMap[resource.Type, *ResourceCollection]
 	store       BackingStore
 
 	ns resource.Namespace
@@ -44,11 +44,12 @@ func NewStateWithOptions(opts ...StateOption) func(ns resource.Namespace) *State
 
 	return func(ns resource.Namespace) *State {
 		return &State{
+			collections:     concurrent.NewHashTrieMap[resource.Type, *ResourceCollection](),
+			store:           options.BackingStore,
 			ns:              ns,
 			initialCapacity: options.HistoryInitialCapacity,
 			maxCapacity:     options.HistoryMaxCapacity,
 			gap:             options.HistoryGap,
-			store:           options.BackingStore,
 		}
 	}
 }

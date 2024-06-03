@@ -8,7 +8,7 @@ package namespaced
 import (
 	"context"
 
-	"github.com/siderolabs/gen/containers"
+	"github.com/siderolabs/gen/concurrent"
 
 	"github.com/cosi-project/runtime/pkg/resource"
 	"github.com/cosi-project/runtime/pkg/state"
@@ -23,13 +23,14 @@ var _ state.CoreState = (*State)(nil)
 type State struct {
 	builder StateBuilder
 
-	namespaces containers.SyncMap[resource.Namespace, state.CoreState]
+	namespaces *concurrent.HashTrieMap[resource.Namespace, state.CoreState]
 }
 
 // NewState initializes new namespaced State.
 func NewState(builder StateBuilder) *State {
 	return &State{
-		builder: builder,
+		builder:    builder,
+		namespaces: concurrent.NewHashTrieMap[resource.Namespace, state.CoreState](),
 	}
 }
 
