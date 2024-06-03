@@ -14,7 +14,7 @@ require (
 	github.com/hashicorp/go-multierror v1.1.1
 	github.com/klauspost/compress v1.17.8
 	github.com/planetscale/vtprotobuf v0.6.0
-	github.com/siderolabs/gen v0.4.8
+	github.com/siderolabs/gen v0.5.0
 	github.com/siderolabs/go-pointer v1.0.0
 	github.com/siderolabs/go-retry v0.3.3
 	github.com/siderolabs/protoenc v0.2.1
