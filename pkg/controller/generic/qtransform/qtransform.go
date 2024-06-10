@@ -303,7 +303,7 @@ func (ctrl *QController[Input, Output]) handleOutputTearingDown(ctx context.Cont
 // handleDestroyOutput handles output destruction triggered by DestroyOutputTag.
 func (ctrl *QController[Input, Output]) handleDestroyOutput(ctx context.Context, r controller.QRuntime, mappedOut Output) error {
 	destroyReady, err := r.Teardown(ctx, mappedOut.Metadata())
-	if err != nil {
+	if err != nil && !state.IsNotFoundError(err) {
 		return fmt.Errorf("error checking if output is teardown ready: %w", err)
 	}
 

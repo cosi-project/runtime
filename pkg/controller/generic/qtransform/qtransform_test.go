@@ -25,6 +25,8 @@ import (
 	"github.com/cosi-project/runtime/pkg/controller"
 	"github.com/cosi-project/runtime/pkg/controller/generic/qtransform"
 	"github.com/cosi-project/runtime/pkg/controller/runtime"
+	"github.com/cosi-project/runtime/pkg/controller/runtime/metrics"
+	"github.com/cosi-project/runtime/pkg/controller/runtime/options"
 	"github.com/cosi-project/runtime/pkg/future"
 	"github.com/cosi-project/runtime/pkg/logging"
 	"github.com/cosi-project/runtime/pkg/resource"
@@ -61,7 +63,7 @@ func NewABController(reconcileTeardownCh <-chan string, requeueErrorCh <-chan er
 				out.TypedSpec().Out = fmt.Sprintf("%q-%d", in.TypedSpec().Str, in.TypedSpec().Int)
 				out.TypedSpec().TransformCount++
 
-				if in.TypedSpec().Str == "destroy-output" {
+				if strings.HasPrefix(in.TypedSpec().Str, "destroy-output") {
 					return xerrors.NewTaggedf[qtransform.DestroyOutputTag]("destroy-output")
 				}
 
@@ -285,7 +287,8 @@ func TestMapWithErrors(t *testing.T) {
 
 func TestDestroyOutput(t *testing.T) {
 	setup(t, func(ctx context.Context, st state.State, runtime *runtime.Runtime) {
-		require.NoError(t, runtime.RegisterQController(NewABController(nil, nil)))
+		abController := NewABController(nil, nil)
+		require.NoError(t, runtime.RegisterQController(abController))
 
 		// prepare
 
@@ -348,7 +351,30 @@ func TestDestroyOutput(t *testing.T) {
 
 		// resource should be destroyed this time, as there is no pending update
 		rtestutils.AssertNoResource[*B](ctx, t, st, "transformed-1")
-	})
+
+		crashesBefore := ""
+		if crashesVal := metrics.QControllerCrashes.Get(abController.Name()); crashesVal != nil {
+			crashesBefore = crashesVal.String()
+		}
+
+		// trigger one more destroy output
+		_, err = safe.StateUpdateWithConflicts(ctx, st, NewA("1", ASpec{}).Metadata(), func(a *A) error {
+			a.TypedSpec().Str = "destroy-output-updated"
+
+			return nil
+		})
+		require.NoError(t, err)
+
+		time.Sleep(500 * time.Millisecond)
+
+		crashesAfter := ""
+		if crashesVal := metrics.QControllerCrashes.Get(abController.Name()); crashesVal != nil {
+			crashesAfter = crashesVal.String()
+		}
+
+		// assert that there was no crash
+		assert.Equal(t, crashesBefore, crashesAfter)
+	}, options.WithMetrics(true))
 }
 
 func TestDestroy(t *testing.T) {
@@ -684,14 +710,14 @@ func TestRequeueErrorBackoff(t *testing.T) {
 	})
 }
 
-func setup(t *testing.T, f func(ctx context.Context, st state.State, rt *runtime.Runtime)) {
+func setup(t *testing.T, f func(ctx context.Context, st state.State, rt *runtime.Runtime), opts ...options.Option) {
 	defer goleak.VerifyNone(t, goleak.IgnoreCurrent())
 
 	st := state.WrapCore(namespaced.NewState(inmem.Build))
 
 	logger := logging.DefaultLogger()
 
-	rt, err := runtime.NewRuntime(st, logger)
+	rt, err := runtime.NewRuntime(st, logger, opts...)
 	require.NoError(t, err)
 
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
