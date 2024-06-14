@@ -29,6 +29,11 @@ import (
 	"github.com/cosi-project/runtime/pkg/resource"
 )
 
+type resourceNamespaceType struct {
+	ns  resource.Namespace
+	typ resource.Type
+}
+
 // Adapter implements QRuntime interface for the QController.
 type Adapter struct {
 	queue          *queue.Queue[QItem]
@@ -36,7 +41,8 @@ type Adapter struct {
 	controller     controller.QController
 	queueLenExpVar *expvar.Int
 
-	backoffs map[QItem]*backoff.ExponentialBackOff
+	backoffs      map[QItem]*backoff.ExponentialBackOff
+	primaryInputs map[resourceNamespaceType]struct{}
 
 	controllerstate.StateAdapter
 	backoffsMu sync.Mutex
@@ -52,6 +58,7 @@ func NewAdapter(
 ) (*Adapter, error) {
 	name := ctrl.Name()
 	settings := ctrl.Settings()
+	primaryInputs := map[resourceNamespaceType]struct{}{}
 
 	concurrency := settings.Concurrency.ValueOr(DefaultConcurrency)
 	if concurrency == 0 {
@@ -69,7 +76,9 @@ func NewAdapter(
 		case controller.InputWeak, controller.InputStrong, controller.InputDestroyReady:
 			// allowed only for Controllers
 			return nil, fmt.Errorf("invalid input kind %d for controller %q", input.Kind, name)
-		case controller.InputQPrimary, controller.InputQMapped, controller.InputQMappedDestroyReady: // allowed only for QControllers
+		case controller.InputQPrimary: // allowed only for QControllers
+			primaryInputs[resourceNamespaceType{ns: input.Namespace, typ: input.Type}] = struct{}{}
+		case controller.InputQMapped, controller.InputQMappedDestroyReady: // allowed only for QControllers
 		}
 
 		if err := adapterOptions.DepDB.AddControllerInput(name, input); err != nil {
@@ -111,6 +120,7 @@ func NewAdapter(
 		controller:     ctrl,
 		queueLenExpVar: queueLenExpVar,
 		concurrency:    concurrency,
+		primaryInputs:  primaryInputs,
 		metricsEnabled: adapterOptions.RuntimeOptions.MetricsEnabled,
 	}, nil
 }
@@ -350,6 +360,10 @@ func (adapter *Adapter) runOnce(ctx context.Context, logger *zap.Logger, item QI
 
 		if err == nil {
 			for _, mappedItem := range mappedItems {
+				if _, valid := adapter.primaryInputs[resourceNamespaceType{ns: mappedItem.Namespace(), typ: mappedItem.Type()}]; !valid {
+					panic(fmt.Sprintf("unexpected primary input in the mapped output: %s/%s", mappedItem.Namespace(), mappedItem.Type()))
+				}
+
 				adapter.queue.Put(NewQItem(mappedItem, QJobReconcile))
 			}
 		}
