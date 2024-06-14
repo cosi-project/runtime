@@ -26,6 +26,7 @@ type Runtime interface {
 	UpdateInputs([]Input) error
 
 	Reader
+	UncachedReader
 	Writer
 	OutputTracker
 }
@@ -114,6 +115,14 @@ type Reader interface {
 	Get(context.Context, resource.Pointer, ...state.GetOption) (resource.Resource, error)
 	List(context.Context, resource.Kind, ...state.ListOption) (resource.List, error)
 	ContextWithTeardown(context.Context, resource.Pointer) (context.Context, error)
+}
+
+// UncachedReader provides read-only access to the state without cache.
+//
+// It might cause performance penalty, use only when necessary.
+type UncachedReader interface {
+	GetUncached(context.Context, resource.Pointer, ...state.GetOption) (resource.Resource, error)
+	ListUncached(context.Context, resource.Kind, ...state.ListOption) (resource.List, error)
 }
 
 // Writer provides write access to the state.

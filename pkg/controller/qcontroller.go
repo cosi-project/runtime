@@ -58,6 +58,7 @@ type QController interface {
 // QRuntime interface as presented to the QController.
 type QRuntime interface {
 	ReaderWriter
+	UncachedReader
 }
 
 // QSettings configures runtime for the QController.

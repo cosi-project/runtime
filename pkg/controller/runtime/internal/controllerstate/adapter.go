@@ -99,11 +99,20 @@ func (adapter *StateAdapter) checkFinalizerAccess(resourceNamespace resource.Nam
 
 // Get implements controller.Runtime interface.
 func (adapter *StateAdapter) Get(ctx context.Context, resourcePointer resource.Pointer, opts ...state.GetOption) (resource.Resource, error) { //nolint:ireturn
+	return adapter.get(ctx, false, resourcePointer, opts...)
+}
+
+// GetUncached implements controller.Runtime interface.
+func (adapter *StateAdapter) GetUncached(ctx context.Context, resourcePointer resource.Pointer, opts ...state.GetOption) (resource.Resource, error) { //nolint:ireturn
+	return adapter.get(ctx, true, resourcePointer, opts...)
+}
+
+func (adapter *StateAdapter) get(ctx context.Context, disableCache bool, resourcePointer resource.Pointer, opts ...state.GetOption) (resource.Resource, error) { //nolint:ireturn
 	if err := adapter.checkReadAccess(resourcePointer.Namespace(), resourcePointer.Type(), optional.Some(resourcePointer.ID())); err != nil {
 		return nil, err
 	}
 
-	if cacheHandled := adapter.Cache.IsHandled(resourcePointer.Namespace(), resourcePointer.Type()); cacheHandled {
+	if cacheHandled := adapter.Cache.IsHandled(resourcePointer.Namespace(), resourcePointer.Type()); cacheHandled && !disableCache {
 		return adapter.Cache.Get(ctx, resourcePointer, opts...)
 	}
 
@@ -116,11 +125,21 @@ func (adapter *StateAdapter) Get(ctx context.Context, resourcePointer resource.P
 
 // List implements controller.Runtime interface.
 func (adapter *StateAdapter) List(ctx context.Context, resourceKind resource.Kind, opts ...state.ListOption) (resource.List, error) {
+	return adapter.list(ctx, false, resourceKind, opts...)
+}
+
+// ListUncached implements controller.Runtime interface.
+func (adapter *StateAdapter) ListUncached(ctx context.Context, resourceKind resource.Kind, opts ...state.ListOption) (resource.List, error) {
+	return adapter.list(ctx, true, resourceKind, opts...)
+}
+
+// List implements controller.Runtime interface.
+func (adapter *StateAdapter) list(ctx context.Context, disableCache bool, resourceKind resource.Kind, opts ...state.ListOption) (resource.List, error) {
 	if err := adapter.checkReadAccess(resourceKind.Namespace(), resourceKind.Type(), optional.None[resource.ID]()); err != nil {
 		return resource.List{}, err
 	}
 
-	if cacheHandled := adapter.Cache.IsHandled(resourceKind.Namespace(), resourceKind.Type()); cacheHandled {
+	if cacheHandled := adapter.Cache.IsHandled(resourceKind.Namespace(), resourceKind.Type()); cacheHandled && !disableCache {
 		return adapter.Cache.List(ctx, resourceKind, opts...)
 	}
 
