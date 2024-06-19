@@ -13,6 +13,7 @@ import (
 	"github.com/siderolabs/gen/channel"
 	"github.com/siderolabs/gen/optional"
 	"go.uber.org/zap"
+	"golang.org/x/sync/errgroup"
 
 	"github.com/cosi-project/runtime/pkg/controller"
 	"github.com/cosi-project/runtime/pkg/controller/runtime/internal/adapter"
@@ -41,10 +42,10 @@ type Runtime struct { //nolint:govet
 	watchedMu   sync.Mutex
 	watched     map[watchKey]bool // value is true if the watch populates the cache
 
-	controllersMu      sync.RWMutex
-	controllersCond    *sync.Cond
-	controllersRunning int
-	controllers        map[string]adapter.Adapter
+	group errgroup.Group
+
+	controllersMu sync.RWMutex
+	controllers   map[string]adapter.Adapter
 
 	runCtx       context.Context //nolint:containedctx
 	runCtxCancel context.CancelFunc
@@ -77,8 +78,6 @@ func NewRuntime(st state.State, logger *zap.Logger, opt ...options.Option) (*Run
 	for _, o := range opt {
 		o(&runtime.options)
 	}
-
-	runtime.controllersCond = sync.NewCond(&runtime.controllersMu)
 
 	var err error
 
@@ -165,21 +164,7 @@ func (runtime *Runtime) registerAdapter(name string, adapter adapter.Adapter) {
 	runtime.controllers[name] = adapter
 
 	if runtime.runCtx != nil {
-		// runtime has already been started
-		runtime.controllersRunning++
-
-		go func() {
-			defer func() {
-				runtime.controllersMu.Lock()
-				defer runtime.controllersMu.Unlock()
-
-				runtime.controllersRunning--
-
-				runtime.controllersCond.Signal()
-			}()
-
-			adapter.Run(runtime.runCtx)
-		}()
+		goFunc(&runtime.group, func() { adapter.Run(runtime.runCtx) })
 	}
 }
 
@@ -201,23 +186,14 @@ func (runtime *Runtime) Run(ctx context.Context) error {
 			return err
 		}
 
-		go runtime.processWatched()
+		runtime.group.Go(func() error {
+			runtime.processWatched()
+
+			return nil
+		})
 
 		for _, adapter := range runtime.controllers {
-			runtime.controllersRunning++
-
-			go func() {
-				defer func() {
-					runtime.controllersMu.Lock()
-					defer runtime.controllersMu.Unlock()
-
-					runtime.controllersRunning--
-
-					runtime.controllersCond.Signal()
-				}()
-
-				adapter.Run(runtime.runCtx)
-			}()
+			goFunc(&runtime.group, func() { adapter.Run(runtime.runCtx) })
 		}
 
 		return nil
@@ -237,9 +213,7 @@ func (runtime *Runtime) Run(ctx context.Context) error {
 
 	runtime.runCtxCancel()
 
-	for runtime.controllersRunning > 0 {
-		runtime.controllersCond.Wait()
-	}
+	runtime.group.Wait() //nolint:errcheck // no function which this group manages should return an error
 
 	runtime.controllersMu.Unlock()
 
@@ -322,8 +296,8 @@ func (runtime *Runtime) processWatched() {
 	empty := make(chan dedup, 1)
 	empty <- dedup{}
 
-	go runtime.deduplicateWatchEvents(ch, empty)
-	go runtime.deliverDeduplicatedEvents(ch, empty)
+	goFunc(&runtime.group, func() { runtime.deduplicateWatchEvents(ch, empty) })
+	goFunc(&runtime.group, func() { runtime.deliverDeduplicatedEvents(ch, empty) })
 }
 
 // processEvents processes a group of watch events producing deduplicated map of reducedMetadata.
@@ -482,3 +456,5 @@ func (runtime *Runtime) deliverDeduplicatedEvents(ch chan dedup, empty chan<- de
 		runtime.controllersMu.RUnlock()
 	}
 }
+
+func goFunc(group *errgroup.Group, fn func()) { group.Go(func() error { fn(); return nil }) } //nolint:nlreturn
