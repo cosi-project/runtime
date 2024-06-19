@@ -209,13 +209,9 @@ func (runtime *Runtime) Run(ctx context.Context) error {
 		watchErr = fmt.Errorf("controller runtime watch error: %w", watchErr)
 	}
 
-	runtime.controllersMu.Lock()
-
 	runtime.runCtxCancel()
 
 	runtime.group.Wait() //nolint:errcheck // no function which this group manages should return an error
-
-	runtime.controllersMu.Unlock()
 
 	return watchErr
 }

@@ -13,7 +13,7 @@ jobs:
     steps:
       -
         name: Checkout
-        uses: actions/checkout@v4.1.2
+        uses: actions/checkout@v4.1.7
       -
         name: Set up QEMU
         uses: docker/setup-qemu-action@v3.0.0
@@ -36,7 +36,7 @@ jobs:
         run: make unit-tests
       -
         name: codecov
-        uses: codecov/codecov-action@v4.1.0
+        uses: codecov/codecov-action@v4.5.0
         with:
           files: ./_out/coverage-unit-tests.txt
       -
