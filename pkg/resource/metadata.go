@@ -220,7 +220,7 @@ func (md *Metadata) MarshalYAML() (any, error) {
 
 	return &yaml.Node{
 		Kind: yaml.MappingNode,
-		Content: append(
+		Content: slices.Concat(
 			[]*yaml.Node{
 				{
 					Kind:  yaml.ScalarNode,
@@ -287,7 +287,10 @@ func (md *Metadata) MarshalYAML() (any, error) {
 					Value: md.updated.Format(time.RFC3339),
 				},
 			},
-			append(append(labels, annotations...), finalizers...)...),
+			labels,
+			annotations,
+			finalizers,
+		),
 	}, nil
 }
 

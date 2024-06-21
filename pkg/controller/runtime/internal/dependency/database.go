@@ -242,20 +242,18 @@ func (db *Database) GetDependentControllers(dep controller.Input) ([]string, err
 		return nil, fmt.Errorf("resource ID is not set")
 	}
 
-	return append(
-		slices.Clone(
-			db.inputLookup[namespaceType{
-				Namespace: dep.Namespace,
-				Type:      dep.Type,
-			}],
-		),
+	return slices.Concat(
+		db.inputLookup[namespaceType{
+			Namespace: dep.Namespace,
+			Type:      dep.Type,
+		}],
 		db.inputLookupID[namespaceTypeID{
 			namespaceType: namespaceType{
 				Namespace: dep.Namespace,
 				Type:      dep.Type,
 			},
 			ID: dep.ID.ValueOrZero(),
-		}]...,
+		}],
 	), nil
 }
 
