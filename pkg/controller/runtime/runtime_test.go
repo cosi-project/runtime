@@ -24,6 +24,7 @@ import (
 	"github.com/cosi-project/runtime/pkg/resource"
 	"github.com/cosi-project/runtime/pkg/safe"
 	"github.com/cosi-project/runtime/pkg/state"
+	stateconformance "github.com/cosi-project/runtime/pkg/state/conformance"
 	"github.com/cosi-project/runtime/pkg/state/impl/inmem"
 	"github.com/cosi-project/runtime/pkg/state/impl/namespaced"
 )
@@ -181,4 +182,67 @@ func TestRuntimeWatchOverrun(t *testing.T) {
 
 	err = <-errCh
 	require.NoError(t, err)
+}
+
+func TestRuntimeCachedState(t *testing.T) {
+	defer goleak.VerifyNone(t, goleak.IgnoreCurrent())
+
+	st := state.WrapCore(namespaced.NewState(inmem.Build))
+
+	logger := zaptest.NewLogger(t)
+	rt, err := runtime.NewRuntime(st, logger, options.WithCachedResource("cached", conformance.IntResourceType))
+	require.NoError(t, err)
+
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	t.Cleanup(cancel)
+
+	errCh := make(chan error, 1)
+
+	// start the runtime, so that cached state is initialized
+	go func() {
+		errCh <- rt.Run(ctx)
+	}()
+
+	cachedState := state.WrapCore(rt.CachedState())
+
+	// uncached namespace should pass full conformance suite for resource state
+	suiterunner.Run(t, &stateconformance.StateSuite{
+		State:      state.WrapCore(cachedState),
+		Namespaces: []resource.Namespace{"uncached"},
+	})
+
+	// cached namespace has eventual consistency, so it might not pass all tests, do some manual tests
+	r := conformance.NewIntResource("cached", "1", 1)
+
+	_, err = cachedState.Get(ctx, r.Metadata())
+	require.Error(t, err)
+	assert.True(t, state.IsNotFoundError(err))
+
+	items, err := cachedState.List(ctx, r.Metadata())
+	require.NoError(t, err)
+	require.Empty(t, items.Items)
+
+	require.NoError(t, cachedState.Create(ctx, r))
+
+	require.Eventually(t, func() bool {
+		_, err = cachedState.Get(ctx, r.Metadata())
+
+		return err == nil
+	}, time.Second, time.Millisecond)
+
+	items, err = cachedState.List(ctx, r.Metadata())
+	require.NoError(t, err)
+	require.Len(t, items.Items, 1)
+
+	require.NoError(t, cachedState.Destroy(ctx, r.Metadata()))
+
+	require.Eventually(t, func() bool {
+		_, err = cachedState.Get(ctx, r.Metadata())
+
+		return state.IsNotFoundError(err)
+	}, time.Second, time.Millisecond)
+
+	cancel()
+
+	require.NoError(t, <-errCh)
 }

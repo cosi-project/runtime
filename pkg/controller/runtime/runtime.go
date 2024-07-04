@@ -160,6 +160,11 @@ func (runtime *Runtime) RegisterQController(ctrl controller.QController) error {
 	return nil
 }
 
+// CachedState returns the runtime state wrapped with the cache used by the runtime.
+func (runtime *Runtime) CachedState() state.CoreState {
+	return runtime.cache.WrapState(runtime.state)
+}
+
 func (runtime *Runtime) registerAdapter(name string, adapter adapter.Adapter) {
 	runtime.controllers[name] = adapter
 

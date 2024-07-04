@@ -139,3 +139,11 @@ func (cache *ResourceCache) CachePut(r resource.Resource) {
 func (cache *ResourceCache) CacheRemove(r resource.Resource) {
 	cache.getHandler(r.Metadata().Namespace(), r.Metadata().Type()).remove(r)
 }
+
+// WrapState returns a cached wrapped state, which serves some operations from the cache bypassing the underlying state.
+func (cache *ResourceCache) WrapState(st state.CoreState) state.CoreState {
+	return &stateWrapper{
+		cache: cache,
+		st:    st,
+	}
+}
