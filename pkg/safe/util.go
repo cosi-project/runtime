@@ -13,7 +13,8 @@ import (
 	"github.com/cosi-project/runtime/pkg/resource"
 )
 
-// Map applies the given function to each element of the list and returns a new list with the results.
+// Map applies the given function to each element of the list and returns a new slice with the results. It
+// returns an error if the given function had returned an error.
 func Map[T any, R any](list List[T], fn func(T) (R, error)) ([]R, error) {
 	result := make([]R, 0, list.Len())
 
@@ -27,6 +28,17 @@ func Map[T any, R any](list List[T], fn func(T) (R, error)) ([]R, error) {
 	}
 
 	return result, nil
+}
+
+// ToSlice applies the given function to each element of the list and returns a new slice with the results.
+func ToSlice[T any, R any](list List[T], fn func(T) R) []R {
+	result := make([]R, 0, list.Len())
+
+	for _, item := range list.list.Items {
+		result = append(result, fn(item.(T))) //nolint:forcetypeassert
+	}
+
+	return result
 }
 
 // Input returns a controller.Input for the given resource.

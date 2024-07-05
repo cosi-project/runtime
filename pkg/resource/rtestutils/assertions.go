@@ -225,11 +225,12 @@ func AssertNoResource[R ResourceWithRD](
 		case ev = <-watchCh:
 		}
 
-		switch ev.Type { //nolint:exhaustive
+		switch ev.Type {
 		case state.Destroyed:
 			return
 		case state.Errored:
 			require.NoError(ev.Error)
+		case state.Created, state.Updated, state.Bootstrapped:
 		}
 	}
 }
@@ -265,7 +266,7 @@ func AssertLength[R ResourceWithRD](ctx context.Context, t *testing.T, st state.
 	for {
 		select {
 		case event := <-watchCh:
-			switch event.Type { //nolint:exhaustive
+			switch event.Type {
 			case state.Created:
 				length++
 			case state.Destroyed:
@@ -274,6 +275,7 @@ func AssertLength[R ResourceWithRD](ctx context.Context, t *testing.T, st state.
 				bootstrapped = true
 			case state.Errored:
 				require.NoError(event.Error)
+			case state.Updated:
 			}
 
 			if bootstrapped && length == expectedLength {

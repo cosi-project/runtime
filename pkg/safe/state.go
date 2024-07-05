@@ -282,6 +282,9 @@ func (l *List[T]) Find(fn func(T) bool) (T, bool) {
 	return zero, false
 }
 
+// Swap swaps the elements with indexes i and j.
+func (l *List[T]) Swap(i, j int) { l.list.Items[i], l.list.Items[j] = l.list.Items[j], l.list.Items[i] }
+
 // Iterator returns a new iterator over the list.
 func (l *List[T]) Iterator() ListIterator[T] {
 	return ListIterator[T]{pos: 0, list: *l}
