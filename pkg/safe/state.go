@@ -7,6 +7,7 @@ package safe
 import (
 	"context"
 	"fmt"
+	"slices"
 
 	"github.com/siderolabs/gen/channel"
 	"github.com/siderolabs/gen/xslices"
@@ -212,6 +213,13 @@ func (l *List[T]) Get(index int) T { //nolint:ireturn
 // Len returns the number of items in the list.
 func (l *List[T]) Len() int {
 	return len(l.list.Items)
+}
+
+// SortFunc is a function that sorts the list.
+func (l *List[T]) SortFunc(cmp func(T, T) int) {
+	slices.SortFunc(l.list.Items, func(l, r resource.Resource) int {
+		return cmp(l.(T), r.(T)) //nolint:forcetypeassert
+	})
 }
 
 // FilterLabelQuery returns a new list applying the resource label query.
