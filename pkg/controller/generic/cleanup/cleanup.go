@@ -324,7 +324,7 @@ func RemoveOutputs[O generic.ResourceWithRD, I generic.ResourceWithRD](
 				}
 
 				ready, err := r.Teardown(ctx, out.Metadata(), controller.WithOwner(owner))
-				if err != nil {
+				if err != nil && !state.IsNotFoundError(err) {
 					multiErr = multierror.Append(multiErr, fmt.Errorf("error tearing down %q resource %q: %w", zeroOutputType, out.Metadata().ID(), err))
 
 					continue
@@ -337,7 +337,7 @@ func RemoveOutputs[O generic.ResourceWithRD, I generic.ResourceWithRD](
 				}
 
 				err = r.Destroy(ctx, out.Metadata(), controller.WithOwner(owner))
-				if err != nil {
+				if err != nil && !state.IsNotFoundError(err) {
 					multiErr = multierror.Append(multiErr, fmt.Errorf("error destroying %q resource %q: %w", zeroOutputType, out.Metadata().ID(), err))
 				}
 
