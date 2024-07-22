@@ -115,6 +115,8 @@ func (ctrl *Controller[I]) Run(ctx context.Context, r controller.Runtime, logger
 		if multiErr != nil {
 			return fmt.Errorf("cleanup controller %q failed: %w", ctrl.Name(), multiErr)
 		}
+
+		r.ResetRestartBackoff()
 	}
 }
 
