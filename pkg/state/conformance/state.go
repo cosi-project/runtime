@@ -859,6 +859,32 @@ loop:
 	}
 }
 
+// TestParallelDestroy runs several parallel destroy calls.
+func (suite *StateSuite) TestParallelDestroy() {
+	res := NewPathResource("default", "/")
+
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	var eg errgroup.Group
+
+	err := suite.State.Create(ctx, res)
+	suite.Require().NoError(err)
+
+	for range 10 {
+		eg.Go(func() error {
+			err := suite.State.Destroy(ctx, res.Metadata())
+			if err != nil && !state.IsNotFoundError(err) {
+				return err
+			}
+
+			return nil
+		})
+	}
+
+	suite.Require().NoError(eg.Wait())
+}
+
 // TestTeardownDestroy verifies finalizers, teardown and destroy.
 func (suite *StateSuite) TestTeardownDestroy() {
 	ns := suite.getNamespace()
