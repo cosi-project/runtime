@@ -70,6 +70,10 @@ func (spec *ResourceSpec[T, S]) UnmarshalYAML(node *yaml.Node) error {
 func (spec *ResourceSpec[T, S]) UnmarshalJSON(bytes []byte) error {
 	spec.Value = new(T)
 
+	if unmarshaler, ok := any(spec.Value).(json.Unmarshaler); ok {
+		return unmarshaler.UnmarshalJSON(bytes)
+	}
+
 	opts := protojson.UnmarshalOptions{}
 
 	return opts.Unmarshal(bytes, spec.Value)
