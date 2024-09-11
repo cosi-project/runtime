@@ -11,6 +11,29 @@ import (
 	"github.com/cosi-project/runtime/pkg/resource"
 )
 
+// ErrcheckOptions defines additional error check options.
+type ErrcheckOptions struct {
+	resourceType      resource.Type
+	resourceNamespace resource.Namespace
+}
+
+// ErrcheckOption defines an additional error check option.
+type ErrcheckOption func(*ErrcheckOptions)
+
+// WithResourceType checks if the error is related to the resource type.
+func WithResourceType(rt resource.Type) ErrcheckOption {
+	return func(eo *ErrcheckOptions) {
+		eo.resourceType = rt
+	}
+}
+
+// WithResourceNamespace checks if the error is related to the resource namespace.
+func WithResourceNamespace(ns resource.Namespace) ErrcheckOption {
+	return func(eo *ErrcheckOptions) {
+		eo.resourceNamespace = ns
+	}
+}
+
 // ErrUnsupported should be implemented by unsupported operation errors.
 type ErrUnsupported interface {
 	UnsupportedError()
@@ -38,13 +61,34 @@ func IsNotFoundError(err error) bool {
 // ErrConflict should be implemented by already exists/update conflict errors.
 type ErrConflict interface {
 	ConflictError()
+	GetResource() resource.Pointer
 }
 
 // IsConflictError checks if err is resource already exists/update conflict.
-func IsConflictError(err error) bool {
+func IsConflictError(err error, opts ...ErrcheckOption) bool {
 	var i ErrConflict
 
-	return errors.As(err, &i)
+	var options ErrcheckOptions
+
+	for _, o := range opts {
+		o(&options)
+	}
+
+	if !errors.As(err, &i) {
+		return false
+	}
+
+	res := i.GetResource()
+
+	if options.resourceNamespace != "" && res.Namespace() != options.resourceNamespace {
+		return false
+	}
+
+	if options.resourceType != "" && res.Type() != options.resourceType {
+		return false
+	}
+
+	return true
 }
 
 // ErrOwnerConflict should be implemented by owner conflict errors.

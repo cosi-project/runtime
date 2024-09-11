@@ -4,6 +4,8 @@
 
 package client
 
+import "github.com/cosi-project/runtime/pkg/resource"
+
 type eNotFound struct {
 	error
 }
@@ -12,9 +14,14 @@ func (eNotFound) NotFoundError() {}
 
 type eConflict struct {
 	error
+	resource resource.Pointer
 }
 
 func (eConflict) ConflictError() {}
+
+func (e eConflict) GetResource() resource.Pointer {
+	return e.resource
+}
 
 type eOwnerConflict struct {
 	eConflict

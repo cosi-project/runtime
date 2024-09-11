@@ -25,9 +25,14 @@ func ErrNotFound(r resource.Pointer) error {
 
 type eConflict struct {
 	error
+	resource resource.Pointer
 }
 
 func (eConflict) ConflictError() {}
+
+func (e eConflict) GetResource() resource.Pointer {
+	return e.resource
+}
 
 type eOwnerConflict struct {
 	eConflict
@@ -44,28 +49,31 @@ func (ePhaseConflict) PhaseConflictError() {}
 // ErrAlreadyExists generates error compatible with state.ErrConflict.
 func ErrAlreadyExists(r resource.Reference) error {
 	return eConflict{
-		fmt.Errorf("resource %s already exists", r),
+		error:    fmt.Errorf("resource %s already exists", r),
+		resource: r,
 	}
 }
 
 // ErrVersionConflict generates error compatible with state.ErrConflict.
 func ErrVersionConflict(r resource.Reference, expected, found resource.Version) error {
 	return eConflict{
-		fmt.Errorf("resource %s update conflict: expected version %q, actual version %q", r, expected, found),
+		error: fmt.Errorf("resource %s update conflict: expected version %q, actual version %q", r, expected, found),
 	}
 }
 
 // ErrUpdateSameVersion generates error compatible with state.ErrConflict.
 func ErrUpdateSameVersion(r resource.Reference, version resource.Version) error {
 	return eConflict{
-		fmt.Errorf("resource %s update conflict: same %q version for new and existing objects", r, version),
+		error:    fmt.Errorf("resource %s update conflict: same %q version for new and existing objects", r, version),
+		resource: r,
 	}
 }
 
 // ErrPendingFinalizers generates error compatible with state.ErrConflict.
 func ErrPendingFinalizers(r resource.Metadata) error {
 	return eConflict{
-		fmt.Errorf("resource %s has pending finalizers %s", r, r.Finalizers()),
+		error:    fmt.Errorf("resource %s has pending finalizers %s", r, r.Finalizers()),
+		resource: r,
 	}
 }
 
@@ -73,7 +81,8 @@ func ErrPendingFinalizers(r resource.Metadata) error {
 func ErrOwnerConflict(r resource.Reference, owner string) error {
 	return eOwnerConflict{
 		eConflict{
-			fmt.Errorf("resource %s is owned by %q", r, owner),
+			error:    fmt.Errorf("resource %s is owned by %q", r, owner),
+			resource: r,
 		},
 	}
 }
@@ -82,7 +91,8 @@ func ErrOwnerConflict(r resource.Reference, owner string) error {
 func ErrPhaseConflict(r resource.Reference, expectedPhase resource.Phase) error {
 	return ePhaseConflict{
 		eConflict{
-			fmt.Errorf("resource %s is not in phase %s", r, expectedPhase),
+			error:    fmt.Errorf("resource %s is not in phase %s", r, expectedPhase),
+			resource: r,
 		},
 	}
 }

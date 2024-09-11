@@ -253,7 +253,10 @@ func (ctrl *QController[Input, Output]) reconcileRunning(ctx context.Context, lo
 
 		return transformError
 	}); err != nil {
-		if state.IsConflictError(err) {
+		if state.IsConflictError(err,
+			state.WithResourceNamespace(mappedOut.Metadata().Namespace()),
+			state.WithResourceType(mappedOut.Metadata().Type()),
+		) {
 			// conflict due to wrong phase, skip it
 			return nil
 		}

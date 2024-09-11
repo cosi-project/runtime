@@ -172,9 +172,9 @@ func (adapter *Adapter) Create(ctx context.Context, r resource.Resource, opt ...
 		case codes.NotFound:
 			return eNotFound{err}
 		case codes.PermissionDenied:
-			return eOwnerConflict{eConflict{err}}
+			return eOwnerConflict{eConflict{error: err, resource: r.Metadata()}}
 		case codes.AlreadyExists:
-			return eConflict{err}
+			return eConflict{error: err, resource: r.Metadata()}
 		default:
 			return err
 		}
@@ -223,11 +223,11 @@ func (adapter *Adapter) Update(ctx context.Context, newResource resource.Resourc
 		case codes.NotFound:
 			return eNotFound{err}
 		case codes.PermissionDenied:
-			return eOwnerConflict{eConflict{err}}
+			return eOwnerConflict{eConflict{error: err, resource: newResource.Metadata()}}
 		case codes.InvalidArgument:
-			return ePhaseConflict{eConflict{err}}
+			return ePhaseConflict{eConflict{error: err, resource: newResource.Metadata()}}
 		case codes.FailedPrecondition:
-			return eConflict{err}
+			return eConflict{error: err, resource: newResource.Metadata()}
 		default:
 			return err
 		}
@@ -261,9 +261,9 @@ func (adapter *Adapter) Destroy(ctx context.Context, resourcePointer resource.Po
 		case codes.NotFound:
 			return eNotFound{err}
 		case codes.PermissionDenied:
-			return eOwnerConflict{eConflict{err}}
+			return eOwnerConflict{eConflict{error: err, resource: resourcePointer}}
 		case codes.FailedPrecondition:
-			return eConflict{err}
+			return eConflict{error: err, resource: resourcePointer}
 		default:
 			return err
 		}

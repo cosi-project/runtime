@@ -328,7 +328,10 @@ func (ctrl *Controller[Input, Output]) processInputs(
 		if err = safe.WriterModify(ctx, r, mappedOut, func(out Output) error {
 			return ctrl.transformFunc(ctx, r, logger, in, out)
 		}); err != nil {
-			if state.IsConflictError(err) {
+			if state.IsConflictError(err,
+				state.WithResourceNamespace(mappedOut.Metadata().Namespace()),
+				state.WithResourceType(mappedOut.Metadata().Type()),
+			) {
 				// conflict due to wrong phase, skip it
 				continue
 			}

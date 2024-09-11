@@ -23,4 +23,13 @@ func TestErrors(t *testing.T) {
 	assert.True(t, state.IsConflictError(inmem.ErrOwnerConflict(resource.NewMetadata("ns", "a", "b", resource.VersionUndefined), "owner")))
 	assert.True(t, state.IsOwnerConflictError(inmem.ErrOwnerConflict(resource.NewMetadata("ns", "a", "b", resource.VersionUndefined), "owner")))
 	assert.True(t, state.IsPhaseConflictError(inmem.ErrPhaseConflict(resource.NewMetadata("ns", "a", "b", resource.VersionUndefined), resource.PhaseTearingDown)))
+
+	assert.True(t, state.IsConflictError(inmem.ErrAlreadyExists(resource.NewMetadata("ns", "a", "b", resource.VersionUndefined)), state.WithResourceNamespace("ns")))
+	assert.False(t, state.IsConflictError(inmem.ErrAlreadyExists(resource.NewMetadata("ns", "a", "b", resource.VersionUndefined)), state.WithResourceNamespace("a")))
+
+	assert.True(t, state.IsConflictError(inmem.ErrAlreadyExists(resource.NewMetadata("ns", "a", "b", resource.VersionUndefined)), state.WithResourceType("a")))
+	assert.False(t, state.IsConflictError(inmem.ErrAlreadyExists(resource.NewMetadata("ns", "a", "b", resource.VersionUndefined)), state.WithResourceType("z")))
+
+	assert.True(t, state.IsConflictError(inmem.ErrAlreadyExists(resource.NewMetadata("ns", "a", "b", resource.VersionUndefined)), state.WithResourceType("a"), state.WithResourceNamespace("ns")))
+	assert.False(t, state.IsConflictError(inmem.ErrAlreadyExists(resource.NewMetadata("ns", "a", "b", resource.VersionUndefined)), state.WithResourceType("z"), state.WithResourceNamespace("ns")))
 }
