@@ -5,12 +5,15 @@
 package protobuf_test
 
 import (
+	"context"
 	"errors"
 	"io/fs"
 	"net"
 	"os"
 	"testing"
+	"time"
 
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"github.com/stretchr/testify/suite"
 	"go.uber.org/goleak"
@@ -29,15 +32,17 @@ import (
 	"github.com/cosi-project/runtime/pkg/state/protobuf/server"
 )
 
-func TestProtobufConformance(t *testing.T) {
-	defer goleak.VerifyNone(t, goleak.IgnoreCurrent())
+func ProtobufSetup(t *testing.T) (grpc.ClientConnInterface, *grpc.Server) {
+	t.Helper()
+
+	t.Cleanup(func() { goleak.VerifyNone(t, goleak.IgnoreCurrent()) })
 
 	sock, err := os.CreateTemp("", "api*.sock")
 	require.NoError(t, err)
 
 	require.NoError(t, os.Remove(sock.Name()))
 
-	defer noError(t, os.Remove, sock.Name(), fs.ErrNotExist)
+	t.Cleanup(func() { noError(t, os.Remove, sock.Name(), fs.ErrNotExist) })
 
 	l, err := net.Listen("unix", sock.Name())
 	require.NoError(t, err)
@@ -55,13 +60,19 @@ func TestProtobufConformance(t *testing.T) {
 		return struct{}{}
 	})
 
-	defer func() { <-ch }() // ensure that gorotuine is stopped
-	defer grpcServer.Stop()
+	t.Cleanup(func() { <-ch }) // ensure that goroutine is stopped
+	t.Cleanup(grpcServer.Stop)
 
 	grpcConn, err := grpc.NewClient("unix://"+sock.Name(), grpc.WithTransportCredentials(insecure.NewCredentials()))
 	require.NoError(t, err)
 
-	defer noError(t, (*grpc.ClientConn).Close, grpcConn, fs.ErrNotExist)
+	t.Cleanup(func() { noError(t, (*grpc.ClientConn).Close, grpcConn, fs.ErrNotExist) })
+
+	return grpcConn, grpcServer
+}
+
+func TestProtobufConformance(t *testing.T) {
+	grpcConn, _ := ProtobufSetup(t)
 
 	stateClient := v1alpha1.NewStateClient(grpcConn)
 
@@ -71,6 +82,42 @@ func TestProtobufConformance(t *testing.T) {
 		State:      state.WrapCore(client.NewAdapter(stateClient)),
 		Namespaces: []resource.Namespace{"default", "controller", "system", "runtime"},
 	})
+}
+
+func TestProtobufWatchAbort(t *testing.T) {
+	grpcConn, grpcServer := ProtobufSetup(t)
+
+	stateClient := v1alpha1.NewStateClient(grpcConn)
+
+	st := state.WrapCore(client.NewAdapter(stateClient))
+
+	ch := make(chan []state.Event)
+
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	t.Cleanup(cancel)
+
+	require.NoError(t, st.WatchKindAggregated(ctx, conformance.NewPathResource("test", "/foo").Metadata(), ch, state.WithBootstrapContents(true)))
+
+	select {
+	case <-ctx.Done():
+		t.Fatal("timeout")
+	case ev := <-ch:
+		require.Len(t, ev, 1)
+
+		assert.Equal(t, state.Bootstrapped, ev[0].Type)
+	}
+
+	// abort the server, watch should return an error
+	grpcServer.Stop()
+
+	select {
+	case <-ctx.Done():
+		t.Fatal("timeout")
+	case ev := <-ch:
+		require.Len(t, ev, 1)
+
+		assert.Equal(t, state.Errored, ev[0].Type)
+	}
 }
 
 func noError[T any](t *testing.T, fn func(T) error, v T, ignored ...error) {

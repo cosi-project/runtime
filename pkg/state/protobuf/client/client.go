@@ -403,21 +403,28 @@ func (adapter *Adapter) WatchKindAggregated(ctx context.Context, resourceKind re
 //nolint:gocognit,gocyclo,cyclop
 func watchAdapter(ctx context.Context, cli v1alpha1.State_WatchClient, singleCh chan<- state.Event, aggregatedCh chan<- []state.Event, skipProtobufUnmarshal bool) {
 	sendError := func(err error) {
-		channel.SendWithContext(ctx, singleCh,
-			state.Event{
-				Type:  state.Errored,
-				Error: err,
+		switch {
+		case singleCh != nil:
+			channel.SendWithContext(ctx, singleCh,
+				state.Event{
+					Type:  state.Errored,
+					Error: err,
+				},
+			)
+		case aggregatedCh != nil:
+			channel.SendWithContext(ctx, aggregatedCh, []state.Event{
+				{
+					Type:  state.Errored,
+					Error: err,
+				},
 			},
-		)
+			)
+		}
 	}
 
 	for {
 		msg, err := cli.Recv()
-
-		switch {
-		case errors.Is(err, io.EOF):
-			return
-		case err != nil:
+		if err != nil {
 			sendError(err)
 
 			return
