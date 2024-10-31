@@ -6,6 +6,7 @@ package inmem
 
 import (
 	"context"
+	"encoding/binary"
 	"fmt"
 	"slices"
 	"sort"
@@ -74,6 +75,7 @@ func (collection *ResourceCollection) publish(event state.Event) {
 		collection.stream = append(collection.stream, make([]state.Event, collection.capacity-oldCapacity)...)
 	}
 
+	event.Bookmark = encodeBookmark(collection.writePos)
 	collection.stream[collection.writePos%int64(collection.capacity)] = event
 	collection.writePos++
 
@@ -263,14 +265,30 @@ func (collection *ResourceCollection) Destroy(ctx context.Context, ptr resource.
 	return nil
 }
 
+func encodeBookmark(pos int64) state.Bookmark {
+	return binary.BigEndian.AppendUint64(nil, uint64(pos))
+}
+
+func decodeBookmark(bookmark state.Bookmark) (int64, error) {
+	if len(bookmark) != 8 {
+		return 0, fmt.Errorf("invalid bookmark length: %d", len(bookmark))
+	}
+
+	return int64(binary.BigEndian.Uint64(bookmark)), nil
+}
+
 // Watch for specific resource changes.
 //
-//nolint:gocognit
+//nolint:gocognit,gocyclo,cyclop
 func (collection *ResourceCollection) Watch(ctx context.Context, id resource.ID, ch chan<- state.Event, opts ...state.WatchOption) error {
 	var options state.WatchOptions
 
 	for _, opt := range opts {
 		opt(&options)
+	}
+
+	if options.TailEvents > 0 && options.StartFromBookmark != nil {
+		return fmt.Errorf("cannot use both TailEvents and StartFromBookmark options")
 	}
 
 	collection.mu.Lock()
@@ -280,7 +298,8 @@ func (collection *ResourceCollection) Watch(ctx context.Context, id resource.ID,
 
 	var initialEvent state.Event
 
-	if options.TailEvents > 0 {
+	switch {
+	case options.TailEvents > 0:
 		foundEvents := 0
 		minPos := collection.writePos - int64(collection.capacity) + int64(collection.gap)
 
@@ -293,7 +312,21 @@ func (collection *ResourceCollection) Watch(ctx context.Context, id resource.ID,
 				foundEvents++
 			}
 		}
-	} else {
+	case options.StartFromBookmark != nil:
+		var err error
+
+		pos, err = decodeBookmark(options.StartFromBookmark)
+		if err != nil {
+			return err
+		}
+
+		if pos < collection.writePos-int64(collection.capacity)+int64(collection.gap) || pos < 0 || pos >= collection.writePos {
+			return fmt.Errorf("invalid bookmark: %d", pos)
+		}
+
+		// skip the bookmarked event
+		pos++
+	default:
 		curResource := collection.storage[id]
 
 		if curResource != nil {
@@ -315,7 +348,7 @@ func (collection *ResourceCollection) Watch(ctx context.Context, id resource.ID,
 	}()
 
 	go func() {
-		if options.TailEvents <= 0 {
+		if options.TailEvents <= 0 && options.StartFromBookmark == nil {
 			if !channel.SendWithContext(ctx, ch, initialEvent) {
 				return
 			}
@@ -407,6 +440,10 @@ func (collection *ResourceCollection) WatchAll(ctx context.Context, singleCh cha
 	var bootstrapList []resource.Resource
 
 	if options.BootstrapContents {
+		if options.TailEvents > 0 || options.StartFromBookmark != nil {
+			return fmt.Errorf("cannot use BootstrapContents with TailEvents and StartFromBookmark options")
+		}
+
 		bootstrapList = make([]resource.Resource, 0, len(collection.storage))
 
 		for _, res := range collection.storage {
@@ -420,7 +457,10 @@ func (collection *ResourceCollection) WatchAll(ctx context.Context, singleCh cha
 		})
 	}
 
-	if options.TailEvents > 0 {
+	switch {
+	case options.StartFromBookmark != nil && options.TailEvents > 0:
+		return fmt.Errorf("cannot use both TailEvents and StartFromBookmark options")
+	case options.TailEvents > 0:
 		if options.TailEvents > collection.capacity-collection.gap {
 			options.TailEvents = collection.capacity - collection.gap
 		}
@@ -429,6 +469,20 @@ func (collection *ResourceCollection) WatchAll(ctx context.Context, singleCh cha
 		if pos < 0 {
 			pos = 0
 		}
+	case options.StartFromBookmark != nil:
+		var err error
+
+		pos, err = decodeBookmark(options.StartFromBookmark)
+		if err != nil {
+			return err
+		}
+
+		if pos < collection.writePos-int64(collection.capacity)+int64(collection.gap) || pos < -1 || pos >= collection.writePos {
+			return fmt.Errorf("invalid bookmark: %d", pos)
+		}
+
+		// skip the bookmarked event
+		pos++
 	}
 
 	go func() {
@@ -461,6 +515,7 @@ func (collection *ResourceCollection) WatchAll(ctx context.Context, singleCh cha
 					state.Event{
 						Type:     state.Bootstrapped,
 						Resource: resource.NewTombstone(resource.NewMetadata(collection.ns, collection.typ, "", resource.VersionUndefined)),
+						Bookmark: encodeBookmark(pos - 1),
 					},
 				) {
 					return
@@ -476,6 +531,7 @@ func (collection *ResourceCollection) WatchAll(ctx context.Context, singleCh cha
 				events = append(events, state.Event{
 					Type:     state.Bootstrapped,
 					Resource: resource.NewTombstone(resource.NewMetadata(collection.ns, collection.typ, "", resource.VersionUndefined)),
+					Bookmark: encodeBookmark(pos - 1),
 				})
 
 				if !channel.SendWithContext(ctx, aggCh, events) {

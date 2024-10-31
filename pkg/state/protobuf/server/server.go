@@ -274,6 +274,10 @@ func (server *State) Watch(req *v1alpha1.WatchRequest, srv v1alpha1.State_WatchS
 			opts = append(opts, state.WithKindTailEvents(int(req.Options.TailEvents)))
 		}
 
+		if req.Options.StartFromBookmark != nil {
+			opts = append(opts, state.WithKindStartFromBookmark(req.Options.StartFromBookmark))
+		}
+
 		for _, query := range req.GetOptions().GetLabelQuery() {
 			var labelOpts []resource.LabelQueryOption
 
@@ -306,6 +310,10 @@ func (server *State) Watch(req *v1alpha1.WatchRequest, srv v1alpha1.State_WatchS
 
 		if req.Options.TailEvents > 0 {
 			opts = append(opts, state.WithTailEvents(int(req.Options.TailEvents)))
+		}
+
+		if req.Options.StartFromBookmark != nil {
+			opts = append(opts, state.WithStartFromBookmark(req.Options.StartFromBookmark))
 		}
 
 		if req.Options.BootstrapContents {
@@ -441,5 +449,6 @@ func mapEvent(apiVersion int32, event state.Event) (*v1alpha1.Event, error) {
 		Resource:  marshaled,
 		Old:       oldMarshaled,
 		Error:     protoError,
+		Bookmark:  event.Bookmark,
 	}, nil
 }

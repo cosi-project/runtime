@@ -43,11 +43,15 @@ func (eventType EventType) String() string {
 	return eventTypeString[eventType]
 }
 
+// Bookmark is an opaque value that can be used to resume watching from a specific point.
+type Bookmark []byte
+
 // Event is emitted when resource changes.
 type Event struct {
 	Resource resource.Resource
 	Old      resource.Resource
 	Error    error
+	Bookmark Bookmark
 	Type     EventType
 }
 

@@ -32,6 +32,11 @@ func (m *Event) CloneVT() *Event {
 		tmpVal := *rhs
 		r.Error = &tmpVal
 	}
+	if rhs := m.Bookmark; rhs != nil {
+		tmpBytes := make([]byte, len(rhs))
+		copy(tmpBytes, rhs)
+		r.Bookmark = tmpBytes
+	}
 	if len(m.unknownFields) > 0 {
 		r.unknownFields = make([]byte, len(m.unknownFields))
 		copy(r.unknownFields, m.unknownFields)
@@ -357,6 +362,11 @@ func (m *WatchOptions) CloneVT() *WatchOptions {
 		}
 		r.LabelQuery = tmpContainer
 	}
+	if rhs := m.StartFromBookmark; rhs != nil {
+		tmpBytes := make([]byte, len(rhs))
+		copy(tmpBytes, rhs)
+		r.StartFromBookmark = tmpBytes
+	}
 	if len(m.unknownFields) > 0 {
 		r.unknownFields = make([]byte, len(m.unknownFields))
 		copy(r.unknownFields, m.unknownFields)
@@ -407,6 +417,9 @@ func (this *Event) EqualVT(that *Event) bool {
 		return false
 	}
 	if p, q := this.Error, that.Error; (p == nil && q != nil) || (p != nil && (q == nil || *p != *q)) {
+		return false
+	}
+	if p, q := this.Bookmark, that.Bookmark; (p == nil && q != nil) || (p != nil && q == nil) || string(p) != string(q) {
 		return false
 	}
 	return string(this.unknownFields) == string(that.unknownFields)
@@ -814,6 +827,9 @@ func (this *WatchOptions) EqualVT(that *WatchOptions) bool {
 	if this.Aggregated != that.Aggregated {
 		return false
 	}
+	if p, q := this.StartFromBookmark, that.StartFromBookmark; (p == nil && q != nil) || (p != nil && q == nil) || string(p) != string(q) {
+		return false
+	}
 	return string(this.unknownFields) == string(that.unknownFields)
 }
 
@@ -886,6 +902,13 @@ func (m *Event) MarshalToSizedBufferVT(dAtA []byte) (int, error) {
 	if m.unknownFields != nil {
 		i -= len(m.unknownFields)
 		copy(dAtA[i:], m.unknownFields)
+	}
+	if m.Bookmark != nil {
+		i -= len(m.Bookmark)
+		copy(dAtA[i:], m.Bookmark)
+		i = protohelpers.EncodeVarint(dAtA, i, uint64(len(m.Bookmark)))
+		i--
+		dAtA[i] = 0x2a
 	}
 	if m.Error != nil {
 		i -= len(*m.Error)
@@ -1732,6 +1755,13 @@ func (m *WatchOptions) MarshalToSizedBufferVT(dAtA []byte) (int, error) {
 		i -= len(m.unknownFields)
 		copy(dAtA[i:], m.unknownFields)
 	}
+	if m.StartFromBookmark != nil {
+		i -= len(m.StartFromBookmark)
+		copy(dAtA[i:], m.StartFromBookmark)
+		i = protohelpers.EncodeVarint(dAtA, i, uint64(len(m.StartFromBookmark)))
+		i--
+		dAtA[i] = 0x32
+	}
 	if m.Aggregated {
 		i--
 		if m.Aggregated {
@@ -1846,6 +1876,10 @@ func (m *Event) SizeVT() (n int) {
 	}
 	if m.Error != nil {
 		l = len(*m.Error)
+		n += 1 + l + protohelpers.SizeOfVarint(uint64(l))
+	}
+	if m.Bookmark != nil {
+		l = len(m.Bookmark)
 		n += 1 + l + protohelpers.SizeOfVarint(uint64(l))
 	}
 	n += len(m.unknownFields)
@@ -2158,6 +2192,10 @@ func (m *WatchOptions) SizeVT() (n int) {
 	if m.Aggregated {
 		n += 2
 	}
+	if m.StartFromBookmark != nil {
+		l = len(m.StartFromBookmark)
+		n += 1 + l + protohelpers.SizeOfVarint(uint64(l))
+	}
 	n += len(m.unknownFields)
 	return n
 }
@@ -2330,6 +2368,40 @@ func (m *Event) UnmarshalVT(dAtA []byte) error {
 			}
 			s := string(dAtA[iNdEx:postIndex])
 			m.Error = &s
+			iNdEx = postIndex
+		case 5:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field Bookmark", wireType)
+			}
+			var byteLen int
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return protohelpers.ErrIntOverflow
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				byteLen |= int(b&0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			if byteLen < 0 {
+				return protohelpers.ErrInvalidLength
+			}
+			postIndex := iNdEx + byteLen
+			if postIndex < 0 {
+				return protohelpers.ErrInvalidLength
+			}
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			m.Bookmark = append(m.Bookmark[:0], dAtA[iNdEx:postIndex]...)
+			if m.Bookmark == nil {
+				m.Bookmark = []byte{}
+			}
 			iNdEx = postIndex
 		default:
 			iNdEx = preIndex
@@ -4330,6 +4402,40 @@ func (m *WatchOptions) UnmarshalVT(dAtA []byte) error {
 				}
 			}
 			m.Aggregated = bool(v != 0)
+		case 6:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field StartFromBookmark", wireType)
+			}
+			var byteLen int
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return protohelpers.ErrIntOverflow
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				byteLen |= int(b&0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			if byteLen < 0 {
+				return protohelpers.ErrInvalidLength
+			}
+			postIndex := iNdEx + byteLen
+			if postIndex < 0 {
+				return protohelpers.ErrInvalidLength
+			}
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			m.StartFromBookmark = append(m.StartFromBookmark[:0], dAtA[iNdEx:postIndex]...)
+			if m.StartFromBookmark == nil {
+				m.StartFromBookmark = []byte{}
+			}
+			iNdEx = postIndex
 		default:
 			iNdEx = preIndex
 			skippy, err := protohelpers.Skip(dAtA[iNdEx:])

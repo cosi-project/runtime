@@ -17,6 +17,7 @@ import (
 	"github.com/stretchr/testify/require"
 	"github.com/stretchr/testify/suite"
 	"go.uber.org/goleak"
+	"go.uber.org/zap/zaptest"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"
 
@@ -32,7 +33,7 @@ import (
 	"github.com/cosi-project/runtime/pkg/state/protobuf/server"
 )
 
-func ProtobufSetup(t *testing.T) (grpc.ClientConnInterface, *grpc.Server) {
+func ProtobufSetup(t *testing.T) (grpc.ClientConnInterface, *grpc.Server, func() *grpc.Server, state.State) {
 	t.Helper()
 
 	t.Cleanup(func() { goleak.VerifyNone(t, goleak.IgnoreCurrent()) })
@@ -44,35 +45,44 @@ func ProtobufSetup(t *testing.T) (grpc.ClientConnInterface, *grpc.Server) {
 
 	t.Cleanup(func() { noError(t, os.Remove, sock.Name(), fs.ErrNotExist) })
 
-	l, err := net.Listen("unix", sock.Name())
-	require.NoError(t, err)
+	coreState := state.WrapCore(namespaced.NewState(inmem.Build))
+	serverState := server.NewState(coreState)
 
-	grpcServer := grpc.NewServer()
-	v1alpha1.RegisterStateServer(grpcServer, server.NewState(state.WrapCore(namespaced.NewState(inmem.Build))))
+	runServer := func() *grpc.Server {
+		l, lErr := net.Listen("unix", sock.Name())
+		require.NoError(t, lErr)
 
-	ch := future.Go(func() struct{} {
-		serveErr := grpcServer.Serve(l)
-		if serveErr != nil {
-			// Not much we can do here, ctx isn't available yet and many methods do not use it at all.
-			panic(serveErr)
-		}
+		grpcServer := grpc.NewServer()
+		v1alpha1.RegisterStateServer(grpcServer, serverState)
 
-		return struct{}{}
-	})
+		ch := future.Go(func() struct{} {
+			serveErr := grpcServer.Serve(l)
+			if serveErr != nil {
+				// Not much we can do here, ctx isn't available yet and many methods do not use it at all.
+				panic(serveErr)
+			}
 
-	t.Cleanup(func() { <-ch }) // ensure that goroutine is stopped
-	t.Cleanup(grpcServer.Stop)
+			return struct{}{}
+		})
+
+		t.Cleanup(func() { <-ch }) // ensure that goroutine is stopped
+		t.Cleanup(grpcServer.Stop)
+
+		return grpcServer
+	}
+
+	grpcServer := runServer()
 
 	grpcConn, err := grpc.NewClient("unix://"+sock.Name(), grpc.WithTransportCredentials(insecure.NewCredentials()))
 	require.NoError(t, err)
 
 	t.Cleanup(func() { noError(t, (*grpc.ClientConn).Close, grpcConn, fs.ErrNotExist) })
 
-	return grpcConn, grpcServer
+	return grpcConn, grpcServer, runServer, coreState
 }
 
 func TestProtobufConformance(t *testing.T) {
-	grpcConn, _ := ProtobufSetup(t)
+	grpcConn, _, _, _ := ProtobufSetup(t) //nolint:dogsled
 
 	stateClient := v1alpha1.NewStateClient(grpcConn)
 
@@ -85,11 +95,14 @@ func TestProtobufConformance(t *testing.T) {
 }
 
 func TestProtobufWatchAbort(t *testing.T) {
-	grpcConn, grpcServer := ProtobufSetup(t)
+	grpcConn, grpcServer, _, _ := ProtobufSetup(t)
 
 	stateClient := v1alpha1.NewStateClient(grpcConn)
 
-	st := state.WrapCore(client.NewAdapter(stateClient))
+	st := state.WrapCore(client.NewAdapter(stateClient,
+		client.WithRetryLogger(zaptest.NewLogger(t)),
+		client.WithDisableWatchRetry(),
+	))
 
 	ch := make(chan []state.Event)
 
@@ -117,6 +130,88 @@ func TestProtobufWatchAbort(t *testing.T) {
 		require.Len(t, ev, 1)
 
 		assert.Equal(t, state.Errored, ev[0].Type)
+	}
+}
+
+func TestProtobufWatchRestart(t *testing.T) {
+	grpcConn, grpcServer, restartServer, coreState := ProtobufSetup(t)
+
+	stateClient := v1alpha1.NewStateClient(grpcConn)
+
+	st := state.WrapCore(client.NewAdapter(stateClient,
+		client.WithRetryLogger(zaptest.NewLogger(t)),
+	))
+
+	ch := make(chan []state.Event)
+
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	t.Cleanup(cancel)
+
+	require.NoError(t, st.WatchKindAggregated(ctx, conformance.NewPathResource("test", "/foo").Metadata(), ch, state.WithBootstrapContents(true)))
+
+	select {
+	case <-ctx.Done():
+		t.Fatal("timeout")
+	case ev := <-ch:
+		require.Len(t, ev, 1)
+
+		assert.Equal(t, state.Bootstrapped, ev[0].Type)
+	}
+
+	// abort the server, watch should enter retry loop
+	grpcServer.Stop()
+
+	r := conformance.NewPathResource("test", "/foo")
+	require.NoError(t, coreState.Create(ctx, r))
+
+	grpcServer = restartServer()
+
+	select {
+	case <-ctx.Done():
+		t.Fatal("timeout")
+	case ev := <-ch:
+		require.Len(t, ev, 1)
+		assert.Equal(t, state.Created, ev[0].Type)
+	}
+
+	// abort the server, watch should enter retry loop
+	grpcServer.Stop()
+
+	require.NoError(t, coreState.AddFinalizer(ctx, r.Metadata(), "test1"))
+
+	grpcServer = restartServer()
+
+	select {
+	case <-ctx.Done():
+		t.Fatal("timeout")
+	case ev := <-ch:
+		require.Len(t, ev, 1)
+		assert.Equal(t, state.Updated, ev[0].Type)
+	}
+
+	require.NoError(t, coreState.RemoveFinalizer(ctx, r.Metadata(), "test1"))
+
+	select {
+	case <-ctx.Done():
+		t.Fatal("timeout")
+	case ev := <-ch:
+		require.Len(t, ev, 1)
+		assert.Equal(t, state.Updated, ev[0].Type)
+	}
+
+	// abort the server, watch should enter retry loop
+	grpcServer.Stop()
+
+	require.NoError(t, coreState.Destroy(ctx, r.Metadata()))
+
+	_ = restartServer()
+
+	select {
+	case <-ctx.Done():
+		t.Fatal("timeout")
+	case ev := <-ch:
+		require.Len(t, ev, 1)
+		assert.Equal(t, state.Destroyed, ev[0].Type)
 	}
 }
 

@@ -7,11 +7,11 @@ package safe
 import (
 	"context"
 	"fmt"
-	"iter" //nolint:gci
+	"iter"
 	"slices"
 
 	"github.com/siderolabs/gen/channel"
-	"github.com/siderolabs/gen/xslices" //nolint:gci
+	"github.com/siderolabs/gen/xslices"
 
 	"github.com/cosi-project/runtime/pkg/controller/generic"
 	"github.com/cosi-project/runtime/pkg/resource"

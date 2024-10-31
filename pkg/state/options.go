@@ -154,8 +154,9 @@ func WithDestroyOwner(owner string) DestroyOption {
 
 // WatchOptions for the CoreState.Watch function.
 type WatchOptions struct {
-	TailEvents       int
-	UnmarshalOptions UnmarshalOptions
+	StartFromBookmark Bookmark
+	TailEvents        int
+	UnmarshalOptions  UnmarshalOptions
 }
 
 // WatchOption builds WatchOptions.
@@ -177,10 +178,18 @@ func WithWatchUnmarshalOptions(opt ...UnmarshalOption) WatchOption {
 	}
 }
 
+// WithStartFromBookmark sets a bookmark to start watching from.
+func WithStartFromBookmark(bookmark Bookmark) WatchOption {
+	return func(opts *WatchOptions) {
+		opts.StartFromBookmark = bookmark
+	}
+}
+
 // WatchKindOptions for the CoreState.WatchKind function.
 type WatchKindOptions struct {
 	IDQuery           resource.IDQuery
 	LabelQueries      resource.LabelQueries
+	StartFromBookmark Bookmark
 	UnmarshalOptions  UnmarshalOptions
 	BootstrapContents bool
 	TailEvents        int
@@ -200,6 +209,13 @@ func WithBootstrapContents(enable bool) WatchKindOption {
 func WithKindTailEvents(n int) WatchKindOption {
 	return func(opts *WatchKindOptions) {
 		opts.TailEvents = n
+	}
+}
+
+// WithKindStartFromBookmark sets a bookmark to start watching from.
+func WithKindStartFromBookmark(bookmark Bookmark) WatchKindOption {
+	return func(opts *WatchKindOptions) {
+		opts.StartFromBookmark = bookmark
 	}
 }
 

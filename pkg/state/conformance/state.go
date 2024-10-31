@@ -355,13 +355,13 @@ func (suite *StateSuite) testWatchKindWithTailEvents(useAggregated bool) {
 
 	suite.Require().NoError(suite.State.Destroy(ctx, res.Metadata()))
 
-	expectedEvents := map[state.Event]struct{}{}
+	expectedEvents := map[reducedEvent]struct{}{}
 
 loop:
 	for {
 		select {
 		case event := <-ch:
-			expectedEvents[event] = struct{}{}
+			expectedEvents[reduceEvent(event)] = struct{}{}
 		case <-time.After(time.Second):
 			break loop
 		}
@@ -385,7 +385,7 @@ loop:
 		select {
 		case event := <-chWithTail:
 			for expected := range expectedEvents {
-				if expected.Type == event.Type && resource.Equal(expected.Resource, event.Resource) {
+				if expected.Equal(event) {
 					delete(expectedEvents, expected)
 				}
 			}
@@ -791,6 +791,28 @@ func (suite *StateSuite) TestWatch() {
 	}
 }
 
+type reducedEvent struct {
+	r resource.Resource
+	t state.EventType
+}
+
+func reduceEvent(e state.Event) reducedEvent {
+	return reducedEvent{r: e.Resource, t: e.Type}
+}
+
+func (r reducedEvent) Equal(e state.Event) bool {
+	return r.t == e.Type && resource.Equal(r.r, e.Resource)
+}
+
+type reducedEventWithBookmark struct {
+	reducedEvent
+	b state.Bookmark
+}
+
+func reduceEventWithBookmark(e state.Event) reducedEventWithBookmark {
+	return reducedEventWithBookmark{reducedEvent: reduceEvent(e), b: e.Bookmark}
+}
+
 // TestWatchWithTailEvents verifies Watch with tail events option.
 func (suite *StateSuite) TestWatchWithTailEvents() {
 	ns := suite.getNamespace()
@@ -819,13 +841,13 @@ func (suite *StateSuite) TestWatchWithTailEvents() {
 	suite.Assert().NoError(suite.State.RemoveFinalizer(ctx, path1.Metadata(), "A"))
 	suite.Assert().NoError(suite.State.Destroy(ctx, path1.Metadata()))
 
-	expectedEvents := map[state.Event]struct{}{}
+	expectedEvents := map[reducedEvent]struct{}{}
 
 loop:
 	for {
 		select {
 		case event := <-ch:
-			expectedEvents[event] = struct{}{}
+			expectedEvents[reduceEvent(event)] = struct{}{}
 		case <-time.After(5 * time.Second):
 			break loop
 		}
@@ -849,7 +871,7 @@ loop:
 		select {
 		case event := <-chWithTail:
 			for expected := range expectedEvents {
-				if expected.Type == event.Type && resource.Equal(expected.Resource, event.Resource) {
+				if expected.Equal(event) {
 					delete(expectedEvents, expected)
 				}
 			}
@@ -857,6 +879,192 @@ loop:
 			suite.FailNow("timed out waiting for event", "missed events %v", expectedEvents)
 		}
 	}
+}
+
+// TestWatchWithBookmarks verifies Watch with bookmarks.
+func (suite *StateSuite) TestWatchWithBookmarks() {
+	ns := suite.getNamespace()
+	path1 := NewPathResource(ns, "res/watch-with-bookmarks")
+
+	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	defer cancel()
+
+	ch := make(chan state.Event)
+
+	suite.Require().NoError(suite.State.Watch(ctx, path1.Metadata(), ch))
+
+	suite.Require().NoError(suite.State.Create(ctx, path1))
+
+	ready, e := suite.State.Teardown(ctx, path1.Metadata())
+	suite.Require().NoError(e)
+	suite.Assert().True(ready)
+
+	suite.Assert().NoError(suite.State.AddFinalizer(ctx, path1.Metadata(), "A"))
+	suite.Assert().NoError(suite.State.RemoveFinalizer(ctx, path1.Metadata(), "A"))
+	suite.Assert().NoError(suite.State.Destroy(ctx, path1.Metadata()))
+
+	// should receive 6 events, including initial "destroyed" event
+	const numEvents = 6
+
+	events := make([]reducedEventWithBookmark, 0, numEvents)
+
+	for i := range numEvents {
+		select {
+		case ev := <-ch:
+			if i != 0 {
+				// initial event might not have a bookmark
+				suite.Assert().NotNil(ev.Bookmark)
+			}
+
+			events = append(events, reduceEventWithBookmark(ev))
+		case <-time.After(time.Second):
+			suite.FailNow("timed out waiting for event")
+		}
+	}
+
+	// add one more event
+	suite.Require().NoError(suite.State.Create(ctx, path1))
+
+	// try restarting watch from each bookmark
+	for i, ev := range events {
+		ch := make(chan state.Event)
+
+		if ev.b == nil {
+			// no bookmark, skip
+			continue
+		}
+
+		suite.Require().NoError(suite.State.Watch(ctx, path1.Metadata(), ch, state.WithStartFromBookmark(ev.b)))
+
+		for j := range numEvents - i - 1 {
+			select {
+			case ev := <-ch:
+				suite.Assert().True(events[i+j+1].reducedEvent.Equal(ev))
+			case <-time.After(time.Second):
+				suite.FailNow("timed out waiting for event")
+			}
+		}
+
+		// should receive the last event
+		select {
+		case ev := <-ch:
+			suite.Assert().Equal(state.Created, ev.Type)
+			suite.Assert().Equal(resource.String(path1), resource.String(ev.Resource))
+		case <-time.After(time.Second):
+			suite.FailNow("timed out waiting for event")
+		}
+	}
+}
+
+// TestWatchKindWithBookmarks verifies WatchKind with bookmarks.
+func (suite *StateSuite) TestWatchKindWithBookmarks() {
+	suite.testWatchKindWithBookmarks(false)
+}
+
+// TestWatchKindAggregatedWithBookmarks verifies WatchKind aggregated with bookmarks.
+func (suite *StateSuite) TestWatchKindAggregatedWithBookmarks() {
+	suite.testWatchKindWithBookmarks(true)
+}
+
+func (suite *StateSuite) testWatchKindWithBookmarks(useAggregated bool) {
+	ns := suite.getNamespace()
+	res := NewPathResource(ns, fmt.Sprintf("res/watch-kind-with-bookmarks/%v", useAggregated))
+
+	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	defer cancel()
+
+	ch := make(chan state.Event)
+
+	suite.Require().NoError(suite.State.Create(ctx, res))
+
+	initial, err := suite.State.List(ctx, res.Metadata())
+	suite.Require().NoError(err)
+
+	suite.Require().NoError(watchAggregateAdapter(ctx, useAggregated, suite.State, res.Metadata(), ch, state.WithBootstrapContents(true)))
+
+	suite.Require().NoError(suite.State.Update(ctx, res))
+	suite.Require().NoError(suite.State.Update(ctx, res))
+
+	_, err = suite.State.Teardown(ctx, res.Metadata())
+	suite.Require().NoError(err)
+
+	suite.Require().NoError(suite.State.Destroy(ctx, res.Metadata()))
+
+	const numEvents = 6
+
+	expectedEvents := make([]reducedEventWithBookmark, 0, numEvents)
+
+	sawBootstrapped := false
+
+	for i := range numEvents + len(initial.Items) - 1 {
+		select {
+		case ev := <-ch:
+			suite.T().Logf("received event %d: %v", i, ev)
+
+			if ev.Type == state.Bootstrapped {
+				sawBootstrapped = true
+			}
+
+			// filter unrelated content state
+			if !sawBootstrapped && ev.Resource.Metadata().ID() != res.Metadata().ID() {
+				continue
+			}
+
+			if sawBootstrapped {
+				// initial event might not have a bookmark
+				suite.Assert().NotNil(ev.Bookmark, "event %d, %v", i, ev)
+			}
+
+			expectedEvents = append(expectedEvents, reduceEventWithBookmark(ev))
+		case <-time.After(time.Second):
+			suite.FailNow("timed out waiting for event")
+		}
+	}
+
+	// add one more event
+	suite.Require().NoError(suite.State.Create(ctx, res))
+
+	// try restarting watch from each bookmark
+	for i, ev := range expectedEvents {
+		ch := make(chan state.Event)
+
+		if ev.b == nil {
+			// no bookmark, skip
+			continue
+		}
+
+		startOffset := i
+
+		suite.Require().NoError(watchAggregateAdapter(ctx, useAggregated, suite.State, res.Metadata(), ch, state.WithKindStartFromBookmark(ev.b)))
+
+		suite.T().Logf("restarting watch from bookmark %v", ev.b)
+
+		for j := range numEvents - startOffset - 1 {
+			select {
+			case ev := <-ch:
+				suite.T().Logf("received event from bookmark %d: %v", i, ev)
+				suite.T().Logf("expected event: %v", expectedEvents[startOffset+j+1])
+
+				suite.Assert().True(expectedEvents[startOffset+j+1].reducedEvent.Equal(ev))
+			case <-time.After(time.Second):
+				suite.FailNow("timed out waiting for event")
+			}
+		}
+
+		// should receive the last event
+		select {
+		case ev := <-ch:
+			suite.T().Logf("received last event: %v", ev)
+
+			suite.Assert().Equal(state.Created, ev.Type)
+			suite.Assert().Equal(resource.String(res), resource.String(ev.Resource))
+		case <-time.After(time.Second):
+			suite.FailNow("timed out waiting for event")
+		}
+	}
+
+	// clean up
+	suite.Require().NoError(suite.State.Destroy(ctx, res.Metadata()))
 }
 
 // TestParallelDestroy runs several parallel destroy calls.

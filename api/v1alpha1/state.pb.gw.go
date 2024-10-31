@@ -181,6 +181,7 @@ func request_State_Watch_0(ctx context.Context, marshaler runtime.Marshaler, cli
 // UnaryRPC     :call StateServer directly.
 // StreamingRPC :currently unsupported pending https://github.com/grpc/grpc-go/issues/906.
 // Note that using this registration option will cause many gRPC library features to stop working. Consider using RegisterStateHandlerFromEndpoint instead.
+// GRPC interceptors will not work for this type of registration. To use interceptors, you must use the "runtime.WithMiddlewares" option in the "runtime.NewServeMux" call.
 func RegisterStateHandlerServer(ctx context.Context, mux *runtime.ServeMux, server StateServer) error {
 
 	mux.Handle("POST", pattern_State_Get_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
@@ -335,7 +336,7 @@ func RegisterStateHandler(ctx context.Context, mux *runtime.ServeMux, conn *grpc
 // to "mux". The handlers forward requests to the grpc endpoint over the given implementation of "StateClient".
 // Note: the gRPC framework executes interceptors within the gRPC handler. If the passed in "StateClient"
 // doesn't go through the normal gRPC flow (creating a gRPC client etc.) then it will be up to the passed in
-// "StateClient" to call the correct interceptors.
+// "StateClient" to call the correct interceptors. This client ignores the HTTP middlewares.
 func RegisterStateHandlerClient(ctx context.Context, mux *runtime.ServeMux, client StateClient) error {
 
 	mux.Handle("POST", pattern_State_Get_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {

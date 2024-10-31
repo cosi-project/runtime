@@ -8,10 +8,14 @@ package client
 import (
 	"context"
 	"errors"
+	"fmt"
 	"io"
+	"time"
 
+	"github.com/cenkalti/backoff/v4"
 	"github.com/siderolabs/gen/channel"
 	"github.com/siderolabs/go-pointer"
+	"go.uber.org/zap"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 
@@ -25,14 +29,46 @@ var _ state.CoreState = (*Adapter)(nil)
 
 // Adapter implement state.CoreState from the gRPC State client.
 type Adapter struct {
-	client v1alpha1.StateClient
+	client  v1alpha1.StateClient
+	options AdapterOptions
+}
+
+// AdapterOptions contains options for the Adapter.
+type AdapterOptions struct {
+	RetryLogger       *zap.Logger
+	DisableWatchRetry bool
+}
+
+// AdapterOption is a function type used to configure Adapter options.
+type AdapterOption func(*AdapterOptions)
+
+// WithDisableWatchRetry disables exponential backoff for watch.
+func WithDisableWatchRetry() AdapterOption {
+	return func(opts *AdapterOptions) {
+		opts.DisableWatchRetry = true
+	}
+}
+
+// WithRetryLogger sets logger for retry.
+func WithRetryLogger(logger *zap.Logger) AdapterOption {
+	return func(opts *AdapterOptions) {
+		opts.RetryLogger = logger
+	}
 }
 
 // NewAdapter returns new Adapter from the gRPC client.
-func NewAdapter(client v1alpha1.StateClient) *Adapter {
-	return &Adapter{
+func NewAdapter(client v1alpha1.StateClient, opt ...AdapterOption) *Adapter {
+	adapter := &Adapter{
 		client: client,
 	}
+
+	adapter.options.RetryLogger = zap.NewNop()
+
+	for _, o := range opt {
+		o(&adapter.options)
+	}
+
+	return adapter
 }
 
 // Get a resource by type and ID.
@@ -285,15 +321,18 @@ func (adapter *Adapter) Watch(ctx context.Context, resourcePointer resource.Poin
 		o(&opts)
 	}
 
-	cli, err := adapter.client.Watch(ctx, &v1alpha1.WatchRequest{
+	req := &v1alpha1.WatchRequest{
 		Namespace: resourcePointer.Namespace(),
 		Type:      resourcePointer.Type(),
 		Id:        pointer.To(resourcePointer.ID()),
 		Options: &v1alpha1.WatchOptions{
-			TailEvents: int32(opts.TailEvents),
+			TailEvents:        int32(opts.TailEvents),
+			StartFromBookmark: opts.StartFromBookmark,
 		},
 		ApiVersion: 1,
-	})
+	}
+
+	cli, err := adapter.client.Watch(ctx, req)
 	if err != nil {
 		return err
 	}
@@ -304,7 +343,7 @@ func (adapter *Adapter) Watch(ctx context.Context, resourcePointer resource.Poin
 		return err
 	}
 
-	go watchAdapter(ctx, cli, ch, nil, opts.UnmarshalOptions.SkipProtobufUnmarshal)
+	go adapter.watchAdapter(ctx, cli, ch, nil, opts.UnmarshalOptions.SkipProtobufUnmarshal, req)
 
 	return nil
 }
@@ -328,17 +367,20 @@ func (adapter *Adapter) WatchKind(ctx context.Context, resourceKind resource.Kin
 		labelQueries = append(labelQueries, labelQuery)
 	}
 
-	cli, err := adapter.client.Watch(ctx, &v1alpha1.WatchRequest{
+	req := &v1alpha1.WatchRequest{
 		Namespace: resourceKind.Namespace(),
 		Type:      resourceKind.Type(),
 		Options: &v1alpha1.WatchOptions{
 			BootstrapContents: opts.BootstrapContents,
+			StartFromBookmark: opts.StartFromBookmark,
 			TailEvents:        int32(opts.TailEvents),
 			LabelQuery:        labelQueries,
 			IdQuery:           transformIDQuery(opts.IDQuery),
 		},
 		ApiVersion: 1,
-	})
+	}
+
+	cli, err := adapter.client.Watch(ctx, req)
 	if err != nil {
 		return err
 	}
@@ -349,7 +391,7 @@ func (adapter *Adapter) WatchKind(ctx context.Context, resourceKind resource.Kin
 		return err
 	}
 
-	go watchAdapter(ctx, cli, ch, nil, opts.UnmarshalOptions.SkipProtobufUnmarshal)
+	go adapter.watchAdapter(ctx, cli, ch, nil, opts.UnmarshalOptions.SkipProtobufUnmarshal, req)
 
 	return nil
 }
@@ -373,18 +415,21 @@ func (adapter *Adapter) WatchKindAggregated(ctx context.Context, resourceKind re
 		labelQueries = append(labelQueries, labelQuery)
 	}
 
-	cli, err := adapter.client.Watch(ctx, &v1alpha1.WatchRequest{
+	req := &v1alpha1.WatchRequest{
 		Namespace: resourceKind.Namespace(),
 		Type:      resourceKind.Type(),
 		Options: &v1alpha1.WatchOptions{
 			BootstrapContents: opts.BootstrapContents,
+			StartFromBookmark: opts.StartFromBookmark,
 			TailEvents:        int32(opts.TailEvents),
 			LabelQuery:        labelQueries,
 			IdQuery:           transformIDQuery(opts.IDQuery),
 			Aggregated:        true,
 		},
 		ApiVersion: 1,
-	})
+	}
+
+	cli, err := adapter.client.Watch(ctx, req)
 	if err != nil {
 		return err
 	}
@@ -395,13 +440,20 @@ func (adapter *Adapter) WatchKindAggregated(ctx context.Context, resourceKind re
 		return err
 	}
 
-	go watchAdapter(ctx, cli, nil, ch, opts.UnmarshalOptions.SkipProtobufUnmarshal)
+	go adapter.watchAdapter(ctx, cli, nil, ch, opts.UnmarshalOptions.SkipProtobufUnmarshal, req)
 
 	return nil
 }
 
 //nolint:gocognit,gocyclo,cyclop
-func watchAdapter(ctx context.Context, cli v1alpha1.State_WatchClient, singleCh chan<- state.Event, aggregatedCh chan<- []state.Event, skipProtobufUnmarshal bool) {
+func (adapter *Adapter) watchAdapter(
+	ctx context.Context,
+	cli v1alpha1.State_WatchClient,
+	singleCh chan<- state.Event,
+	aggregatedCh chan<- []state.Event,
+	skipProtobufUnmarshal bool,
+	watchRequest *v1alpha1.WatchRequest,
+) {
 	sendError := func(err error) {
 		switch {
 		case singleCh != nil:
@@ -422,8 +474,72 @@ func watchAdapter(ctx context.Context, cli v1alpha1.State_WatchClient, singleCh 
 		}
 	}
 
-	for {
+	backoff := backoff.NewExponentialBackOff()
+
+	var lastBookmark []byte
+
+	recvMessage := func() (*v1alpha1.WatchResponse, error) {
 		msg, err := cli.Recv()
+		if err == nil {
+			return msg, nil
+		}
+
+		// retries disabled or no bookmark - return the error
+		if adapter.options.DisableWatchRetry {
+			return nil, err
+		}
+
+		if lastBookmark == nil {
+			return nil, err
+		}
+
+		for {
+			// retry loop - at the beginning of the loop 'err' is the error to be retried,
+			// lastBookmark is the last seen bookmark
+			delay := backoff.NextBackOff()
+			if delay == backoff.Stop {
+				return nil, fmt.Errorf("maximum retry attempts: %w", err)
+			}
+
+			adapter.options.RetryLogger.Warn("watch retrying",
+				zap.Error(err),
+				zap.Binary("bookmark", lastBookmark),
+				zap.Duration("backoff", delay),
+				zap.String("namespace", watchRequest.Namespace),
+				zap.String("type", watchRequest.Type),
+			)
+
+			select {
+			case <-ctx.Done():
+				return nil, ctx.Err()
+			case <-time.After(delay):
+			}
+
+			watchRequest.Options.BootstrapContents = false
+			watchRequest.Options.StartFromBookmark = lastBookmark
+			watchRequest.Options.TailEvents = 0
+
+			cli, err = adapter.client.Watch(ctx, watchRequest)
+			if err != nil {
+				continue
+			}
+
+			_, err = cli.Recv()
+			if err != nil {
+				continue
+			}
+
+			msg, err = cli.Recv()
+			if err == nil {
+				backoff.Reset()
+
+				return msg, nil
+			}
+		}
+	}
+
+	for {
+		msg, err := recvMessage()
 		if err != nil {
 			sendError(err)
 
@@ -433,7 +549,11 @@ func watchAdapter(ctx context.Context, cli v1alpha1.State_WatchClient, singleCh 
 		events := make([]state.Event, 0, len(msg.Event))
 
 		for _, msgEvent := range msg.Event {
-			event := state.Event{}
+			lastBookmark = msgEvent.Bookmark // keep the last seen bookmark, even if it's nil
+
+			event := state.Event{
+				Bookmark: msgEvent.Bookmark,
+			}
 
 			switch msgEvent.EventType {
 			case v1alpha1.EventType_CREATED:

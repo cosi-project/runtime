@@ -1,28 +1,28 @@
-# syntax = docker/dockerfile-upstream:1.9.0-labs
+# syntax = docker/dockerfile-upstream:1.10.0-labs
 
 # THIS FILE WAS AUTOMATICALLY GENERATED, PLEASE DO NOT EDIT.
 #
-# Generated on 2024-08-29T10:16:19Z by kres b5ca957.
+# Generated on 2024-10-31T12:35:55Z by kres 6d3cad4.
 
 ARG TOOLCHAIN
 
-FROM ghcr.io/siderolabs/ca-certificates:v1.7.0 AS image-ca-certificates
+FROM ghcr.io/siderolabs/ca-certificates:v1.8.0 AS image-ca-certificates
 
-FROM ghcr.io/siderolabs/fhs:v1.7.0 AS image-fhs
+FROM ghcr.io/siderolabs/fhs:v1.8.0 AS image-fhs
 
 # runs markdownlint
-FROM docker.io/oven/bun:1.1.26-alpine AS lint-markdown
+FROM docker.io/oven/bun:1.1.32-alpine AS lint-markdown
 WORKDIR /src
-RUN bun i markdownlint-cli@0.41.0 sentences-per-line@0.2.1
+RUN bun i markdownlint-cli@0.42.0 sentences-per-line@0.2.1
 COPY .markdownlint.json .
 COPY ./README.md ./README.md
 RUN bunx markdownlint --ignore "CHANGELOG.md" --ignore "**/node_modules/**" --ignore '**/hack/chglog/**' --rules node_modules/sentences-per-line/index.js .
 
 # collects proto specs
 FROM scratch AS proto-specs
-ADD https://raw.githubusercontent.com/cosi-project/specification/5c734257bfa6a3acb01417809797dbfbe0e73c71/proto/v1alpha1/resource.proto /api/v1alpha1/
-ADD https://raw.githubusercontent.com/cosi-project/specification/5c734257bfa6a3acb01417809797dbfbe0e73c71/proto/v1alpha1/state.proto /api/v1alpha1/
-ADD https://raw.githubusercontent.com/cosi-project/specification/5c734257bfa6a3acb01417809797dbfbe0e73c71/proto/v1alpha1/meta.proto /api/v1alpha1/
+ADD https://raw.githubusercontent.com/cosi-project/specification/3a4d5d04bea01b9549af4e8c0d593ace09a7ebd3/proto/v1alpha1/resource.proto /api/v1alpha1/
+ADD https://raw.githubusercontent.com/cosi-project/specification/3a4d5d04bea01b9549af4e8c0d593ace09a7ebd3/proto/v1alpha1/state.proto /api/v1alpha1/
+ADD https://raw.githubusercontent.com/cosi-project/specification/3a4d5d04bea01b9549af4e8c0d593ace09a7ebd3/proto/v1alpha1/meta.proto /api/v1alpha1/
 ADD api/key_storage/key_storage.proto /api/key_storage/
 
 # base toolchain image
