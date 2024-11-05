@@ -6,8 +6,10 @@ package inmem
 
 import (
 	"context"
+	"crypto/rand"
 	"encoding/binary"
 	"fmt"
+	"io"
 	"slices"
 	"sort"
 	"sync"
@@ -265,16 +267,34 @@ func (collection *ResourceCollection) Destroy(ctx context.Context, ptr resource.
 	return nil
 }
 
+// bookmarkCookie is a random cookie used to encode bookmarks.
+//
+// As the state is in-memory, we need to distinguish between bookmarks from different runs of the program.
+var bookmarkCookie = sync.OnceValue(func() []byte {
+	cookie := make([]byte, 8)
+
+	_, err := io.ReadFull(rand.Reader, cookie)
+	if err != nil {
+		panic(err)
+	}
+
+	return cookie
+})
+
 func encodeBookmark(pos int64) state.Bookmark {
-	return binary.BigEndian.AppendUint64(nil, uint64(pos))
+	return binary.BigEndian.AppendUint64(slices.Clone(bookmarkCookie()), uint64(pos))
 }
 
 func decodeBookmark(bookmark state.Bookmark) (int64, error) {
-	if len(bookmark) != 8 {
-		return 0, fmt.Errorf("invalid bookmark length: %d", len(bookmark))
+	if len(bookmark) != 16 {
+		return 0, ErrInvalidWatchBookmark
 	}
 
-	return int64(binary.BigEndian.Uint64(bookmark)), nil
+	if !slices.Equal(bookmark[:8], bookmarkCookie()) {
+		return 0, ErrInvalidWatchBookmark
+	}
+
+	return int64(binary.BigEndian.Uint64(bookmark[8:])), nil
 }
 
 // Watch for specific resource changes.
@@ -321,7 +341,7 @@ func (collection *ResourceCollection) Watch(ctx context.Context, id resource.ID,
 		}
 
 		if pos < collection.writePos-int64(collection.capacity)+int64(collection.gap) || pos < 0 || pos >= collection.writePos {
-			return fmt.Errorf("invalid bookmark: %d", pos)
+			return ErrInvalidWatchBookmark
 		}
 
 		// skip the bookmarked event
@@ -478,7 +498,7 @@ func (collection *ResourceCollection) WatchAll(ctx context.Context, singleCh cha
 		}
 
 		if pos < collection.writePos-int64(collection.capacity)+int64(collection.gap) || pos < -1 || pos >= collection.writePos {
-			return fmt.Errorf("invalid bookmark: %d", pos)
+			return ErrInvalidWatchBookmark
 		}
 
 		// skip the bookmarked event

@@ -32,4 +32,6 @@ func TestErrors(t *testing.T) {
 
 	assert.True(t, state.IsConflictError(inmem.ErrAlreadyExists(resource.NewMetadata("ns", "a", "b", resource.VersionUndefined)), state.WithResourceType("a"), state.WithResourceNamespace("ns")))
 	assert.False(t, state.IsConflictError(inmem.ErrAlreadyExists(resource.NewMetadata("ns", "a", "b", resource.VersionUndefined)), state.WithResourceType("z"), state.WithResourceNamespace("ns")))
+
+	assert.True(t, state.IsInvalidWatchBookmarkError(inmem.ErrInvalidWatchBookmark))
 }

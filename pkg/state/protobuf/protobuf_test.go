@@ -215,6 +215,44 @@ func TestProtobufWatchRestart(t *testing.T) {
 	}
 }
 
+func TestProtobufWatchInvalidBookmark(t *testing.T) {
+	grpcConn, _, _, _ := ProtobufSetup(t) //nolint:dogsled
+
+	stateClient := v1alpha1.NewStateClient(grpcConn)
+
+	st := state.WrapCore(client.NewAdapter(stateClient,
+		client.WithRetryLogger(zaptest.NewLogger(t)),
+	))
+
+	ch := make(chan []state.Event)
+
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	t.Cleanup(cancel)
+
+	require.NoError(t, st.WatchKindAggregated(ctx, conformance.NewPathResource("test", "/foo").Metadata(), ch, state.WithBootstrapContents(true)))
+
+	var bookmark []byte
+
+	select {
+	case <-ctx.Done():
+		t.Fatal("timeout")
+	case ev := <-ch:
+		require.Len(t, ev, 1)
+
+		assert.Equal(t, state.Bootstrapped, ev[0].Type)
+		assert.NotEmpty(t, ev[0].Bookmark)
+
+		bookmark = ev[0].Bookmark
+	}
+
+	// send invalid bookmark
+	bookmark[0] ^= 0xff
+
+	err := st.WatchKindAggregated(ctx, conformance.NewPathResource("test", "/foo").Metadata(), ch, state.WithKindStartFromBookmark(bookmark))
+	require.Error(t, err)
+	assert.True(t, state.IsInvalidWatchBookmarkError(err))
+}
+
 func noError[T any](t *testing.T, fn func(T) error, v T, ignored ...error) {
 	t.Helper()
 

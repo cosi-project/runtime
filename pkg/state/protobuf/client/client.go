@@ -340,7 +340,12 @@ func (adapter *Adapter) Watch(ctx context.Context, resourcePointer resource.Poin
 	// receive first (empty) watch event
 	_, err = cli.Recv()
 	if err != nil {
-		return err
+		switch status.Code(err) { //nolint:exhaustive
+		case codes.FailedPrecondition:
+			return eInvalidWatchBookmark{err}
+		default:
+			return err
+		}
 	}
 
 	go adapter.watchAdapter(ctx, cli, ch, nil, opts.UnmarshalOptions.SkipProtobufUnmarshal, req)
@@ -388,7 +393,12 @@ func (adapter *Adapter) WatchKind(ctx context.Context, resourceKind resource.Kin
 	// receive first (empty) watch event
 	_, err = cli.Recv()
 	if err != nil {
-		return err
+		switch status.Code(err) { //nolint:exhaustive
+		case codes.FailedPrecondition:
+			return eInvalidWatchBookmark{err}
+		default:
+			return err
+		}
 	}
 
 	go adapter.watchAdapter(ctx, cli, ch, nil, opts.UnmarshalOptions.SkipProtobufUnmarshal, req)
@@ -437,7 +447,12 @@ func (adapter *Adapter) WatchKindAggregated(ctx context.Context, resourceKind re
 	// receive first (empty) watch event
 	_, err = cli.Recv()
 	if err != nil {
-		return err
+		switch status.Code(err) { //nolint:exhaustive
+		case codes.FailedPrecondition:
+			return eInvalidWatchBookmark{err}
+		default:
+			return err
+		}
 	}
 
 	go adapter.watchAdapter(ctx, cli, nil, ch, opts.UnmarshalOptions.SkipProtobufUnmarshal, req)
@@ -526,7 +541,12 @@ func (adapter *Adapter) watchAdapter(
 
 			_, err = cli.Recv()
 			if err != nil {
-				continue
+				switch status.Code(err) { //nolint:exhaustive
+				case codes.FailedPrecondition: // abort retries on invalid watch bookmark
+					return nil, eInvalidWatchBookmark{err}
+				default:
+					continue
+				}
 			}
 
 			msg, err = cli.Recv()

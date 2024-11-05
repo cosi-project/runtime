@@ -7,6 +7,7 @@ package inmem_test
 import (
 	"context"
 	"fmt"
+	"slices"
 	"strconv"
 	"testing"
 	"time"
@@ -198,4 +199,37 @@ func TestNoBufferOverrunDynamic(t *testing.T) {
 			t.Fatal("timeout waiting for event")
 		}
 	}
+}
+
+func TestWatchInvalidBookmark(t *testing.T) {
+	t.Parallel()
+
+	const namespace = "default"
+
+	st := state.WrapCore(inmem.NewState(namespace))
+
+	ctx, cancel := context.WithCancel(context.Background())
+	t.Cleanup(cancel)
+
+	// start watching for changes
+	watchKindCh := make(chan state.Event)
+
+	err := st.WatchKind(ctx, resource.NewMetadata(namespace, conformance.PathResourceType, "", resource.VersionUndefined), watchKindCh)
+	require.NoError(t, err)
+
+	// insert resource
+	err = st.Create(ctx, conformance.NewPathResource(namespace, "0"))
+	require.NoError(t, err)
+
+	ev := <-watchKindCh
+
+	require.Equal(t, state.Created, ev.Type)
+	require.NotEmpty(t, ev.Bookmark)
+
+	invalidBookmark := slices.Clone(ev.Bookmark)
+	invalidBookmark[0] ^= 0xff
+
+	err = st.WatchKind(ctx, resource.NewMetadata(namespace, conformance.PathResourceType, "", resource.VersionUndefined), watchKindCh, state.WithKindStartFromBookmark(invalidBookmark))
+	require.Error(t, err)
+	require.True(t, state.IsInvalidWatchBookmarkError(err))
 }

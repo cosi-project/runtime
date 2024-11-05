@@ -328,7 +328,12 @@ func (server *State) Watch(req *v1alpha1.WatchRequest, srv v1alpha1.State_WatchS
 	}
 
 	if err != nil {
-		return err
+		switch {
+		case state.IsInvalidWatchBookmarkError(err):
+			return status.Error(codes.FailedPrecondition, err.Error())
+		default:
+			return err
+		}
 	}
 
 	// send empty event to signal that watch is ready

@@ -38,3 +38,10 @@ type ePhaseConflict struct {
 }
 
 func (ePhaseConflict) PhaseConflictError() {}
+
+//nolint:errname
+type eInvalidWatchBookmark struct {
+	error
+}
+
+func (eInvalidWatchBookmark) InvalidWatchBookmarkError() {}

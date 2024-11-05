@@ -137,3 +137,15 @@ func errPhaseConflict(r resource.Reference, expectedPhase resource.Phase) error 
 		},
 	}
 }
+
+// ErrInvalidWatchBookmark should be implemented by "invalid watch bookmark" errors.
+type ErrInvalidWatchBookmark interface {
+	InvalidWatchBookmarkError()
+}
+
+// IsInvalidWatchBookmarkError checks if err is invalid watch bookmark.
+func IsInvalidWatchBookmarkError(err error) bool {
+	var i ErrInvalidWatchBookmark
+
+	return errors.As(err, &i)
+}

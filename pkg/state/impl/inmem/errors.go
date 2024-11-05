@@ -5,6 +5,7 @@
 package inmem
 
 import (
+	"errors"
 	"fmt"
 
 	"github.com/cosi-project/runtime/pkg/resource"
@@ -99,4 +100,16 @@ func ErrPhaseConflict(r resource.Reference, expectedPhase resource.Phase) error 
 			resource: r,
 		},
 	}
+}
+
+//nolint:errname
+type eInvalidWatchBookmark struct {
+	error
+}
+
+func (eInvalidWatchBookmark) InvalidWatchBookmarkError() {}
+
+// ErrInvalidWatchBookmark generates error compatible with state.ErrInvalidWatchBookmark.
+var ErrInvalidWatchBookmark = eInvalidWatchBookmark{
+	errors.New("invalid watch bookmark"),
 }
