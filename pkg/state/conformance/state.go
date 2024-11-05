@@ -980,7 +980,7 @@ func (suite *StateSuite) testWatchKindWithBookmarks(useAggregated bool) {
 	initial, err := suite.State.List(ctx, res.Metadata())
 	suite.Require().NoError(err)
 
-	suite.Require().NoError(watchAggregateAdapter(ctx, useAggregated, suite.State, res.Metadata(), ch, state.WithBootstrapContents(true)))
+	suite.Require().NoError(watchAggregateAdapter(ctx, useAggregated, suite.State, res.Metadata().Copy(), ch, state.WithBootstrapContents(true)))
 
 	suite.Require().NoError(suite.State.Update(ctx, res))
 	suite.Require().NoError(suite.State.Update(ctx, res))
