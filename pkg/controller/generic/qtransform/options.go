@@ -57,12 +57,13 @@ func mapperFuncFromGeneric[I generic.ResourceWithRD](generic MapperFuncGeneric[I
 
 // ControllerOptions configures QTransformController.
 type ControllerOptions struct {
-	mappers            map[namespaceType]mapperFunc
-	leftoverFinalizers map[resource.Finalizer]struct{}
-	extraInputs        []controller.Input
-	extraOutputs       []controller.Output
-	primaryOutputKind  controller.OutputKind
-	concurrency        optional.Optional[uint]
+	mappers                       map[namespaceType]mapperFunc
+	ignoreTeardownUntilFinalizers map[resource.Finalizer]struct{}
+	ignoreTeardownWhileFinalizers map[resource.Finalizer]struct{}
+	extraInputs                   []controller.Input
+	extraOutputs                  []controller.Output
+	primaryOutputKind             controller.OutputKind
+	concurrency                   optional.Optional[uint]
 }
 
 // ControllerOption is an option for QTransformController.
@@ -139,12 +140,27 @@ func WithConcurrency(n uint) ControllerOption {
 // to be the last one not done with the resource.
 func WithIgnoreTeardownUntil(finalizers ...resource.Finalizer) ControllerOption {
 	return func(o *ControllerOptions) {
-		if o.leftoverFinalizers == nil {
-			o.leftoverFinalizers = map[resource.Finalizer]struct{}{}
+		if o.ignoreTeardownUntilFinalizers == nil {
+			o.ignoreTeardownUntilFinalizers = map[resource.Finalizer]struct{}{}
 		}
 
 		for _, fin := range finalizers {
-			o.leftoverFinalizers[fin] = struct{}{}
+			o.ignoreTeardownUntilFinalizers[fin] = struct{}{}
+		}
+	}
+}
+
+// WithIgnoreTeardownWhile ignores input resource teardown while the input resource still has the mentioned finalizers.
+//
+// It is the opposite of WithIgnoreTeardownUntil.
+func WithIgnoreTeardownWhile(finalizers ...resource.Finalizer) ControllerOption {
+	return func(o *ControllerOptions) {
+		if o.ignoreTeardownWhileFinalizers == nil {
+			o.ignoreTeardownWhileFinalizers = map[resource.Finalizer]struct{}{}
+		}
+
+		for _, fin := range finalizers {
+			o.ignoreTeardownWhileFinalizers[fin] = struct{}{}
 		}
 	}
 }
