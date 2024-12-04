@@ -47,4 +47,7 @@ require (
 	google.golang.org/genproto/googleapis/rpc v0.0.0-20241202173237-19429a94021a // indirect
 )
 
-retract v0.4.7 // Wait with locked mutex leads to the deadlock
+retract (
+	v0.7.3 // Typo in the test type result
+	v0.4.7 // Wait with locked mutex leads to the deadlock
+)

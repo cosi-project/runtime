@@ -61,7 +61,7 @@ func NewStrResource(ns resource.Namespace, id resource.ID, value string) *StrRes
 type strSpec struct{ ValueGetSet[string] } //nolint:recvcheck
 
 func (s *strSpec) FromProto(bytes []byte)       { s.value = string(bytes) }
-func (s strSpec) MarshalProto() ([]byte, error) { return []byte(s.value + "stuff"), nil }
+func (s strSpec) MarshalProto() ([]byte, error) { return []byte(s.value), nil }
 
 // SentenceResourceType is the type of SentenceResource.
 const SentenceResourceType = resource.Type("test/sentence")

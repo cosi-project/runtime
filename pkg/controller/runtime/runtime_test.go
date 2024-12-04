@@ -6,31 +6,51 @@ package runtime_test
 
 import (
 	"context"
+	"net"
 	goruntime "runtime"
 	"strconv"
 	"testing"
 	"time"
 
+	"github.com/siderolabs/gen/xtesting/must"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	suiterunner "github.com/stretchr/testify/suite"
 	"go.uber.org/goleak"
 	"go.uber.org/zap/zaptest"
+	"google.golang.org/grpc"
+	"google.golang.org/grpc/credentials/insecure"
 
+	"github.com/cosi-project/runtime/api/v1alpha1"
 	"github.com/cosi-project/runtime/pkg/controller/conformance"
 	"github.com/cosi-project/runtime/pkg/controller/runtime"
 	"github.com/cosi-project/runtime/pkg/controller/runtime/options"
 	"github.com/cosi-project/runtime/pkg/future"
 	"github.com/cosi-project/runtime/pkg/resource"
+	"github.com/cosi-project/runtime/pkg/resource/protobuf"
 	"github.com/cosi-project/runtime/pkg/safe"
 	"github.com/cosi-project/runtime/pkg/state"
 	stateconformance "github.com/cosi-project/runtime/pkg/state/conformance"
 	"github.com/cosi-project/runtime/pkg/state/impl/inmem"
 	"github.com/cosi-project/runtime/pkg/state/impl/namespaced"
+	"github.com/cosi-project/runtime/pkg/state/protobuf/client"
+	"github.com/cosi-project/runtime/pkg/state/protobuf/server"
 )
 
+func noError(err error) {
+	if err != nil {
+		panic(err)
+	}
+}
+
+func init() {
+	noError(protobuf.RegisterResource(conformance.IntResourceType, &conformance.IntResource{}))
+	noError(protobuf.RegisterResource(conformance.StrResourceType, &conformance.StrResource{}))
+	noError(protobuf.RegisterResource(conformance.SentenceResourceType, &conformance.SentenceResource{}))
+}
+
 func TestRuntimeConformance(t *testing.T) {
-	for _, tt := range []struct {
+	tests := []struct {
 		name                    string
 		opts                    []options.Option
 		metricsReadCacheEnabled bool
@@ -68,25 +88,63 @@ func TestRuntimeConformance(t *testing.T) {
 				options.WithWarnOnUncachedReads(true),
 			},
 		},
-	} {
+	}
+
+	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Cleanup(func() { goleak.VerifyNone(t, goleak.IgnoreCurrent()) })
 
-			suite := &conformance.RuntimeSuite{
+			suiterunner.Run(t, &conformance.RuntimeSuite{
 				MetricsReadCacheEnabled: tt.metricsReadCacheEnabled,
-			}
-			suite.SetupRuntime = func() {
-				suite.State = state.WrapCore(namespaced.NewState(inmem.Build))
+				SetupRuntime: func(rs *conformance.RuntimeSuite) {
+					rs.State = state.WrapCore(namespaced.NewState(inmem.Build))
+					logger := zaptest.NewLogger(rs.T())
+					rs.Runtime = must.Value(runtime.NewRuntime(rs.State, logger, tt.opts...))(rs.T())
+				},
+			})
+		})
+	}
 
-				var err error
+	const listenOn = "127.0.0.1:0"
 
-				logger := zaptest.NewLogger(t)
+	t.Log("testing networked runtime")
 
-				suite.Runtime, err = runtime.NewRuntime(suite.State, logger, tt.opts...)
-				suite.Require().NoError(err)
-			}
+	for _, tt := range tests {
+		t.Run(tt.name+"_over-network", func(t *testing.T) {
+			t.Cleanup(func() { goleak.VerifyNone(t, goleak.IgnoreCurrent()) })
 
-			suiterunner.Run(t, suite)
+			suiterunner.Run(t, &conformance.RuntimeSuite{
+				MetricsReadCacheEnabled: tt.metricsReadCacheEnabled,
+				SetupRuntime: func(rs *conformance.RuntimeSuite) {
+					l := must.Value(net.Listen("tcp", listenOn))(rs.T())
+
+					grpcServer := grpc.NewServer()
+					inmemState := state.WrapCore(namespaced.NewState(inmem.Build))
+					v1alpha1.RegisterStateServer(grpcServer, server.NewState(inmemState))
+
+					go func() { assert.NoError(rs.T(), grpcServer.Serve(l)) }()
+
+					rs.T().Cleanup(func() { grpcServer.Stop() })
+
+					grpcConn := must.Value(grpc.NewClient(
+						l.Addr().String(),
+						grpc.WithTransportCredentials(insecure.NewCredentials()),
+					))(rs.T())
+
+					rs.T().Cleanup(func() { assert.NoError(rs.T(), grpcConn.Close()) })
+
+					stateClient := v1alpha1.NewStateClient(grpcConn)
+					rs.State = state.WrapCore(client.NewAdapter(stateClient))
+
+					must.Value(rs.State.List(rs.Context(), conformance.NewIntResource("default", "zero", 0).Metadata()))(rs.T())
+
+					rs.Runtime = must.Value(runtime.NewRuntime(
+						rs.State,
+						zaptest.NewLogger(rs.T()),
+						tt.opts...,
+					))(rs.T())
+				},
+			})
 		})
 	}
 }

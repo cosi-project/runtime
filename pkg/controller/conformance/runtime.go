@@ -9,6 +9,7 @@ import (
 	"expvar"
 	"fmt"
 	"math/rand"
+	"strings"
 	"sync"
 	"time"
 
@@ -31,8 +32,8 @@ type RuntimeSuite struct { //nolint:govet
 
 	Runtime controller.Engine
 
-	SetupRuntime    func()
-	TearDownRuntime func()
+	SetupRuntime    func(suite *RuntimeSuite)
+	TearDownRuntime func(suite *RuntimeSuite)
 
 	MetricsReadCacheEnabled bool
 
@@ -42,12 +43,15 @@ type RuntimeSuite struct { //nolint:govet
 	ctxCancel context.CancelFunc
 }
 
+// Context provides the context for the test suite.
+func (suite *RuntimeSuite) Context() context.Context { return suite.ctx }
+
 // SetupTest ...
 func (suite *RuntimeSuite) SetupTest() {
 	suite.ctx, suite.ctxCancel = context.WithTimeout(context.Background(), 3*time.Minute)
 
 	if suite.SetupRuntime != nil {
-		suite.SetupRuntime()
+		suite.SetupRuntime(suite)
 	}
 }
 
@@ -57,7 +61,12 @@ func (suite *RuntimeSuite) startRuntime(ctx context.Context) {
 	go func() {
 		defer suite.wg.Done()
 
-		suite.Assert().NoError(suite.Runtime.Run(ctx))
+		err := suite.Runtime.Run(ctx)
+		// we can safely ignore canceled error,
+		// but we can't check for it using errors.Is because it's a rpc error
+		if err != nil && !strings.Contains(err.Error(), "context canceled") {
+			suite.Assert().NoError(err)
+		}
 	}()
 }
 
@@ -161,7 +170,7 @@ func (suite *RuntimeSuite) TearDownTest() {
 	suite.Assert().NoError(suite.State.Create(context.Background(), NewSentenceResource("sentences", "xxx", "")))
 
 	if suite.TearDownRuntime != nil {
-		suite.TearDownRuntime()
+		suite.TearDownRuntime(suite)
 	}
 }
 
