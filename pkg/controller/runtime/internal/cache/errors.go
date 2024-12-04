@@ -10,6 +10,7 @@ import (
 	"github.com/cosi-project/runtime/pkg/resource"
 )
 
+//nolint:errname
 type eNotFound struct {
 	error
 }

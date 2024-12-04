@@ -115,12 +115,14 @@ func IsPhaseConflictError(err error) bool {
 	return errors.As(err, &i)
 }
 
+//nolint:errname
 type eConflict struct {
 	error
 }
 
 func (eConflict) ConflictError() {}
 
+//nolint:errname
 type ePhaseConflict struct {
 	eConflict
 }

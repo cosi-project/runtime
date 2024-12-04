@@ -19,6 +19,8 @@ import (
 // Order of keys is not guaranteed.
 //
 // KV support copy-on-write semantics, so metadata copies share common labels as long as possible.
+//
+//nolint:recvcheck
 type KV struct {
 	m map[string]string
 }

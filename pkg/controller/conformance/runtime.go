@@ -502,7 +502,7 @@ func (suite *RuntimeSuite) TestControllerRuntimeMetrics() {
 			return 0
 		}
 
-		return int(v.(*expvar.Int).Value()) //nolint:forcetypeassert
+		return int(v.(*expvar.Int).Value()) //nolint:forcetypeassert,errcheck
 	}
 
 	ctrl := &MetricsController{

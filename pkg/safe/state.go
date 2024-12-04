@@ -208,7 +208,7 @@ func NewList[T any](list resource.List) List[T] {
 
 // Get returns the item at the given index.
 func (l *List[T]) Get(index int) T { //nolint:ireturn
-	return l.list.Items[index].(T) //nolint:forcetypeassert
+	return l.list.Items[index].(T) //nolint:forcetypeassert,errcheck
 }
 
 // Len returns the number of items in the list.
@@ -219,7 +219,7 @@ func (l *List[T]) Len() int {
 // SortFunc is a function that sorts the list.
 func (l *List[T]) SortFunc(cmp func(T, T) int) {
 	slices.SortFunc(l.list.Items, func(l, r resource.Resource) int {
-		return cmp(l.(T), r.(T)) //nolint:forcetypeassert
+		return cmp(l.(T), r.(T)) //nolint:forcetypeassert,errcheck
 	})
 }
 
@@ -263,14 +263,14 @@ func (l *List[T]) ForEachErr(fn func(T) error) error {
 // ForEach iterates over the given list and calls the given function for each element.
 func (l *List[T]) ForEach(fn func(T)) {
 	for _, r := range l.list.Items {
-		fn(r.(T)) //nolint:forcetypeassert
+		fn(r.(T)) //nolint:forcetypeassert,errcheck
 	}
 }
 
 // Index returns the index of the given item in the list.
 func (l *List[T]) Index(fn func(T) bool) int {
 	for i, r := range l.list.Items {
-		if fn(r.(T)) { //nolint:forcetypeassert
+		if fn(r.(T)) { //nolint:forcetypeassert,errcheck
 			return i
 		}
 	}

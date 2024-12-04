@@ -12,6 +12,8 @@ import "slices"
 type Finalizer = string
 
 // Finalizers is a set of Finalizer's with methods to add/remove items.
+//
+//nolint:recvcheck
 type Finalizers []Finalizer
 
 // Add a (unique) Finalizer to the set.

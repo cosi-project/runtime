@@ -19,6 +19,8 @@ import (
 )
 
 // ResourceDefinitionSpec provides ResourceDefinition definition.
+//
+//nolint:recvcheck
 type ResourceDefinitionSpec struct { //nolint:govet
 	// Canonical type name.
 	Type resource.Type `yaml:"type"`

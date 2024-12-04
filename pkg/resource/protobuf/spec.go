@@ -42,7 +42,7 @@ func (spec ResourceSpec[T, S]) DeepCopy() ResourceSpec[T, S] {
 	}
 
 	return ResourceSpec[T, S]{
-		Value: proto.Clone(spec.Value).(S), //nolint:forcetypeassert
+		Value: proto.Clone(spec.Value).(S), //nolint:forcetypeassert,errcheck
 	}
 }
 

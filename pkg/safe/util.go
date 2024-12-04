@@ -19,7 +19,7 @@ func Map[T any, R any](list List[T], fn func(T) (R, error)) ([]R, error) {
 	result := make([]R, 0, list.Len())
 
 	for _, item := range list.list.Items {
-		r, err := fn(item.(T))
+		r, err := fn(item.(T)) //nolint:errcheck
 		if err != nil {
 			return nil, err
 		}
@@ -35,7 +35,7 @@ func ToSlice[T any, R any](list List[T], fn func(T) R) []R {
 	result := make([]R, 0, list.Len())
 
 	for _, item := range list.list.Items {
-		result = append(result, fn(item.(T))) //nolint:forcetypeassert
+		result = append(result, fn(item.(T))) //nolint:forcetypeassert,errcheck
 	}
 
 	return result

@@ -6,12 +6,14 @@ package client
 
 import "github.com/cosi-project/runtime/pkg/resource"
 
+//nolint:errname
 type eNotFound struct {
 	error
 }
 
 func (eNotFound) NotFoundError() {}
 
+//nolint:errname
 type eConflict struct {
 	error
 	resource resource.Pointer
@@ -23,12 +25,14 @@ func (e eConflict) GetResource() resource.Pointer {
 	return e.resource
 }
 
+//nolint:errname
 type eOwnerConflict struct {
 	eConflict
 }
 
 func (eOwnerConflict) OwnerConflictError() {}
 
+//nolint:errname
 type ePhaseConflict struct {
 	eConflict
 }

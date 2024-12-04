@@ -40,6 +40,8 @@ func (NamespaceExtension) ResourceDefinition() ResourceDefinitionSpec {
 }
 
 // NamespaceSpec provides Namespace definition.
+//
+//nolint:recvcheck
 type NamespaceSpec struct {
 	Description string `yaml:"description"`
 }

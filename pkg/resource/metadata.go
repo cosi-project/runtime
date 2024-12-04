@@ -17,6 +17,8 @@ import (
 var _ Reference = Metadata{}
 
 // Metadata implements resource meta.
+//
+//nolint:recvcheck
 type Metadata struct {
 	created     time.Time
 	updated     time.Time

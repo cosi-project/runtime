@@ -33,7 +33,7 @@ func NewIntResource(ns resource.Namespace, id resource.ID, value int) *IntResour
 	return NewResource[int, intSpec, *intSpec](resource.NewMetadata(ns, IntResourceType, id, resource.VersionUndefined), value)
 }
 
-type intSpec struct{ ValueGetSet[int] }
+type intSpec struct{ ValueGetSet[int] } //nolint:recvcheck
 
 func (is *intSpec) FromProto(bytes []byte) {
 	v, _ := binary.Varint(bytes)
@@ -58,10 +58,10 @@ func NewStrResource(ns resource.Namespace, id resource.ID, value string) *StrRes
 	return NewResource[string, strSpec, *strSpec](resource.NewMetadata(ns, StrResourceType, id, resource.VersionUndefined), value)
 }
 
-type strSpec struct{ ValueGetSet[string] }
+type strSpec struct{ ValueGetSet[string] } //nolint:recvcheck
 
 func (s *strSpec) FromProto(bytes []byte)       { s.value = string(bytes) }
-func (s strSpec) MarshalProto() ([]byte, error) { return []byte(s.value), nil }
+func (s strSpec) MarshalProto() ([]byte, error) { return []byte(s.value + "stuff"), nil }
 
 // SentenceResourceType is the type of SentenceResource.
 const SentenceResourceType = resource.Type("test/sentence")
@@ -74,7 +74,7 @@ func NewSentenceResource(ns resource.Namespace, id resource.ID, value string) *S
 	return NewResource[string, sentenceSpec, *sentenceSpec](resource.NewMetadata(ns, SentenceResourceType, id, resource.VersionUndefined), value)
 }
 
-type sentenceSpec struct{ ValueGetSet[string] }
+type sentenceSpec struct{ ValueGetSet[string] } //nolint:recvcheck
 
 func (s *sentenceSpec) FromProto(bytes []byte)       { s.value = string(bytes) }
 func (s sentenceSpec) MarshalProto() ([]byte, error) { return []byte(s.value), nil }
