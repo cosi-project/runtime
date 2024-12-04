@@ -417,7 +417,6 @@ func TestDestroy(t *testing.T) {
 	})
 }
 
-//nolint:dupl
 func TestDestroyWithIgnoreTeardownUntil(t *testing.T) {
 	setup(t, func(ctx context.Context, st state.State, runtime *runtime.Runtime) {
 		require.NoError(t, runtime.RegisterQController(NewABCController(qtransform.WithIgnoreTeardownUntil("extra-finalizer"))))
@@ -437,7 +436,7 @@ func TestDestroyWithIgnoreTeardownUntil(t *testing.T) {
 		rtestutils.AssertNoResource[*B](ctx, t, st, "transformed-1")
 
 		// add two finalizers to '2'
-		require.NoError(t, st.AddFinalizer(ctx, NewA("2", ASpec{}).Metadata(), "extra-finalizer", "other-finalizer"))
+		require.NoError(t, st.AddFinalizer(ctx, NewA("2", ASpec{}).Metadata(), "extra-finalizer", "other-finalizer", "yet-another-finalizer"))
 
 		// teardown input '2'
 		_, err := st.Teardown(ctx, NewA("2", ASpec{}).Metadata())
@@ -450,6 +449,14 @@ func TestDestroyWithIgnoreTeardownUntil(t *testing.T) {
 
 		// remove other-finalizer
 		require.NoError(t, st.RemoveFinalizer(ctx, NewA("2", ASpec{}).Metadata(), "other-finalizer"))
+
+		// the output 'transformed-2' should still not be torn down yet
+		rtestutils.AssertResources(ctx, t, st, []resource.ID{"transformed-2"}, func(r *B, asrt *assert.Assertions) {
+			asrt.Equal(resource.PhaseRunning, r.Metadata().Phase())
+		})
+
+		// remove yet-another-finalizer
+		require.NoError(t, st.RemoveFinalizer(ctx, NewA("2", ASpec{}).Metadata(), "yet-another-finalizer"))
 
 		// the output 'transformed-2' should be destroyed now
 		rtestutils.AssertNoResource[*B](ctx, t, st, "transformed-2")
@@ -467,7 +474,6 @@ func TestDestroyWithIgnoreTeardownUntil(t *testing.T) {
 	})
 }
 
-//nolint:dupl
 func TestDestroyWithIgnoreTeardownWhile(t *testing.T) {
 	setup(t, func(ctx context.Context, st state.State, runtime *runtime.Runtime) {
 		require.NoError(t, runtime.RegisterQController(NewABCController(qtransform.WithIgnoreTeardownWhile("extra-finalizer"))))

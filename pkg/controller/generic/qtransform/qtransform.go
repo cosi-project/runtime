@@ -198,19 +198,23 @@ func (ctrl *QController[Input, Output]) Reconcile(ctx context.Context, logger *z
 	case resource.PhaseTearingDown:
 		ignoreTearingDown := false
 
-		// if there's an option to ignore finalizers, check if we should ignore tearing down
-		// and perform "normal" reconcile instead
-		if ctrl.options.ignoreTeardownUntilFinalizers != nil || ctrl.options.ignoreTeardownWhileFinalizers != nil {
-			for _, fin := range *in.Metadata().Finalizers() {
-				if fin == ctrl.ControllerName {
-					continue
-				}
+		for _, fin := range *in.Metadata().Finalizers() {
+			if fin == ctrl.ControllerName {
+				continue
+			}
 
-				if _, present = ctrl.options.ignoreTeardownUntilFinalizers[fin]; present {
-					continue
-				}
+			if ctrl.options.ignoreTeardownUntilFinalizers != nil {
+				if _, allowed := ctrl.options.ignoreTeardownUntilFinalizers[fin]; !allowed {
+					ignoreTearingDown = true // found an unexpected finalizer, skip teardown
 
-				if _, present = ctrl.options.ignoreTeardownWhileFinalizers[fin]; present {
+					break
+				}
+			}
+
+			// Check ignoreTeardownWhileFinalizers
+			if ctrl.options.ignoreTeardownWhileFinalizers != nil {
+				if _, present := ctrl.options.ignoreTeardownWhileFinalizers[fin]; present {
+					// Found a matching "while" finalizer, skip teardown
 					ignoreTearingDown = true
 
 					break
