@@ -30,10 +30,10 @@ type MapperFuncGeneric[I generic.ResourceWithRD] func(context.Context, *zap.Logg
 func MapperSameID[I generic.ResourceWithRD, O generic.ResourceWithRD]() MapperFuncGeneric[I] {
 	var zeroOutput O
 
-	outputType := zeroOutput.ResourceDefinition().Type
+	outputRD := zeroOutput.ResourceDefinition()
 
 	return func(_ context.Context, _ *zap.Logger, _ controller.QRuntime, v I) ([]resource.Pointer, error) {
-		return []resource.Pointer{resource.NewMetadata(v.Metadata().Namespace(), outputType, v.Metadata().ID(), resource.VersionUndefined)}, nil
+		return []resource.Pointer{resource.NewMetadata(outputRD.DefaultNamespace, outputRD.Type, v.Metadata().ID(), resource.VersionUndefined)}, nil
 	}
 }
 
