@@ -1,6 +1,6 @@
 # THIS FILE WAS AUTOMATICALLY GENERATED, PLEASE DO NOT EDIT.
 #
-# Generated on 2024-12-04T08:00:06Z by kres 232fe63.
+# Generated on 2024-12-09T13:31:00Z by kres 8183c20.
 
 # common variables
 
@@ -21,11 +21,11 @@ PROTOBUF_GO_VERSION ?= 1.35.2
 GRPC_GO_VERSION ?= 1.5.1
 GRPC_GATEWAY_VERSION ?= 2.24.0
 VTPROTOBUF_VERSION ?= 0.6.0
-GOIMPORTS_VERSION ?= 0.27.0
+GOIMPORTS_VERSION ?= 0.28.0
 DEEPCOPY_VERSION ?= v0.5.6
-GOLANGCILINT_VERSION ?= v1.62.0
+GOLANGCILINT_VERSION ?= v1.62.2
 GOFUMPT_VERSION ?= v0.7.0
-GO_VERSION ?= 1.23.3
+GO_VERSION ?= 1.23.4
 GO_BUILDFLAGS ?=
 GO_LDFLAGS ?=
 CGO_ENABLED ?= 0
@@ -152,7 +152,7 @@ local-%:  ## Builds the specified target defined in the Dockerfile using the loc
 	    echo $$platform; \
 	    directory="$${platform//\//_}"; \
 	    if [[ -d "$$DEST/$$directory" ]]; then \
-	      mv "$$DEST/$$directory/"* $$DEST; \
+	      mv -f "$$DEST/$$directory/"* $$DEST; \
 	      rmdir "$$DEST/$$directory/"; \
 	    fi; \
 	  done'
