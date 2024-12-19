@@ -82,22 +82,7 @@ func (kv *KV) Raw() map[string]string {
 
 // Equal checks kv for equality.
 func (kv KV) Equal(other KV) bool {
-	// shortcut for common case of having no keys
-	if kv.m == nil && other.m == nil {
-		return true
-	}
-
-	if len(kv.m) != len(other.m) {
-		return false
-	}
-
-	for k, v := range kv.m {
-		if v != other.m[k] {
-			return false
-		}
-	}
-
-	return true
+	return maps.Equal(kv.m, other.m)
 }
 
 // Empty if there are no pairs.
