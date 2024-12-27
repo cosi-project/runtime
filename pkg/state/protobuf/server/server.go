@@ -278,6 +278,10 @@ func (server *State) Watch(req *v1alpha1.WatchRequest, srv v1alpha1.State_WatchS
 			opts = append(opts, state.WithKindStartFromBookmark(req.Options.StartFromBookmark))
 		}
 
+		if req.Options.BootstrapBookmark {
+			opts = append(opts, state.WithBootstrapBookmark(true))
+		}
+
 		for _, query := range req.GetOptions().GetLabelQuery() {
 			var labelOpts []resource.LabelQueryOption
 
@@ -447,6 +451,8 @@ func mapEvent(apiVersion int32, event state.Event) (*v1alpha1.Event, error) {
 		eventType = v1alpha1.EventType_BOOTSTRAPPED
 	case state.Errored:
 		eventType = v1alpha1.EventType_ERRORED
+	case state.Noop:
+		eventType = v1alpha1.EventType_NOOP
 	}
 
 	return &v1alpha1.Event{

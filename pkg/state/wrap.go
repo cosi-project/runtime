@@ -194,7 +194,7 @@ func (state coreWrapper) ContextWithTeardown(ctx context.Context, resourcePointe
 					}
 				case Destroyed:
 					return
-				case Bootstrapped:
+				case Bootstrapped, Noop:
 					// ignored, should not happen
 				case Errored:
 					// watch failed, cancel the context

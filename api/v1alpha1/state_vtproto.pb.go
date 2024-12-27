@@ -355,6 +355,7 @@ func (m *WatchOptions) CloneVT() *WatchOptions {
 	r.TailEvents = m.TailEvents
 	r.IdQuery = m.IdQuery.CloneVT()
 	r.Aggregated = m.Aggregated
+	r.BootstrapBookmark = m.BootstrapBookmark
 	if rhs := m.LabelQuery; rhs != nil {
 		tmpContainer := make([]*LabelQuery, len(rhs))
 		for k, v := range rhs {
@@ -828,6 +829,9 @@ func (this *WatchOptions) EqualVT(that *WatchOptions) bool {
 		return false
 	}
 	if p, q := this.StartFromBookmark, that.StartFromBookmark; (p == nil && q != nil) || (p != nil && q == nil) || string(p) != string(q) {
+		return false
+	}
+	if this.BootstrapBookmark != that.BootstrapBookmark {
 		return false
 	}
 	return string(this.unknownFields) == string(that.unknownFields)
@@ -1755,6 +1759,16 @@ func (m *WatchOptions) MarshalToSizedBufferVT(dAtA []byte) (int, error) {
 		i -= len(m.unknownFields)
 		copy(dAtA[i:], m.unknownFields)
 	}
+	if m.BootstrapBookmark {
+		i--
+		if m.BootstrapBookmark {
+			dAtA[i] = 1
+		} else {
+			dAtA[i] = 0
+		}
+		i--
+		dAtA[i] = 0x38
+	}
 	if m.StartFromBookmark != nil {
 		i -= len(m.StartFromBookmark)
 		copy(dAtA[i:], m.StartFromBookmark)
@@ -2195,6 +2209,9 @@ func (m *WatchOptions) SizeVT() (n int) {
 	if m.StartFromBookmark != nil {
 		l = len(m.StartFromBookmark)
 		n += 1 + l + protohelpers.SizeOfVarint(uint64(l))
+	}
+	if m.BootstrapBookmark {
+		n += 2
 	}
 	n += len(m.unknownFields)
 	return n
@@ -4436,6 +4453,26 @@ func (m *WatchOptions) UnmarshalVT(dAtA []byte) error {
 				m.StartFromBookmark = []byte{}
 			}
 			iNdEx = postIndex
+		case 7:
+			if wireType != 0 {
+				return fmt.Errorf("proto: wrong wireType = %d for field BootstrapBookmark", wireType)
+			}
+			var v int
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return protohelpers.ErrIntOverflow
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				v |= int(b&0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			m.BootstrapBookmark = bool(v != 0)
 		default:
 			iNdEx = preIndex
 			skippy, err := protohelpers.Skip(dAtA[iNdEx:])

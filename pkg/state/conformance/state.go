@@ -958,17 +958,18 @@ func (suite *StateSuite) TestWatchWithBookmarks() {
 
 // TestWatchKindWithBookmarks verifies WatchKind with bookmarks.
 func (suite *StateSuite) TestWatchKindWithBookmarks() {
-	suite.testWatchKindWithBookmarks(false)
+	for _, aggregated := range []bool{false, true} {
+		for _, bootstrapContents := range []bool{false, true} {
+			suite.Run(fmt.Sprintf("aggregated=%v/bootstrapContents=%v", aggregated, bootstrapContents), func() {
+				suite.testWatchKindWithBookmarks(aggregated, bootstrapContents)
+			})
+		}
+	}
 }
 
-// TestWatchKindAggregatedWithBookmarks verifies WatchKind aggregated with bookmarks.
-func (suite *StateSuite) TestWatchKindAggregatedWithBookmarks() {
-	suite.testWatchKindWithBookmarks(true)
-}
-
-func (suite *StateSuite) testWatchKindWithBookmarks(useAggregated bool) {
+func (suite *StateSuite) testWatchKindWithBookmarks(useAggregated, useBootstrapContents bool) {
 	ns := suite.getNamespace()
-	res := NewPathResource(ns, fmt.Sprintf("res/watch-kind-with-bookmarks/%v", useAggregated))
+	res := NewPathResource(ns, fmt.Sprintf("res/watch-kind-with-bookmarks/%v/%v", useAggregated, useBootstrapContents))
 
 	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 	defer cancel()
@@ -980,7 +981,14 @@ func (suite *StateSuite) testWatchKindWithBookmarks(useAggregated bool) {
 	initial, err := suite.State.List(ctx, res.Metadata())
 	suite.Require().NoError(err)
 
-	suite.Require().NoError(watchAggregateAdapter(ctx, useAggregated, suite.State, res.Metadata().Copy(), ch, state.WithBootstrapContents(true)))
+	if !useBootstrapContents {
+		initial.Items = []resource.Resource{nil}
+	}
+
+	suite.Require().NoError(watchAggregateAdapter(ctx, useAggregated, suite.State, res.Metadata().Copy(), ch,
+		state.WithBootstrapContents(useBootstrapContents),
+		state.WithBootstrapBookmark(!useBootstrapContents),
+	))
 
 	suite.Require().NoError(suite.State.Update(ctx, res))
 	suite.Require().NoError(suite.State.Update(ctx, res))
@@ -990,27 +998,36 @@ func (suite *StateSuite) testWatchKindWithBookmarks(useAggregated bool) {
 
 	suite.Require().NoError(suite.State.Destroy(ctx, res.Metadata()))
 
-	const numEvents = 6
+	numEvents := 6
+
+	if !useBootstrapContents {
+		// no initial "Created" event
+		numEvents = 5
+	}
 
 	expectedEvents := make([]reducedEventWithBookmark, 0, numEvents)
 
 	sawBootstrapped := false
+	sawNoop := false
 
 	for i := range numEvents + len(initial.Items) - 1 {
 		select {
 		case ev := <-ch:
 			suite.T().Logf("received event %d: %v", i, ev)
 
-			if ev.Type == state.Bootstrapped {
+			switch ev.Type { //nolint:exhaustive
+			case state.Bootstrapped:
 				sawBootstrapped = true
+			case state.Noop:
+				sawNoop = true
 			}
 
 			// filter unrelated content state
-			if !sawBootstrapped && ev.Resource.Metadata().ID() != res.Metadata().ID() {
+			if !sawBootstrapped && !sawNoop && ev.Resource.Metadata().ID() != res.Metadata().ID() {
 				continue
 			}
 
-			if sawBootstrapped {
+			if sawBootstrapped || sawNoop {
 				// initial event might not have a bookmark
 				suite.Assert().NotNil(ev.Bookmark, "event %d, %v", i, ev)
 			}
@@ -1030,6 +1047,8 @@ func (suite *StateSuite) testWatchKindWithBookmarks(useAggregated bool) {
 
 		if ev.b == nil {
 			// no bookmark, skip
+			suite.T().Logf("skipping event %d, no bookmark: %v", i, ev)
+
 			continue
 		}
 

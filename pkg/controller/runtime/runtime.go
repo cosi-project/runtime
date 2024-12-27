@@ -233,7 +233,7 @@ func (runtime *Runtime) setupWatches() error {
 	for key, cached := range runtime.watched {
 		kind := resource.NewMetadata(key.Namespace, key.Type, "", resource.Version{})
 
-		if err := runtime.state.WatchKindAggregated(runtime.runCtx, kind, runtime.watchCh, state.WithBootstrapContents(cached)); err != nil {
+		if err := runtime.state.WatchKindAggregated(runtime.runCtx, kind, runtime.watchCh, state.WithBootstrapContents(cached), state.WithBootstrapBookmark(!cached)); err != nil {
 			return err
 		}
 	}
@@ -312,6 +312,11 @@ eventLoop:
 			runtime.watchErrors <- e.Error
 
 			return false
+		}
+
+		// ignore Noop events
+		if e.Type == state.Noop {
+			continue
 		}
 
 		// if the resource is cached, we activated a watch with BootstrapContents option, so we need some special handling:

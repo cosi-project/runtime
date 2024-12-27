@@ -5,15 +5,15 @@ spec:
     - --experimental_allow_proto3_optional
   vtProtobufEnabled: true
   specs:
-    - source: https://raw.githubusercontent.com/cosi-project/specification/3a4d5d04bea01b9549af4e8c0d593ace09a7ebd3/proto/v1alpha1/resource.proto
+    - source: https://raw.githubusercontent.com/cosi-project/specification/a25fac056c642b32468b030387ab94c17bc3ba1d/proto/v1alpha1/resource.proto
       subdirectory: v1alpha1/
       genGateway: true
       external: false
-    - source: https://raw.githubusercontent.com/cosi-project/specification/3a4d5d04bea01b9549af4e8c0d593ace09a7ebd3/proto/v1alpha1/state.proto
+    - source: https://raw.githubusercontent.com/cosi-project/specification/a25fac056c642b32468b030387ab94c17bc3ba1d/proto/v1alpha1/state.proto
       subdirectory: v1alpha1/
       genGateway: true
       external: false
-    - source: https://raw.githubusercontent.com/cosi-project/specification/3a4d5d04bea01b9549af4e8c0d593ace09a7ebd3/proto/v1alpha1/meta.proto
+    - source: https://raw.githubusercontent.com/cosi-project/specification/a25fac056c642b32468b030387ab94c17bc3ba1d/proto/v1alpha1/meta.proto
       subdirectory: v1alpha1/
       genGateway: true
       external: false

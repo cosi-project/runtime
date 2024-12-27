@@ -1,8 +1,8 @@
-# syntax = docker/dockerfile-upstream:1.12.0-labs
+# syntax = docker/dockerfile-upstream:1.12.1-labs
 
 # THIS FILE WAS AUTOMATICALLY GENERATED, PLEASE DO NOT EDIT.
 #
-# Generated on 2024-12-17T14:42:24Z by kres b9507d6.
+# Generated on 2024-12-27T11:10:43Z by kres fcff05e.
 
 ARG TOOLCHAIN
 
@@ -11,7 +11,7 @@ FROM ghcr.io/siderolabs/ca-certificates:v1.9.0 AS image-ca-certificates
 FROM ghcr.io/siderolabs/fhs:v1.9.0 AS image-fhs
 
 # runs markdownlint
-FROM docker.io/oven/bun:1.1.38-alpine AS lint-markdown
+FROM docker.io/oven/bun:1.1.40-alpine AS lint-markdown
 WORKDIR /src
 RUN bun i markdownlint-cli@0.43.0 sentences-per-line@0.3.0
 COPY .markdownlint.json .
@@ -20,9 +20,9 @@ RUN bunx markdownlint --ignore "CHANGELOG.md" --ignore "**/node_modules/**" --ig
 
 # collects proto specs
 FROM scratch AS proto-specs
-ADD https://raw.githubusercontent.com/cosi-project/specification/3a4d5d04bea01b9549af4e8c0d593ace09a7ebd3/proto/v1alpha1/resource.proto /api/v1alpha1/
-ADD https://raw.githubusercontent.com/cosi-project/specification/3a4d5d04bea01b9549af4e8c0d593ace09a7ebd3/proto/v1alpha1/state.proto /api/v1alpha1/
-ADD https://raw.githubusercontent.com/cosi-project/specification/3a4d5d04bea01b9549af4e8c0d593ace09a7ebd3/proto/v1alpha1/meta.proto /api/v1alpha1/
+ADD https://raw.githubusercontent.com/cosi-project/specification/a25fac056c642b32468b030387ab94c17bc3ba1d/proto/v1alpha1/resource.proto /api/v1alpha1/
+ADD https://raw.githubusercontent.com/cosi-project/specification/a25fac056c642b32468b030387ab94c17bc3ba1d/proto/v1alpha1/state.proto /api/v1alpha1/
+ADD https://raw.githubusercontent.com/cosi-project/specification/a25fac056c642b32468b030387ab94c17bc3ba1d/proto/v1alpha1/meta.proto /api/v1alpha1/
 ADD api/key_storage/key_storage.proto /api/key_storage/
 
 # base toolchain image

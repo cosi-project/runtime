@@ -192,6 +192,7 @@ type WatchKindOptions struct {
 	StartFromBookmark Bookmark
 	UnmarshalOptions  UnmarshalOptions
 	BootstrapContents bool
+	BootstrapBookmark bool
 	TailEvents        int
 }
 
@@ -202,6 +203,13 @@ type WatchKindOption func(*WatchKindOptions)
 func WithBootstrapContents(enable bool) WatchKindOption {
 	return func(opts *WatchKindOptions) {
 		opts.BootstrapContents = enable
+	}
+}
+
+// WithBootstrapBookmark enables loading initial bookmark as 'noop' event for WatchKind API.
+func WithBootstrapBookmark(enable bool) WatchKindOption {
+	return func(opts *WatchKindOptions) {
+		opts.BootstrapBookmark = enable
 	}
 }
 

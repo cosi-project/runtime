@@ -563,6 +563,26 @@ func (collection *ResourceCollection) WatchAll(ctx context.Context, singleCh cha
 			bootstrapList = nil
 		}
 
+		// send initial bookmark
+		if options.BootstrapBookmark {
+			event := state.Event{
+				Type:     state.Noop,
+				Resource: resource.NewTombstone(resource.NewMetadata(collection.ns, collection.typ, "", resource.VersionUndefined)),
+				Bookmark: encodeBookmark(pos - 1),
+			}
+
+			switch {
+			case singleCh != nil:
+				if !channel.SendWithContext(ctx, singleCh, event) {
+					return
+				}
+			case aggCh != nil:
+				if !channel.SendWithContext(ctx, aggCh, []state.Event{event}) {
+					return
+				}
+			}
+		}
+
 		for {
 			collection.mu.Lock()
 
@@ -647,7 +667,7 @@ func (collection *ResourceCollection) WatchAll(ctx context.Context, singleCh cha
 						// skip the event
 						return false
 					}
-				case state.Errored, state.Bootstrapped:
+				case state.Errored, state.Bootstrapped, state.Noop:
 					panic("should never be reached")
 				}
 

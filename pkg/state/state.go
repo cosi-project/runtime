@@ -26,6 +26,8 @@ const (
 	Bootstrapped
 	// Error happened in the watch.
 	Errored
+	// Noop event.
+	Noop
 )
 
 func _() {
@@ -35,9 +37,10 @@ func _() {
 	_ = x[Destroyed-2]
 	_ = x[Bootstrapped-3]
 	_ = x[Errored-4]
+	_ = x[Noop-5]
 }
 
-var eventTypeString = [...]string{"Created", "Updated", "Destroyed", "Bootstrapped", "Errored"}
+var eventTypeString = [...]string{"Created", "Updated", "Destroyed", "Bootstrapped", "Errored", "Noop"}
 
 func (eventType EventType) String() string {
 	return eventTypeString[eventType]

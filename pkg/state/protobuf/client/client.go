@@ -377,6 +377,7 @@ func (adapter *Adapter) WatchKind(ctx context.Context, resourceKind resource.Kin
 		Type:      resourceKind.Type(),
 		Options: &v1alpha1.WatchOptions{
 			BootstrapContents: opts.BootstrapContents,
+			BootstrapBookmark: opts.BootstrapBookmark,
 			StartFromBookmark: opts.StartFromBookmark,
 			TailEvents:        int32(opts.TailEvents),
 			LabelQuery:        labelQueries,
@@ -430,6 +431,7 @@ func (adapter *Adapter) WatchKindAggregated(ctx context.Context, resourceKind re
 		Type:      resourceKind.Type(),
 		Options: &v1alpha1.WatchOptions{
 			BootstrapContents: opts.BootstrapContents,
+			BootstrapBookmark: opts.BootstrapBookmark,
 			StartFromBookmark: opts.StartFromBookmark,
 			TailEvents:        int32(opts.TailEvents),
 			LabelQuery:        labelQueries,
@@ -531,6 +533,7 @@ func (adapter *Adapter) watchAdapter(
 			}
 
 			watchRequest.Options.BootstrapContents = false
+			watchRequest.Options.BootstrapBookmark = false
 			watchRequest.Options.StartFromBookmark = lastBookmark
 			watchRequest.Options.TailEvents = 0
 
@@ -586,6 +589,8 @@ func (adapter *Adapter) watchAdapter(
 				event.Type = state.Bootstrapped
 			case v1alpha1.EventType_ERRORED:
 				event.Type = state.Errored
+			case v1alpha1.EventType_NOOP:
+				event.Type = state.Noop
 			}
 
 			if msgEvent.Resource != nil {

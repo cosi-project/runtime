@@ -72,7 +72,7 @@ func Destroy[R ResourceWithRD](ctx context.Context, t *testing.T, st state.State
 
 				t.Logf("cleaned up %s ID %q", rds.Type, r.Metadata().ID())
 			}
-		case state.Bootstrapped:
+		case state.Bootstrapped, state.Noop:
 			// ignore
 		case state.Errored:
 			require.NoError(t, event.Error())

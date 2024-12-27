@@ -133,7 +133,15 @@ func TestProtobufWatchAbort(t *testing.T) {
 	}
 }
 
-func TestProtobufWatchRestart(t *testing.T) {
+func TestProtobufWatchRestartBoostrapped(t *testing.T) {
+	testProtobufWatchRestart(t, state.WithBootstrapContents(true), state.Bootstrapped)
+}
+
+func TestProtobufWatchRestartInitialBookmark(t *testing.T) {
+	testProtobufWatchRestart(t, state.WithBootstrapBookmark(true), state.Noop)
+}
+
+func testProtobufWatchRestart(t *testing.T, option state.WatchKindOption, initialEvent state.EventType) {
 	grpcConn, grpcServer, restartServer, coreState := ProtobufSetup(t)
 
 	stateClient := v1alpha1.NewStateClient(grpcConn)
@@ -147,7 +155,7 @@ func TestProtobufWatchRestart(t *testing.T) {
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	t.Cleanup(cancel)
 
-	require.NoError(t, st.WatchKindAggregated(ctx, conformance.NewPathResource("test", "/foo").Metadata(), ch, state.WithBootstrapContents(true)))
+	require.NoError(t, st.WatchKindAggregated(ctx, conformance.NewPathResource("test", "/foo").Metadata(), ch, option))
 
 	select {
 	case <-ctx.Done():
@@ -155,7 +163,7 @@ func TestProtobufWatchRestart(t *testing.T) {
 	case ev := <-ch:
 		require.Len(t, ev, 1)
 
-		assert.Equal(t, state.Bootstrapped, ev[0].Type)
+		assert.Equal(t, initialEvent, ev[0].Type)
 	}
 
 	// abort the server, watch should enter retry loop

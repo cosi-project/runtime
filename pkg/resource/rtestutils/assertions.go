@@ -230,7 +230,7 @@ func AssertNoResource[R ResourceWithRD](
 			return
 		case state.Errored:
 			require.NoError(ev.Error)
-		case state.Created, state.Updated, state.Bootstrapped:
+		case state.Created, state.Updated, state.Bootstrapped, state.Noop:
 		}
 	}
 }
@@ -275,7 +275,7 @@ func AssertLength[R ResourceWithRD](ctx context.Context, t *testing.T, st state.
 				bootstrapped = true
 			case state.Errored:
 				require.NoError(event.Error)
-			case state.Updated:
+			case state.Updated, state.Noop:
 			}
 
 			if bootstrapped && length == expectedLength {
