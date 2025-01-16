@@ -38,7 +38,7 @@ func ProtobufSetup(t *testing.T) (grpc.ClientConnInterface, *grpc.Server, func()
 
 	t.Cleanup(func() { goleak.VerifyNone(t, goleak.IgnoreCurrent()) })
 
-	sock, err := os.CreateTemp("", "api*.sock")
+	sock, err := os.CreateTemp("", "api*.sock") //nolint:usetesting
 	require.NoError(t, err)
 
 	require.NoError(t, os.Remove(sock.Name()))
