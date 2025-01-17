@@ -462,7 +462,7 @@ func (adapter *Adapter) WatchKindAggregated(ctx context.Context, resourceKind re
 	return nil
 }
 
-//nolint:gocognit,gocyclo,cyclop
+//nolint:gocognit,gocyclo,cyclop,maintidx
 func (adapter *Adapter) watchAdapter(
 	ctx context.Context,
 	cli v1alpha1.State_WatchClient,
@@ -513,6 +513,12 @@ func (adapter *Adapter) watchAdapter(
 		for {
 			// retry loop - at the beginning of the loop 'err' is the error to be retried,
 			// lastBookmark is the last seen bookmark
+			//
+			// quick check for context canceled, no need to retry
+			if err = ctx.Err(); err != nil {
+				return nil, err
+			}
+
 			delay := backoff.NextBackOff()
 			if delay == backoff.Stop {
 				return nil, fmt.Errorf("maximum retry attempts: %w", err)
