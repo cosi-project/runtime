@@ -515,8 +515,8 @@ func (adapter *Adapter) watchAdapter(
 			// lastBookmark is the last seen bookmark
 			//
 			// quick check for context canceled, no need to retry
-			if err = ctx.Err(); err != nil {
-				return nil, err
+			if ctx.Err() != nil {
+				return nil, ctx.Err()
 			}
 
 			delay := backoff.NextBackOff()
