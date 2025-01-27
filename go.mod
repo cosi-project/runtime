@@ -17,7 +17,7 @@ require (
 	github.com/siderolabs/gen v0.8.0
 	github.com/siderolabs/go-pointer v1.0.0
 	github.com/siderolabs/go-retry v0.3.3
-	github.com/siderolabs/protoenc v0.2.1
+	github.com/siderolabs/protoenc v0.2.2
 	github.com/stretchr/testify v1.10.0
 	go.etcd.io/bbolt v1.3.11
 	go.uber.org/goleak v1.3.0

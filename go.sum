@@ -4,8 +4,8 @@ github.com/ProtonMail/go-mime v0.0.0-20230322103455-7d82a3887f2f h1:tCbYj7/299ek
 github.com/ProtonMail/go-mime v0.0.0-20230322103455-7d82a3887f2f/go.mod h1:gcr0kNtGBqin9zDW9GOHcVntrwnjrK+qdJ06mWYBybw=
 github.com/ProtonMail/gopenpgp/v2 v2.8.2 h1:fe/XagfxkHRCr+cLFMcoF7XwaASRGSmK/fmcmK8yo6o=
 github.com/ProtonMail/gopenpgp/v2 v2.8.2/go.mod h1:pPWZyRQWpQ7g8NWsdZmUynNZ1R09k4MdbSHvm+KooqM=
-github.com/brianvoe/gofakeit/v6 v6.24.0 h1:74yq7RRz/noddscZHRS2T84oHZisW9muwbb8sRnU52A=
-github.com/brianvoe/gofakeit/v6 v6.24.0/go.mod h1:Ow6qC71xtwm79anlwKRlWZW6zVq9D2XHE4QSSMP/rU8=
+github.com/brianvoe/gofakeit/v6 v6.28.0 h1:Xib46XXuQfmlLS2EXRuJpqcw8St6qSZz75OUo0tgAW4=
+github.com/brianvoe/gofakeit/v6 v6.28.0/go.mod h1:Xj58BMSnFqcn/fAQeSK+/PLtC5kSb7FJIq4JyGa8vEs=
 github.com/cenkalti/backoff/v4 v4.3.0 h1:MyRJ/UdXutAwSAT+s3wNd7MfTIcy71VQueUuFK343L8=
 github.com/cenkalti/backoff/v4 v4.3.0/go.mod h1:Y3VNntkOUPxTVeUxJ/G5vcM//AlwfmyYozVcomhLiZE=
 github.com/cloudflare/circl v1.5.0 h1:hxIWksrX6XN5a1L2TI/h53AGPhNHoUBo+TD1ms9+pys=
@@ -51,8 +51,8 @@ github.com/siderolabs/go-pointer v1.0.0 h1:6TshPKep2doDQJAAtHUuHWXbca8ZfyRySjSBT
 github.com/siderolabs/go-pointer v1.0.0/go.mod h1:HTRFUNYa3R+k0FFKNv11zgkaCLzEkWVzoYZ433P3kHc=
 github.com/siderolabs/go-retry v0.3.3 h1:zKV+S1vumtO72E6sYsLlmIdV/G/GcYSBLiEx/c9oCEg=
 github.com/siderolabs/go-retry v0.3.3/go.mod h1:Ff/VGc7v7un4uQg3DybgrmOWHEmJ8BzZds/XNn/BqMI=
-github.com/siderolabs/protoenc v0.2.1 h1:BqxEmeWQeMpNP3R6WrPqDatX8sM/r4t97OP8mFmg6GA=
-github.com/siderolabs/protoenc v0.2.1/go.mod h1:StTHxjet1g11GpNAWiATgc8K0HMKiFSEVVFOa/H0otc=
+github.com/siderolabs/protoenc v0.2.2 h1:vVQDrTjV+QSOiroWTca6h2Sn5XWYk7VSUPav5J0Qp54=
+github.com/siderolabs/protoenc v0.2.2/go.mod h1:gtkHkjSCFEceXUHUzKDpnuvXu1mab9D3pVxTnQN+z+o=
 github.com/stretchr/testify v1.10.0 h1:Xv5erBjTwe/5IxqUQTdXv5kgmIvbHo3QQyRwhJsOfJA=
 github.com/stretchr/testify v1.10.0/go.mod h1:r2ic/lqez/lEtzL7wO/rwa5dbSLXVDPFyf8C91i36aY=
 github.com/unix4ever/yaml v0.0.0-20220527175918-f17b0f05cf2c h1:Vn6nVVu9MdOYvXPkJP83iX5jVIfvxFC9v9xIKb+DlaQ=
