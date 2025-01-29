@@ -10,22 +10,22 @@ require (
 	github.com/ProtonMail/gopenpgp/v2 v2.8.2
 	github.com/cenkalti/backoff/v4 v4.3.0
 	github.com/gertd/go-pluralize v0.2.1
-	github.com/grpc-ecosystem/grpc-gateway/v2 v2.25.1
+	github.com/grpc-ecosystem/grpc-gateway/v2 v2.26.0
 	github.com/hashicorp/go-multierror v1.1.1
 	github.com/klauspost/compress v1.17.11
 	github.com/planetscale/vtprotobuf v0.6.1-0.20240319094008-0393e58bdf10
 	github.com/siderolabs/gen v0.8.0
 	github.com/siderolabs/go-pointer v1.0.0
 	github.com/siderolabs/go-retry v0.3.3
-	github.com/siderolabs/protoenc v0.2.1
+	github.com/siderolabs/protoenc v0.2.2
 	github.com/stretchr/testify v1.10.0
 	go.etcd.io/bbolt v1.3.11
 	go.uber.org/goleak v1.3.0
 	go.uber.org/zap v1.27.0
 	golang.org/x/sync v0.10.0
 	golang.org/x/time v0.9.0
-	google.golang.org/grpc v1.69.4
-	google.golang.org/protobuf v1.36.3
+	google.golang.org/grpc v1.70.0
+	google.golang.org/protobuf v1.36.4
 	gopkg.in/yaml.v3 v3.0.1
 )
 
@@ -43,8 +43,8 @@ require (
 	golang.org/x/net v0.34.0 // indirect
 	golang.org/x/sys v0.29.0 // indirect
 	golang.org/x/text v0.21.0 // indirect
-	google.golang.org/genproto/googleapis/api v0.0.0-20250115164207-1a7da9e5054f // indirect
-	google.golang.org/genproto/googleapis/rpc v0.0.0-20250115164207-1a7da9e5054f // indirect
+	google.golang.org/genproto/googleapis/api v0.0.0-20250127172529-29210b9bc287 // indirect
+	google.golang.org/genproto/googleapis/rpc v0.0.0-20250127172529-29210b9bc287 // indirect
 )
 
 retract (

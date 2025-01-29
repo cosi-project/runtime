@@ -16,7 +16,7 @@ jobs:
         uses: actions/checkout@v4.2.2
       -
         name: Set up QEMU
-        uses: docker/setup-qemu-action@v3.2.0
+        uses: docker/setup-qemu-action@v3.3.0
       -
         name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3.8.0
@@ -36,7 +36,7 @@ jobs:
         run: make unit-tests
       -
         name: codecov
-        uses: codecov/codecov-action@v5.1.2
+        uses: codecov/codecov-action@v5.3.1
         with:
           files: ./_out/coverage-unit-tests.txt
       -
