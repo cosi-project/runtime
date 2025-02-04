@@ -6,6 +6,7 @@ package encryption_test
 
 import (
 	"fmt"
+	"slices"
 	"testing"
 
 	"github.com/siderolabs/gen/ensure"
@@ -137,15 +138,15 @@ func TestMarshaler_CorruptedData(t *testing.T) {
 		data          []byte
 	}{
 		"short data": {
-			data:          data[:13],
+			data:          slices.Clone(data[:13]),
 			expectedError: "encrypted data is too short$",
 		},
 		"corrupted data": {
-			data:          append(append(data[:13], 0x00), data[14:]...),
+			data:          slices.Insert(slices.Clip(data), 13, 0x00),
 			expectedError: "message authentication failed$",
 		},
 		"wrong header": {
-			data:          append([]byte{0x00}, data[1:]...),
+			data:          slices.Insert(slices.Clip(data[1:]), 0, 0x00),
 			expectedError: "unknown data format$",
 		},
 	}
