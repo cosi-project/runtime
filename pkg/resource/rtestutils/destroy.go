@@ -68,7 +68,7 @@ func Destroy[R ResourceWithRD](ctx context.Context, t *testing.T, st state.State
 
 			if r.Metadata().Phase() == resource.PhaseTearingDown && r.Metadata().Finalizers().Empty() {
 				// time to destroy
-				require.NoError(t, ignoreNotFound(st.Destroy(ctx, r.Metadata())))
+				require.NoError(t, ignoreNonCriticalErrors(st.Destroy(ctx, r.Metadata())))
 
 				t.Logf("cleaned up %s ID %q", rds.Type, r.Metadata().ID())
 			}
@@ -99,7 +99,7 @@ func teardown(ctx context.Context, st state.State, ids []string, rds meta.Resour
 	for _, id := range ids {
 		if _, err := st.Teardown(ctx, resource.NewMetadata(rds.DefaultNamespace, rds.Type, id, resource.VersionUndefined)); err == nil {
 			tornDown = append(tornDown, id)
-		} else if ignoreNotFound(err) != nil {
+		} else if ignoreNonCriticalErrors(err) != nil {
 			return nil, err
 		}
 	}
@@ -107,8 +107,8 @@ func teardown(ctx context.Context, st state.State, ids []string, rds meta.Resour
 	return tornDown, nil
 }
 
-func ignoreNotFound(err error) error {
-	if state.IsNotFoundError(err) {
+func ignoreNonCriticalErrors(err error) error {
+	if state.IsNotFoundError(err) || state.IsPhaseConflictError(err) {
 		return nil
 	}
 
