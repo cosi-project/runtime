@@ -49,7 +49,7 @@ func TestProtobufSkipUnmarshal(t *testing.T) {
 	grpcServer := grpc.NewServer()
 	v1alpha1.RegisterStateServer(grpcServer, server.NewState(memState))
 
-	ctx, cancel := context.WithCancel(context.Background())
+	ctx, cancel := context.WithCancel(t.Context())
 	defer cancel()
 
 	ctx, errCh := future.GoContext(ctx, func(context.Context) error { return grpcServer.Serve(l) })

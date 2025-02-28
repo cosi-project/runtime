@@ -14,6 +14,7 @@ import (
 	"github.com/siderolabs/gen/value"
 	"github.com/siderolabs/gen/xslices"
 
+	"github.com/cosi-project/runtime/pkg/controller/runtime/metrics"
 	"github.com/cosi-project/runtime/pkg/resource"
 	"github.com/cosi-project/runtime/pkg/state"
 )
@@ -176,6 +177,8 @@ func (h *cacheHandler) append(r resource.Resource) {
 	h.mu.Lock()
 	h.resources = append(h.resources, r)
 	h.mu.Unlock()
+
+	metrics.CachedResources.Add(r.Metadata().Type(), 1)
 }
 
 func (h *cacheHandler) put(r resource.Resource) {
@@ -190,6 +193,8 @@ func (h *cacheHandler) put(r resource.Resource) {
 		h.resources[idx] = r
 	} else {
 		h.resources = slices.Insert(h.resources, idx, r)
+
+		metrics.CachedResources.Add(r.Metadata().Type(), 1)
 	}
 
 	if r.Metadata().Phase() == resource.PhaseTearingDown {
@@ -210,6 +215,8 @@ func (h *cacheHandler) remove(r resource.Resource) {
 
 	if found {
 		h.resources = slices.Delete(h.resources, idx, idx+1)
+
+		metrics.CachedResources.Add(r.Metadata().Type(), -1)
 	}
 
 	if ch, ok := h.teardownWaiters[r.Metadata().ID()]; ok {

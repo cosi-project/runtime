@@ -22,7 +22,7 @@ import (
 func setup(t *testing.T) (context.Context, string, string, *conformance.IntResource, state.State, chan safe.WrappedStateEvent[*conformance.IntResource], chan state.Event) { //nolint:ireturn
 	t.Parallel()
 
-	ctx := context.Background()
+	ctx := t.Context()
 
 	testNamespace := "test"
 	testID := "testID"

@@ -74,7 +74,7 @@ func runTest(t *testing.T, f func(ctx context.Context, t *testing.T, st state.St
 	rt, err := runtime.NewRuntime(st, logger)
 	require.NoError(t, err)
 
-	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	ctx, cancel := context.WithTimeout(t.Context(), 10*time.Second)
 	defer cancel()
 
 	ctx, errCh := future.GoContext(ctx, rt.Run)

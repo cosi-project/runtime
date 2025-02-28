@@ -63,20 +63,20 @@ func TestFilterSingleResource(t *testing.T) {
 	)
 
 	path := conformance.NewPathResource(namespace, resourceID)
-	require.NoError(t, resources.Create(context.Background(), path))
+	require.NoError(t, resources.Create(t.Context(), path))
 
 	path2 := conformance.NewPathResource(namespace, resourceID+"/exta")
-	require.Error(t, resources.Create(context.Background(), path2))
+	require.Error(t, resources.Create(t.Context(), path2))
 
-	_, err := resources.List(context.Background(), path.Metadata())
+	_, err := resources.List(t.Context(), path.Metadata())
 	require.Error(t, err)
 
-	require.Error(t, resources.Watch(context.Background(), path.Metadata(), nil))
-	require.Error(t, resources.WatchKind(context.Background(), path.Metadata(), nil))
+	require.Error(t, resources.Watch(t.Context(), path.Metadata(), nil))
+	require.Error(t, resources.WatchKind(t.Context(), path.Metadata(), nil))
 
-	destroyReady, err := resources.Teardown(context.Background(), path.Metadata())
+	destroyReady, err := resources.Teardown(t.Context(), path.Metadata())
 	require.NoError(t, err)
 	assert.True(t, destroyReady)
 
-	require.NoError(t, resources.Destroy(context.Background(), path.Metadata()))
+	require.NoError(t, resources.Destroy(t.Context(), path.Metadata()))
 }

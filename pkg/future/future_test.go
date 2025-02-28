@@ -16,14 +16,14 @@ import (
 func TestGo(t *testing.T) {
 	t.Parallel()
 
-	ctx, res := future.GoContext(context.Background(), func(context.Context) int {
+	ctx, res := future.GoContext(t.Context(), func(context.Context) int {
 		return 42
 	})
 
 	<-ctx.Done()
 	assert.Equal(t, 42, <-res)
 
-	ctx, cancel := context.WithCancel(context.Background())
+	ctx, cancel := context.WithCancel(t.Context())
 	defer cancel()
 
 	type result struct {

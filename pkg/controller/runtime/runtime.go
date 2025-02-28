@@ -183,7 +183,7 @@ func (runtime *Runtime) Run(ctx context.Context) error {
 			return fmt.Errorf("runtime has already been started")
 		}
 
-		runtime.runCtx, runtime.runCtxCancel = context.WithCancel(ctx) //nolint:fatcontext
+		runtime.runCtx, runtime.runCtxCancel = context.WithCancel(ctx)
 
 		if err := runtime.setupWatches(); err != nil {
 			runtime.runCtxCancel()

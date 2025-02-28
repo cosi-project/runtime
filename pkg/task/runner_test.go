@@ -5,7 +5,6 @@
 package task_test
 
 import (
-	"context"
 	"testing"
 	"time"
 
@@ -19,8 +18,7 @@ func TestRunner(t *testing.T) {
 	t.Parallel()
 
 	logger := zaptest.NewLogger(t)
-	ctx, cancel := context.WithCancel(context.Background())
-	t.Cleanup(cancel)
+	ctx := t.Context()
 
 	assert := assert.New(t)
 

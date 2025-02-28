@@ -58,7 +58,7 @@ func TestQueue(t *testing.T) {
 		numIterations = 100
 	)
 
-	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	ctx, cancel := context.WithTimeout(t.Context(), 30*time.Second)
 	t.Cleanup(cancel)
 
 	now := time.Now()

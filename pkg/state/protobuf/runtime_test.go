@@ -38,7 +38,7 @@ func TestProtobufWatchRuntimeRestart(t *testing.T) {
 	rt, err := runtime.NewRuntime(st, logger)
 	require.NoError(t, err)
 
-	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	ctx, cancel := context.WithTimeout(t.Context(), 10*time.Second)
 	t.Cleanup(cancel)
 
 	ctx, errCh := future.GoContext(ctx, rt.Run)

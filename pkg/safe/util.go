@@ -19,7 +19,7 @@ func Map[T any, R any](list List[T], fn func(T) (R, error)) ([]R, error) {
 	result := make([]R, 0, list.Len())
 
 	for _, item := range list.list.Items {
-		r, err := fn(item.(T)) //nolint:errcheck
+		r, err := fn(item.(T)) //nolint:errcheck,forcetypeassert
 		if err != nil {
 			return nil, err
 		}

@@ -16,6 +16,7 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/cosi-project/runtime/pkg/controller/runtime/internal/cache"
+	"github.com/cosi-project/runtime/pkg/controller/runtime/metrics"
 	"github.com/cosi-project/runtime/pkg/controller/runtime/options"
 	"github.com/cosi-project/runtime/pkg/resource"
 	"github.com/cosi-project/runtime/pkg/state"
@@ -27,7 +28,7 @@ func resourceIDGenerator(i int) resource.ID {
 }
 
 func TestCacheOperations(t *testing.T) {
-	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	ctx, cancel := context.WithTimeout(t.Context(), 10*time.Second)
 	defer cancel()
 
 	// pre-fill the cache with some resources
@@ -166,10 +167,13 @@ func TestCacheOperations(t *testing.T) {
 	assert.Panics(t, func() {
 		c.List(ctx, resource.NewMetadata("c", "C", "", resource.VersionUndefined)) //nolint:errcheck
 	})
+
+	assert.Equal(t, "1000", metrics.CachedResources.Get("A").String())
+	assert.Equal(t, "5000", metrics.CachedResources.Get("B").String())
 }
 
 func TestCacheContextWithTeardown(t *testing.T) {
-	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	ctx, cancel := context.WithTimeout(t.Context(), 10*time.Second)
 	defer cancel()
 
 	// pre-fill the cache with some resources

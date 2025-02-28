@@ -5,7 +5,6 @@
 package registry_test
 
 import (
-	"context"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -21,5 +20,5 @@ func TestResourceRegistry(t *testing.T) {
 
 	r := registry.NewResourceRegistry(state.WrapCore(namespaced.NewState(inmem.Build)))
 
-	assert.NoError(t, r.RegisterDefault(context.Background()))
+	assert.NoError(t, r.RegisterDefault(t.Context()))
 }

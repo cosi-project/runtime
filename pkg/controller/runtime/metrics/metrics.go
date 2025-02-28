@@ -49,4 +49,7 @@ var (
 
 	// QControllerReconcileBusy reports the number of seconds QController was busy processing reconcile events.
 	QControllerReconcileBusy = expvar.NewMap("qcontroller_reconcile_busy")
+
+	// CachedResources reports the number of cached resources per resource type.
+	CachedResources = expvar.NewMap("cached_resources")
 )

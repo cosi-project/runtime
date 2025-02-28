@@ -67,7 +67,7 @@ func TestBackingStore(t *testing.T) {
 
 	const namespace = "default"
 
-	ctx := context.Background()
+	ctx := t.Context()
 
 	// create st with backing store and put some resources
 	st := state.WrapCore(inmem.NewStateWithOptions(

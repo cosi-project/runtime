@@ -5,7 +5,6 @@
 package bolt_test
 
 import (
-	"context"
 	"path/filepath"
 	"testing"
 
@@ -46,20 +45,20 @@ func TestBboltStore(t *testing.T) { //nolint:tparallel
 	path3 := conformance.NewPathResource("ns2", "var/run3")
 
 	t.Run("Fill", func(t *testing.T) {
-		require.NoError(t, store.WithNamespace(path1.Metadata().Namespace()).Put(context.Background(), path1.Metadata().Type(), path1))
-		require.NoError(t, store.WithNamespace(path2.Metadata().Namespace()).Put(context.Background(), path2.Metadata().Type(), path2))
-		require.NoError(t, store.WithNamespace(path2.Metadata().Namespace()).Put(context.Background(), path2.Metadata().Type(), path2))
-		require.NoError(t, store.WithNamespace(path3.Metadata().Namespace()).Put(context.Background(), path3.Metadata().Type(), path3))
+		require.NoError(t, store.WithNamespace(path1.Metadata().Namespace()).Put(t.Context(), path1.Metadata().Type(), path1))
+		require.NoError(t, store.WithNamespace(path2.Metadata().Namespace()).Put(t.Context(), path2.Metadata().Type(), path2))
+		require.NoError(t, store.WithNamespace(path2.Metadata().Namespace()).Put(t.Context(), path2.Metadata().Type(), path2))
+		require.NoError(t, store.WithNamespace(path3.Metadata().Namespace()).Put(t.Context(), path3.Metadata().Type(), path3))
 	})
 
 	t.Run("Remove", func(t *testing.T) {
-		require.NoError(t, store.WithNamespace(path1.Metadata().Namespace()).Destroy(context.Background(), path1.Metadata().Type(), path1.Metadata()))
+		require.NoError(t, store.WithNamespace(path1.Metadata().Namespace()).Destroy(t.Context(), path1.Metadata().Type(), path1.Metadata()))
 	})
 
 	t.Run("Load", func(t *testing.T) {
 		var resources []resource.Resource
 
-		require.NoError(t, store.WithNamespace(path1.Metadata().Namespace()).Load(context.Background(), func(_ resource.Type, resource resource.Resource) error {
+		require.NoError(t, store.WithNamespace(path1.Metadata().Namespace()).Load(t.Context(), func(_ resource.Type, resource resource.Resource) error {
 			resources = append(resources, resource)
 
 			return nil
@@ -70,7 +69,7 @@ func TestBboltStore(t *testing.T) { //nolint:tparallel
 
 		resources = nil
 
-		require.NoError(t, store.WithNamespace(path3.Metadata().Namespace()).Load(context.Background(), func(_ resource.Type, resource resource.Resource) error {
+		require.NoError(t, store.WithNamespace(path3.Metadata().Namespace()).Load(t.Context(), func(_ resource.Type, resource resource.Resource) error {
 			resources = append(resources, resource)
 
 			return nil

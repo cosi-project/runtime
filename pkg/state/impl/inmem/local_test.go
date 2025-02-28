@@ -74,7 +74,7 @@ func TestBufferOverrun(t *testing.T) {
 		inmem.WithHistoryGap(5),
 	)(namespace))
 
-	ctx, cancel := context.WithCancel(context.Background())
+	ctx, cancel := context.WithCancel(t.Context())
 	t.Cleanup(cancel)
 
 	// start watching for changes
@@ -169,8 +169,7 @@ func TestNoBufferOverrunDynamic(t *testing.T) {
 		inmem.WithHistoryGap(5),
 	)(namespace))
 
-	ctx, cancel := context.WithCancel(context.Background())
-	t.Cleanup(cancel)
+	ctx := t.Context()
 
 	// start watching for changes
 	watchKindCh := make(chan state.Event)
@@ -208,8 +207,7 @@ func TestWatchInvalidBookmark(t *testing.T) {
 
 	st := state.WrapCore(inmem.NewState(namespace))
 
-	ctx, cancel := context.WithCancel(context.Background())
-	t.Cleanup(cancel)
+	ctx := t.Context()
 
 	// start watching for changes
 	watchKindCh := make(chan state.Event)

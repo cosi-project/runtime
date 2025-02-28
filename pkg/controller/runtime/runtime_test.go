@@ -164,7 +164,7 @@ func TestRuntimeWatchError(t *testing.T) {
 	rt, err := runtime.NewRuntime(st, logger)
 	require.NoError(t, err)
 
-	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	ctx, cancel := context.WithTimeout(t.Context(), 10*time.Second)
 	t.Cleanup(cancel)
 
 	ctx, errCh := future.GoContext(ctx, rt.Run)
@@ -198,7 +198,7 @@ func TestRuntimeWatchOverrun(t *testing.T) {
 	rt, err := runtime.NewRuntime(st, logger)
 	require.NoError(t, err)
 
-	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	ctx, cancel := context.WithTimeout(t.Context(), 10*time.Second)
 	t.Cleanup(cancel)
 
 	ctx, errCh := future.GoContext(ctx, rt.Run)
@@ -251,7 +251,7 @@ func TestRuntimeCachedState(t *testing.T) {
 	rt, err := runtime.NewRuntime(st, logger, options.WithCachedResource("cached", conformance.IntResourceType))
 	require.NoError(t, err)
 
-	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	ctx, cancel := context.WithTimeout(t.Context(), 10*time.Second)
 	t.Cleanup(cancel)
 
 	errCh := make(chan error, 1)

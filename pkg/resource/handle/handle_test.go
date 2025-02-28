@@ -83,7 +83,7 @@ func TestResourceSpec(t *testing.T) {
 }
 
 func TestResource(t *testing.T) {
-	ctx := context.Background()
+	ctx := t.Context()
 
 	if deadline, ok := t.Deadline(); ok {
 		var cancel context.CancelFunc
