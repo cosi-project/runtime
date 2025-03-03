@@ -7,12 +7,15 @@ package safe_test
 import (
 	"context"
 	"testing"
+	"time"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
 	"github.com/cosi-project/runtime/pkg/controller/conformance"
 	"github.com/cosi-project/runtime/pkg/resource"
+	"github.com/cosi-project/runtime/pkg/resource/meta"
+	"github.com/cosi-project/runtime/pkg/resource/typed"
 	"github.com/cosi-project/runtime/pkg/safe"
 	"github.com/cosi-project/runtime/pkg/state"
 	"github.com/cosi-project/runtime/pkg/state/impl/inmem"
@@ -144,4 +147,106 @@ func TestListFilter(t *testing.T) {
 	assert.Equal(t, 0, filtered.Len())
 
 	assert.Equal(t, 3, all.Len())
+}
+
+type testSpec struct{}
+
+func (testSpec) DeepCopy() testSpec { return testSpec{} }
+
+type testResource = typed.Resource[testSpec, testExtension]
+
+type testExtension struct{}
+
+func (testExtension) ResourceDefinition() meta.ResourceDefinitionSpec {
+	return meta.ResourceDefinitionSpec{
+		Type:             "testResource",
+		DefaultNamespace: "default",
+	}
+}
+
+const ns = "testns"
+
+// brokenState ignores the resource.Kind params and always returns string resources.
+type brokenState struct {
+	inmem.State
+}
+
+func (st *brokenState) List(context.Context, resource.Kind, ...state.ListOption) (resource.List, error) {
+	return resource.List{Items: []resource.Resource{conformance.NewStrResource(ns, "test", "test")}}, nil
+}
+
+func (st *brokenState) Get(context.Context, resource.Pointer, ...state.GetOption) (resource.Resource, error) {
+	return conformance.NewStrResource(ns, "test", "test"), nil
+}
+
+func (st *brokenState) Watch(_ context.Context, _ resource.Pointer, ch chan<- state.Event, _ ...state.WatchOption) error {
+	return st.publishWrong(ch)
+}
+
+func (st *brokenState) WatchKind(_ context.Context, _ resource.Kind, ch chan<- state.Event, _ ...state.WatchKindOption) error {
+	return st.publishWrong(ch)
+}
+
+func (*brokenState) publishWrong(ch chan<- state.Event) error {
+	go func() {
+		ch <- state.Event{
+			Type:     state.Bootstrapped,
+			Resource: conformance.NewStrResource(ns, "test", "test"),
+		}
+	}()
+
+	return nil
+}
+
+func TestTypeValidation(t *testing.T) {
+	s := &brokenState{}
+	resource := testResource{}
+	channel := make(chan safe.WrappedStateEvent[*testResource])
+
+	type testCase = func(t *testing.T) (result any, err error)
+
+	cases := map[string]testCase{
+		"StateGet": func(_ *testing.T) (any, error) {
+			return safe.StateGet[*testResource](context.Background(), s, resource.Metadata())
+		},
+		"StateGetByID": func(_ *testing.T) (any, error) {
+			return safe.StateGetByID[*testResource](context.Background(), s, "")
+		},
+		"StateList": func(_ *testing.T) (any, error) {
+			return safe.StateList[*testResource](context.Background(), s, resource.Metadata())
+		},
+		"StateListAll": func(_ *testing.T) (any, error) {
+			return safe.StateListAll[*testResource](context.Background(), s)
+		},
+		"StateWatch": func(t *testing.T) (any, error) {
+			assert.NoError(t, safe.StateWatch[*testResource](context.Background(), s, resource.Metadata(), channel))
+
+			select {
+			case event := <-channel:
+				return event.Resource()
+			case <-time.After(time.Second):
+				panic("timed out waiting for event")
+			}
+		},
+		"StateWatchKind": func(t *testing.T) (any, error) {
+			assert.NoError(t, safe.StateWatchKind[*testResource](context.Background(), s, resource.Metadata(), channel))
+
+			select {
+			case event := <-channel:
+				return event.Resource()
+			case <-time.After(time.Second):
+				panic("timed out waiting for event")
+			}
+		},
+	}
+
+	for name, getter := range cases {
+		t.Run(name, func(t *testing.T) {
+			result, err := getter(t)
+			assert.ErrorContains(t, err, "type mismatch")
+			assert.ErrorContains(t, err, "expected *typed.Resource")
+			assert.ErrorContains(t, err, ", got *conformance.Resource[string,")
+			assert.Zero(t, result)
+		})
+	}
 }
