@@ -22,6 +22,10 @@ func typeMismatchErr(expected, got any) error {
 	return fmt.Errorf("type mismatch: expected %T, got %T", expected, got)
 }
 
+func typeMismatchFirstElErr(expected, got any) error {
+	return fmt.Errorf("type mismatch on the first element: expected %T, got %T", expected, got)
+}
+
 // StateGet is a type safe wrapper around state.Get.
 func StateGet[T resource.Resource](ctx context.Context, st state.CoreState, ptr resource.Pointer, options ...state.GetOption) (T, error) { //nolint:ireturn
 	got, err := st.Get(ctx, ptr, options...)
@@ -80,10 +84,10 @@ func StateList[T resource.Resource](ctx context.Context, st state.CoreState, ptr
 	}
 
 	// Early assertion to make sure we don't have a type mismatch.
-	if _, ok := got.Items[0].(T); !ok {
+	if firstElExpected, ok := got.Items[0].(T); !ok {
 		var zero List[T]
 
-		return zero, fmt.Errorf("type mismatch on the first element: expected %T, got %T", got.Items[0], got)
+		return zero, typeMismatchFirstElErr(firstElExpected, got.Items[0])
 	}
 
 	return NewList[T](got), nil
