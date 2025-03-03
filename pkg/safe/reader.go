@@ -6,7 +6,6 @@ package safe
 
 import (
 	"context"
-	"fmt"
 
 	"github.com/cosi-project/runtime/pkg/controller"
 	"github.com/cosi-project/runtime/pkg/controller/generic"
@@ -27,7 +26,7 @@ func ReaderGet[T resource.Resource](ctx context.Context, rdr controller.Reader, 
 	if !ok {
 		var zero T
 
-		return zero, fmt.Errorf("type mismatch: expected %T, got %T", result, got)
+		return zero, typeMismatchErr(result, got)
 	}
 
 	return result, nil
@@ -55,7 +54,7 @@ func ReaderGetByID[T generic.ResourceWithRD](ctx context.Context, rdr controller
 	if !ok {
 		var zero T
 
-		return zero, fmt.Errorf("type mismatch: expected %T, got %T", result, got)
+		return zero, typeMismatchErr(result, got)
 	}
 
 	return result, nil
@@ -77,10 +76,10 @@ func ReaderList[T resource.Resource](ctx context.Context, rdr controller.Reader,
 	}
 
 	// Early assertion to make sure we don't have a type mismatch.
-	if _, ok := got.Items[0].(T); !ok {
+	if firstElExpected, ok := got.Items[0].(T); !ok {
 		var zero List[T]
 
-		return zero, fmt.Errorf("type mismatch on the first element: expected %T, got %T", got.Items[0], got)
+		return zero, typeMismatchFirstElErr(firstElExpected, got.Items[0])
 	}
 
 	return NewList[T](got), nil
