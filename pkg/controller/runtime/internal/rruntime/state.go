@@ -7,6 +7,7 @@ package rruntime
 import (
 	"context"
 
+	"github.com/cosi-project/runtime/pkg/controller"
 	"github.com/cosi-project/runtime/pkg/resource"
 )
 
@@ -33,8 +34,8 @@ func (adapter *Adapter) Update(ctx context.Context, newResource resource.Resourc
 }
 
 // Modify augments StateAdapter Modify with output tracking.
-func (adapter *Adapter) Modify(ctx context.Context, emptyResource resource.Resource, updateFunc func(resource.Resource) error) error {
-	err := adapter.StateAdapter.Modify(ctx, emptyResource, updateFunc)
+func (adapter *Adapter) Modify(ctx context.Context, emptyResource resource.Resource, updateFunc func(resource.Resource) error, options ...controller.ModifyOption) error {
+	err := adapter.StateAdapter.Modify(ctx, emptyResource, updateFunc, options...)
 
 	if adapter.outputTracker != nil {
 		adapter.outputTracker[makeOutputTrackingID(emptyResource.Metadata())] = struct{}{}
@@ -44,8 +45,10 @@ func (adapter *Adapter) Modify(ctx context.Context, emptyResource resource.Resou
 }
 
 // ModifyWithResult augments StateAdapter ModifyWithResult with output tracking.
-func (adapter *Adapter) ModifyWithResult(ctx context.Context, emptyResource resource.Resource, updateFunc func(resource.Resource) error) (resource.Resource, error) {
-	result, err := adapter.StateAdapter.ModifyWithResult(ctx, emptyResource, updateFunc)
+func (adapter *Adapter) ModifyWithResult(
+	ctx context.Context, emptyResource resource.Resource, updateFunc func(resource.Resource) error, options ...controller.ModifyOption,
+) (resource.Resource, error) {
+	result, err := adapter.StateAdapter.ModifyWithResult(ctx, emptyResource, updateFunc, options...)
 
 	if adapter.outputTracker != nil {
 		adapter.outputTracker[makeOutputTrackingID(emptyResource.Metadata())] = struct{}{}

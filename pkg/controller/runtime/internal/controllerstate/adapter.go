@@ -196,18 +196,24 @@ func (adapter *StateAdapter) Update(ctx context.Context, newResource resource.Re
 }
 
 // Modify implements controller.Runtime interface.
-func (adapter *StateAdapter) Modify(ctx context.Context, emptyResource resource.Resource, updateFunc func(resource.Resource) error) error {
-	_, err := adapter.modify(ctx, emptyResource, updateFunc)
+func (adapter *StateAdapter) Modify(
+	ctx context.Context, emptyResource resource.Resource, updateFunc func(resource.Resource) error, options ...controller.ModifyOption,
+) error {
+	_, err := adapter.modify(ctx, emptyResource, updateFunc, options...)
 
 	return err
 }
 
 // ModifyWithResult implements controller.Runtime interface.
-func (adapter *StateAdapter) ModifyWithResult(ctx context.Context, emptyResource resource.Resource, updateFunc func(resource.Resource) error) (resource.Resource, error) {
-	return adapter.modify(ctx, emptyResource, updateFunc)
+func (adapter *StateAdapter) ModifyWithResult(
+	ctx context.Context, emptyResource resource.Resource, updateFunc func(resource.Resource) error, options ...controller.ModifyOption,
+) (resource.Resource, error) {
+	return adapter.modify(ctx, emptyResource, updateFunc, options...)
 }
 
-func (adapter *StateAdapter) modify(ctx context.Context, emptyResource resource.Resource, updateFunc func(resource.Resource) error) (resource.Resource, error) {
+func (adapter *StateAdapter) modify(
+	ctx context.Context, emptyResource resource.Resource, updateFunc func(resource.Resource) error, options ...controller.ModifyOption,
+) (resource.Resource, error) {
 	if err := adapter.UpdateLimiter.Wait(ctx); err != nil {
 		return nil, fmt.Errorf("modify rate limited: %w", err)
 	}
@@ -235,7 +241,16 @@ func (adapter *StateAdapter) modify(ctx context.Context, emptyResource resource.
 		return nil, fmt.Errorf("error querying current object state: %w", err)
 	}
 
-	return adapter.State.UpdateWithConflicts(ctx, emptyResource.Metadata(), updateFunc, state.WithUpdateOwner(adapter.Name))
+	updateOptions := []state.UpdateOption{state.WithUpdateOwner(adapter.Name)}
+
+	modifyOptions := controller.ToModifyOptions(options...)
+	if modifyOptions.ExpectedPhase != nil {
+		updateOptions = append(updateOptions, state.WithExpectedPhase(*modifyOptions.ExpectedPhase))
+	} else {
+		updateOptions = append(updateOptions, state.WithExpectedPhaseAny())
+	}
+
+	return adapter.State.UpdateWithConflicts(ctx, emptyResource.Metadata(), updateFunc, updateOptions...)
 }
 
 // AddFinalizer implements controller.Runtime interface.
@@ -270,7 +285,7 @@ func (adapter *StateAdapter) RemoveFinalizer(ctx context.Context, resourcePointe
 }
 
 // Teardown implements controller.Runtime interface.
-func (adapter *StateAdapter) Teardown(ctx context.Context, resourcePointer resource.Pointer, opOpts ...controller.Option) (bool, error) {
+func (adapter *StateAdapter) Teardown(ctx context.Context, resourcePointer resource.Pointer, opOpts ...controller.DeleteOption) (bool, error) {
 	if err := adapter.UpdateLimiter.Wait(ctx); err != nil {
 		return false, fmt.Errorf("teardown rate limited: %w", err)
 	}
@@ -281,7 +296,7 @@ func (adapter *StateAdapter) Teardown(ctx context.Context, resourcePointer resou
 
 	var opts []state.TeardownOption
 
-	opOpt := controller.ToOptions(opOpts...)
+	opOpt := controller.ToDeleteOptions(opOpts...)
 	if opOpt.Owner != nil {
 		opts = append(opts, state.WithTeardownOwner(*opOpt.Owner))
 	} else {
@@ -292,7 +307,7 @@ func (adapter *StateAdapter) Teardown(ctx context.Context, resourcePointer resou
 }
 
 // Destroy implements controller.Runtime interface.
-func (adapter *StateAdapter) Destroy(ctx context.Context, resourcePointer resource.Pointer, opOpts ...controller.Option) error {
+func (adapter *StateAdapter) Destroy(ctx context.Context, resourcePointer resource.Pointer, opOpts ...controller.DeleteOption) error {
 	if err := adapter.UpdateLimiter.Wait(ctx); err != nil {
 		return fmt.Errorf("destroy finalizer rate limited: %w", err)
 	}
@@ -303,7 +318,7 @@ func (adapter *StateAdapter) Destroy(ctx context.Context, resourcePointer resour
 
 	var opts []state.DestroyOption
 
-	opOpt := controller.ToOptions(opOpts...)
+	opOpt := controller.ToDeleteOptions(opOpts...)
 	if opOpt.Owner != nil {
 		opts = append(opts, state.WithDestroyOwner(*opOpt.Owner))
 	} else {

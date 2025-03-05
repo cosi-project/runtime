@@ -13,7 +13,7 @@ import (
 )
 
 // WriterModify is a type safe wrapper around writer.Modify.
-func WriterModify[T resource.Resource](ctx context.Context, writer controller.Writer, r T, fn func(T) error) error {
+func WriterModify[T resource.Resource](ctx context.Context, writer controller.Writer, r T, fn func(T) error, options ...controller.ModifyOption) error {
 	return writer.Modify(ctx, r, func(r resource.Resource) error {
 		arg, ok := r.(T)
 		if !ok {
@@ -21,11 +21,11 @@ func WriterModify[T resource.Resource](ctx context.Context, writer controller.Wr
 		}
 
 		return fn(arg)
-	})
+	}, options...)
 }
 
 // WriterModifyWithResult is a type safe wrapper around writer.ModifyWithResult.
-func WriterModifyWithResult[T resource.Resource](ctx context.Context, writer controller.Writer, r T, fn func(T) error) (T, error) {
+func WriterModifyWithResult[T resource.Resource](ctx context.Context, writer controller.Writer, r T, fn func(T) error, options ...controller.ModifyOption) (T, error) {
 	got, err := writer.ModifyWithResult(ctx, r, func(r resource.Resource) error {
 		arg, ok := r.(T)
 		if !ok {
@@ -33,7 +33,7 @@ func WriterModifyWithResult[T resource.Resource](ctx context.Context, writer con
 		}
 
 		return fn(arg)
-	})
+	}, options...)
 
 	return typeAssertOrZero[T](got, err)
 }

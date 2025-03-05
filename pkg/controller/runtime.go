@@ -131,10 +131,10 @@ type UncachedReader interface {
 type Writer interface {
 	Create(context.Context, resource.Resource) error
 	Update(context.Context, resource.Resource) error
-	Modify(context.Context, resource.Resource, func(resource.Resource) error) error
-	ModifyWithResult(context.Context, resource.Resource, func(resource.Resource) error) (resource.Resource, error)
-	Teardown(context.Context, resource.Pointer, ...Option) (bool, error)
-	Destroy(context.Context, resource.Pointer, ...Option) error
+	Modify(context.Context, resource.Resource, func(resource.Resource) error, ...ModifyOption) error
+	ModifyWithResult(context.Context, resource.Resource, func(resource.Resource) error, ...ModifyOption) (resource.Resource, error)
+	Teardown(context.Context, resource.Pointer, ...DeleteOption) (bool, error)
+	Destroy(context.Context, resource.Pointer, ...DeleteOption) error
 
 	AddFinalizer(context.Context, resource.Pointer, ...resource.Finalizer) error
 	RemoveFinalizer(context.Context, resource.Pointer, ...resource.Finalizer) error
@@ -158,24 +158,61 @@ type OutputTracker interface {
 	CleanupOutputs(ctx context.Context, outputs ...resource.Kind) error
 }
 
-// Option for operation.
-type Option func(*Options)
+// DeleteOption for operation Teardown/Destroy.
+type DeleteOption func(*DeleteOptions)
 
-// Options for operation.
-type Options struct {
+// DeleteOptions for operation Teardown/Destroy.
+type DeleteOptions struct {
 	Owner *string
 }
 
 // WithOwner allows to specify owner of the resource.
-func WithOwner(owner string) Option {
-	return func(o *Options) {
+func WithOwner(owner string) DeleteOption {
+	return func(o *DeleteOptions) {
 		o.Owner = &owner
 	}
 }
 
-// ToOptions converts variadic options to Options.
-func ToOptions(opts ...Option) Options {
-	var options Options
+// ToDeleteOptions converts variadic options to DeleteOptions.
+func ToDeleteOptions(opts ...DeleteOption) DeleteOptions {
+	var options DeleteOptions
+
+	for _, opt := range opts {
+		opt(&options)
+	}
+
+	return options
+}
+
+// ModifyOption for operation Modify.
+type ModifyOption func(*ModifyOptions)
+
+// ModifyOptions for operation Modify.
+type ModifyOptions struct {
+	ExpectedPhase *resource.Phase
+}
+
+// WithExpectedPhase allows to specify expected phase of the resource.
+func WithExpectedPhase(phase resource.Phase) ModifyOption {
+	return func(o *ModifyOptions) {
+		o.ExpectedPhase = &phase
+	}
+}
+
+// WithExpectedPhaseAny allows to specify any phase of the resource.
+func WithExpectedPhaseAny() ModifyOption {
+	return func(o *ModifyOptions) {
+		o.ExpectedPhase = nil
+	}
+}
+
+// ToModifyOptions converts variadic options to ModifyOptions.
+func ToModifyOptions(opts ...ModifyOption) ModifyOptions {
+	phase := resource.PhaseRunning
+
+	options := ModifyOptions{
+		ExpectedPhase: &phase,
+	}
 
 	for _, opt := range opts {
 		opt(&options)
