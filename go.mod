@@ -10,7 +10,7 @@ require (
 	github.com/ProtonMail/gopenpgp/v2 v2.8.3
 	github.com/cenkalti/backoff/v4 v4.3.0
 	github.com/gertd/go-pluralize v0.2.1
-	github.com/grpc-ecosystem/grpc-gateway/v2 v2.26.2
+	github.com/grpc-ecosystem/grpc-gateway/v2 v2.26.3
 	github.com/hashicorp/go-multierror v1.1.1
 	github.com/klauspost/compress v1.18.0
 	github.com/planetscale/vtprotobuf v0.6.1-0.20240319094008-0393e58bdf10
