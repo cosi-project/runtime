@@ -1,7 +1,6 @@
 module github.com/cosi-project/runtime
 
 go 1.24.0
-
 // forked yaml that introduces RawYAML interface that can be used to provide YAML encoder bytes
 // which are then encoded as a valid YAML block with proper indentiation
 replace gopkg.in/yaml.v3 => github.com/unix4ever/yaml v0.0.0-20220527175918-f17b0f05cf2c
@@ -15,7 +14,7 @@ require (
 	github.com/klauspost/compress v1.18.0
 	github.com/planetscale/vtprotobuf v0.6.1-0.20240319094008-0393e58bdf10
 	github.com/siderolabs/gen v0.8.0
-	github.com/siderolabs/go-pointer v1.0.0
+	github.com/siderolabs/go-pointer v1.0.1
 	github.com/siderolabs/go-retry v0.3.3
 	github.com/siderolabs/protoenc v0.2.2
 	github.com/stretchr/testify v1.10.0
