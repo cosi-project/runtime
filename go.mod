@@ -1,7 +1,6 @@
 module github.com/cosi-project/runtime
 
 go 1.24.0
-
 // forked yaml that introduces RawYAML interface that can be used to provide YAML encoder bytes
 // which are then encoded as a valid YAML block with proper indentiation
 replace gopkg.in/yaml.v3 => github.com/unix4ever/yaml v0.0.0-20220527175918-f17b0f05cf2c
@@ -25,7 +24,7 @@ require (
 	golang.org/x/sync v0.11.0
 	golang.org/x/time v0.10.0
 	google.golang.org/grpc v1.70.0
-	google.golang.org/protobuf v1.36.5
+	google.golang.org/protobuf v1.36.6
 	gopkg.in/yaml.v3 v3.0.1
 )
 
