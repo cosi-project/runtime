@@ -19,7 +19,7 @@ import (
 
 // Run the controller loop via the adapter.
 func (adapter *Adapter) Run(ctx context.Context) {
-	logger := adapter.logger.With(logging.Controller(adapter.StateAdapter.Name))
+	logger := adapter.logger.With(logging.Controller(adapter.Name))
 
 	for {
 		err := adapter.runOnce(ctx, logger)
@@ -28,7 +28,7 @@ func (adapter *Adapter) Run(ctx context.Context) {
 		}
 
 		if adapter.runtimeOptions.MetricsEnabled {
-			metrics.ControllerCrashes.Add(adapter.StateAdapter.Name, 1)
+			metrics.ControllerCrashes.Add(adapter.Name, 1)
 		}
 
 		interval := adapter.backoff.NextBackOff()
@@ -64,7 +64,7 @@ func (adapter *Adapter) runOnce(ctx context.Context, logger *zap.Logger) (err er
 
 	defer func() {
 		if p := recover(); p != nil {
-			err = fmt.Errorf("controller %q panicked: %s\n\n%s", adapter.StateAdapter.Name, p, string(debug.Stack()))
+			err = fmt.Errorf("controller %q panicked: %s\n\n%s", adapter.Name, p, string(debug.Stack()))
 		}
 	}()
 

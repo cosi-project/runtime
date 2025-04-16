@@ -47,7 +47,7 @@ func (labels Labels) Matches(term LabelTerm) bool {
 }
 
 func (labels Labels) matches(term LabelTerm) *bool {
-	if labels.KV.Empty() && term.Op == LabelOpExists {
+	if labels.Empty() && term.Op == LabelOpExists {
 		return pointer.To(false)
 	}
 

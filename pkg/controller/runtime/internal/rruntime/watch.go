@@ -55,7 +55,7 @@ func (adapter *Adapter) triggerReconcile() {
 	select {
 	case adapter.ch <- controller.ReconcileEvent{}:
 		if adapter.runtimeOptions.MetricsEnabled {
-			metrics.ControllerWakeups.Add(adapter.StateAdapter.Name, 1)
+			metrics.ControllerWakeups.Add(adapter.Name, 1)
 		}
 
 	default:

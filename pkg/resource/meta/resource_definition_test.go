@@ -27,6 +27,19 @@ func TestRDSpec(t *testing.T) {
 	assert.Equal(t, []string{"resourcedefinitions", "resourcedefinitions.meta", "resourcedefinitions.meta.cosi", "api-resources", "resourcedefinition", "rd", "rds"}, spec.AllAliases)
 }
 
+func TestRDSpecNoAliases(t *testing.T) {
+	r := meta.ResourceDefinition{}
+	spec := r.ResourceDefinition()
+	spec.SkipAutomaticAliases = true
+
+	require.NoError(t, spec.Fill())
+
+	assert.Equal(t, "resourcedefinitions.meta.cosi.dev", spec.ID())
+	assert.Equal(t, "ResourceDefinition", spec.DisplayType)
+	assert.Equal(t, []string{"api-resources"}, spec.Aliases)
+	assert.Equal(t, []string{"api-resources"}, spec.AllAliases)
+}
+
 func TestNSSpec(t *testing.T) {
 	r := meta.Namespace{}
 	spec := r.ResourceDefinition()

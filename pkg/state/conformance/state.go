@@ -377,11 +377,7 @@ loop:
 
 	suite.Require().NoError(err)
 
-	for {
-		if len(expectedEvents) == 0 {
-			break
-		}
-
+	for len(expectedEvents) > 0 {
 		select {
 		case event := <-chWithTail:
 			for expected := range expectedEvents {
@@ -863,11 +859,7 @@ loop:
 
 	suite.Require().NoError(e)
 
-	for {
-		if len(expectedEvents) == 0 {
-			break
-		}
-
+	for len(expectedEvents) > 0 {
 		select {
 		case event := <-chWithTail:
 			for expected := range expectedEvents {
@@ -939,7 +931,7 @@ func (suite *StateSuite) TestWatchWithBookmarks() {
 		for j := range numEvents - i - 1 {
 			select {
 			case ev := <-ch:
-				suite.Assert().True(events[i+j+1].reducedEvent.Equal(ev))
+				suite.Assert().True(events[i+j+1].Equal(ev))
 			case <-time.After(time.Second):
 				suite.FailNow("timed out waiting for event")
 			}
@@ -1064,7 +1056,7 @@ func (suite *StateSuite) testWatchKindWithBookmarks(useAggregated, useBootstrapC
 				suite.T().Logf("received event from bookmark %d: %v", i, ev)
 				suite.T().Logf("expected event: %v", expectedEvents[startOffset+j+1])
 
-				suite.Assert().True(expectedEvents[startOffset+j+1].reducedEvent.Equal(ev))
+				suite.Assert().True(expectedEvents[startOffset+j+1].Equal(ev))
 			case <-time.After(time.Second):
 				suite.FailNow("timed out waiting for event")
 			}

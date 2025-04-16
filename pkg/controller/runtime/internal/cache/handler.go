@@ -160,8 +160,8 @@ func (h *cacheHandler) list(ctx context.Context, opts ...state.ListOption) (reso
 	resources := slices.Clone(h.resources)
 	h.mu.Unlock()
 
-	// micro optimization: don't filter if no filters are specified
-	if !(value.IsZero(options.IDQuery) && options.LabelQueries == nil) {
+	// micro optimization: apply filter only if some filters are specified
+	if !value.IsZero(options.IDQuery) || options.LabelQueries != nil {
 		resources = xslices.Filter(resources, func(r resource.Resource) bool {
 			return options.IDQuery.Matches(*r.Metadata()) && options.LabelQueries.Matches(*r.Metadata().Labels())
 		})

@@ -41,7 +41,7 @@ func (adapter *Adapter) CleanupOutputs(ctx context.Context, outputs ...resource.
 		}
 
 		for _, resource := range list.Items {
-			if resource.Metadata().Owner() != adapter.StateAdapter.Name {
+			if resource.Metadata().Owner() != adapter.Name {
 				// skip resources not owned by this controller
 				continue
 			}

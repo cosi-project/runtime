@@ -157,7 +157,7 @@ func (adapter *Adapter) Run(ctx context.Context) {
 	}
 
 	eg.Go(func() error {
-		for _, input := range adapter.StateAdapter.Inputs {
+		for _, input := range adapter.Inputs {
 			if input.Kind != controller.InputQPrimary {
 				continue
 			}
@@ -189,7 +189,7 @@ func (adapter *Adapter) listPrimary(ctx context.Context, resourceNamespace resou
 
 	for {
 		// use StateAdapter.List here, so that if the resource is cached, it would be listed from the cache
-		items, err := adapter.StateAdapter.List(ctx, resource.NewMetadata(resourceNamespace, resourceType, "", resource.VersionUndefined))
+		items, err := adapter.List(ctx, resource.NewMetadata(resourceNamespace, resourceType, "", resource.VersionUndefined))
 		if err != nil {
 			if errors.Is(err, context.Canceled) {
 				return err
@@ -272,15 +272,15 @@ func (adapter *Adapter) runReconcile(ctx context.Context) {
 
 			if adapter.metricsEnabled {
 				if reconcileError != nil {
-					metrics.QControllerCrashes.Add(adapter.StateAdapter.Name, 1)
+					metrics.QControllerCrashes.Add(adapter.Name, 1)
 				} else if interval != 0 {
-					metrics.QControllerRequeues.Add(adapter.StateAdapter.Name, 1)
+					metrics.QControllerRequeues.Add(adapter.Name, 1)
 				}
 
 				if item.Value().job == QJobReconcile {
-					metrics.QControllerReconcileBusy.AddFloat(adapter.StateAdapter.Name, busy.Seconds())
+					metrics.QControllerReconcileBusy.AddFloat(adapter.Name, busy.Seconds())
 				} else {
-					metrics.QControllerMapBusy.AddFloat(adapter.StateAdapter.Name, busy.Seconds())
+					metrics.QControllerMapBusy.AddFloat(adapter.Name, busy.Seconds())
 				}
 			}
 
@@ -337,14 +337,14 @@ func (adapter *Adapter) runOnce(ctx context.Context, logger *zap.Logger, item QI
 
 	defer func() {
 		if p := recover(); p != nil {
-			err = fmt.Errorf("controller %q panicked: %s\n\n%s", adapter.StateAdapter.Name, p, string(debug.Stack()))
+			err = fmt.Errorf("controller %q panicked: %s\n\n%s", adapter.Name, p, string(debug.Stack()))
 		}
 	}()
 
 	switch item.job {
 	case QJobReconcile:
 		if adapter.metricsEnabled {
-			metrics.QControllerProcessed.Add(adapter.StateAdapter.Name, 1)
+			metrics.QControllerProcessed.Add(adapter.Name, 1)
 		}
 
 		err = adapter.controller.Reconcile(ctx, logger, adapter, item)
@@ -354,8 +354,8 @@ func (adapter *Adapter) runOnce(ctx context.Context, logger *zap.Logger, item QI
 		mappedItems, err = adapter.controller.MapInput(ctx, logger, adapter, item)
 
 		if adapter.metricsEnabled {
-			metrics.QControllerMappedIn.Add(adapter.StateAdapter.Name, 1)
-			metrics.QControllerMappedOut.Add(adapter.StateAdapter.Name, int64(len(mappedItems)))
+			metrics.QControllerMappedIn.Add(adapter.Name, 1)
+			metrics.QControllerMappedOut.Add(adapter.Name, int64(len(mappedItems)))
 		}
 
 		if err == nil {
@@ -373,7 +373,7 @@ func (adapter *Adapter) runOnce(ctx context.Context, logger *zap.Logger, item QI
 }
 
 func (adapter *Adapter) runWithBackoff(ctx context.Context, hook func(context.Context, *zap.Logger, controller.QRuntime) error) {
-	logger := adapter.logger.With(logging.Controller(adapter.StateAdapter.Name))
+	logger := adapter.logger.With(logging.Controller(adapter.Name))
 
 	backoff := backoff.NewExponentialBackOff()
 	backoff.MaxElapsedTime = 0
@@ -420,7 +420,7 @@ func (adapter *Adapter) runWithPanicHandler(f func() error) (err error) {
 
 	defer func() {
 		if p := recover(); p != nil {
-			err = fmt.Errorf("run hook %q panicked: %s\n\n%s", adapter.StateAdapter.Name, p, string(debug.Stack()))
+			err = fmt.Errorf("run hook %q panicked: %s\n\n%s", adapter.Name, p, string(debug.Stack()))
 		}
 	}()
 

@@ -83,8 +83,8 @@ func NewAdapter(
 	// disable number of retries limit
 	adapter.backoff.MaxElapsedTime = 0
 
-	for _, output := range adapter.StateAdapter.Outputs {
-		if err := adapter.depDB.AddControllerOutput(adapter.StateAdapter.Name, output); err != nil {
+	for _, output := range adapter.Outputs {
+		if err := adapter.depDB.AddControllerOutput(adapter.Name, output); err != nil {
 			return nil, fmt.Errorf("error registering in dependency database: %w", err)
 		}
 	}
@@ -115,8 +115,6 @@ func (adapter *Adapter) ResetRestartBackoff() {
 }
 
 // UpdateInputs implements controller.Runtime interface.
-//
-//nolint:cyclop
 func (adapter *Adapter) UpdateInputs(deps []controller.Input) error {
 	slices.SortFunc(deps, controller.Input.Compare)
 
@@ -126,22 +124,18 @@ func (adapter *Adapter) UpdateInputs(deps []controller.Input) error {
 			// allowed for Controllers
 		case controller.InputQPrimary, controller.InputQMapped, controller.InputQMappedDestroyReady:
 			// allowed only for QControllers
-			return fmt.Errorf("invalid input kind %d for controller %q", dep.Kind, adapter.StateAdapter.Name)
+			return fmt.Errorf("invalid input kind %d for controller %q", dep.Kind, adapter.Name)
 		}
 	}
 
-	dbDeps, err := adapter.depDB.GetControllerInputs(adapter.StateAdapter.Name)
+	dbDeps, err := adapter.depDB.GetControllerInputs(adapter.Name)
 	if err != nil {
 		return fmt.Errorf("error fetching controller dependencies: %w", err)
 	}
 
 	i, j := 0, 0
 
-	for {
-		if i >= len(deps) && j >= len(dbDeps) {
-			break
-		}
-
+	for i < len(deps) || j < len(dbDeps) {
 		shouldAdd := false
 		shouldDelete := false
 
@@ -168,7 +162,7 @@ func (adapter *Adapter) UpdateInputs(deps []controller.Input) error {
 		}
 
 		if shouldDelete {
-			if err := adapter.depDB.DeleteControllerInput(adapter.StateAdapter.Name, dbDeps[j]); err != nil {
+			if err := adapter.depDB.DeleteControllerInput(adapter.Name, dbDeps[j]); err != nil {
 				return fmt.Errorf("error deleting controller dependency: %w", err)
 			}
 
@@ -178,7 +172,7 @@ func (adapter *Adapter) UpdateInputs(deps []controller.Input) error {
 		}
 
 		if shouldAdd {
-			if err := adapter.depDB.AddControllerInput(adapter.StateAdapter.Name, deps[i]); err != nil {
+			if err := adapter.depDB.AddControllerInput(adapter.Name, deps[i]); err != nil {
 				return fmt.Errorf("error adding controller dependency: %w", err)
 			}
 
@@ -194,7 +188,7 @@ func (adapter *Adapter) UpdateInputs(deps []controller.Input) error {
 		}
 	}
 
-	adapter.StateAdapter.Inputs = slices.Clone(deps)
+	adapter.Inputs = slices.Clone(deps)
 
 	return nil
 }

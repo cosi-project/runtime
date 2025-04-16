@@ -34,6 +34,8 @@ type ResourceDefinitionSpec struct { //nolint:govet
 	Aliases []resource.Type `yaml:"aliases"`
 	// All aliases for automatic matching.
 	AllAliases []resource.Type `yaml:"allAliases"`
+	// SkipAutomaticAliases indicates that the resource should not be automatically aliased.
+	SkipAutomaticAliases bool `yaml:"skipAutomaticAliases,omitempty"`
 
 	// Additional columns to print in table output.
 	PrintColumns []PrintColumn `yaml:"printColumns"`
@@ -82,29 +84,31 @@ func (spec *ResourceDefinitionSpec) Fill() error {
 	}
 
 	spec.DisplayType = pluralizeClient.Singular(name)
-	spec.Aliases = append(spec.Aliases, strings.ToLower(spec.DisplayType))
 
-	spec.AllAliases = append(spec.AllAliases, strings.ToLower(name))
+	if !spec.SkipAutomaticAliases {
+		spec.Aliases = append(spec.Aliases, strings.ToLower(spec.DisplayType))
+		spec.AllAliases = append(spec.AllAliases, strings.ToLower(name))
 
-	suffixElements := strings.Split(suffix, ".")
+		suffixElements := strings.Split(suffix, ".")
 
-	for i := 1; i < len(suffixElements); i++ {
-		spec.AllAliases = append(spec.AllAliases, strings.Join(append([]string{strings.ToLower(name)}, suffixElements[:i]...), "."))
-	}
-
-	upperLetters := strings.Map(func(ch rune) rune {
-		if unicode.IsUpper(ch) {
-			return ch
+		for i := 1; i < len(suffixElements); i++ {
+			spec.AllAliases = append(spec.AllAliases, strings.Join(append([]string{strings.ToLower(name)}, suffixElements[:i]...), "."))
 		}
 
-		return -1
-	}, name)
+		upperLetters := strings.Map(func(ch rune) rune {
+			if unicode.IsUpper(ch) {
+				return ch
+			}
 
-	if len(upperLetters) > 1 {
-		spec.Aliases = append(spec.Aliases, strings.ToLower(upperLetters))
+			return -1
+		}, name)
 
-		if !strings.HasSuffix(upperLetters, "S") {
-			spec.Aliases = append(spec.Aliases, strings.ToLower(upperLetters+"s"))
+		if len(upperLetters) > 1 {
+			spec.Aliases = append(spec.Aliases, strings.ToLower(upperLetters))
+
+			if !strings.HasSuffix(upperLetters, "S") {
+				spec.Aliases = append(spec.Aliases, strings.ToLower(upperLetters+"s"))
+			}
 		}
 	}
 
