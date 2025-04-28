@@ -1402,6 +1402,63 @@ func (suite *StateSuite) TestContextWithTeardown() {
 	assertContextIsCanceled(suite.T(), ctx2)
 }
 
+// TestTeardownAndDestroy verifies TeardownAndDestroy.
+func (suite *StateSuite) TestTeardownAndDestroy() {
+	ns := suite.getNamespace()
+
+	res := NewPathResource(ns, "tmp/4")
+
+	ctx, cancel := context.WithTimeout(context.Background(), time.Second*5)
+	defer cancel()
+
+	finalizer := "A"
+
+	eg := errgroup.Group{}
+
+	eg.Go(func() error {
+		ch := make(chan state.Event)
+
+		err := suite.State.WatchKind(ctx, NewPathResource(ns, "").Metadata(), ch, state.WithBootstrapContents(true))
+		if err != nil {
+			return err
+		}
+
+		for {
+			select {
+			case <-ctx.Done():
+				return nil
+			case e := <-ch:
+				if e.Type != state.Updated && e.Type != state.Created {
+					continue
+				}
+
+				if e.Resource.Metadata().Phase() != resource.PhaseTearingDown {
+					continue
+				}
+
+				if !e.Resource.Metadata().Finalizers().Has(finalizer) {
+					continue
+				}
+
+				if err = suite.State.RemoveFinalizer(ctx, e.Resource.Metadata(), finalizer); err != nil {
+					return err
+				}
+			}
+		}
+	})
+
+	suite.Require().NoError(suite.State.Create(ctx, res))
+
+	suite.Assert().NoError(suite.State.AddFinalizer(ctx, res.Metadata(), finalizer))
+
+	err := suite.State.TeardownAndDestroy(ctx, res.Metadata())
+	suite.Require().NoError(err)
+
+	cancel()
+
+	suite.Require().NoError(eg.Wait())
+}
+
 func assertContextIsCanceled(t *testing.T, ctx context.Context) { //nolint:revive
 	t.Helper()
 

@@ -137,4 +137,11 @@ type State interface {
 	// The passed in context should be canceled, otherwise the goroutine might leak from this call.
 	// If the resource doesn't exist, the context is canceled immediately.
 	ContextWithTeardown(context.Context, resource.Pointer) (context.Context, error)
+
+	// TeardownAndDestroy a resource.
+	//
+	// If a resource doesn't exist, error is returned.
+	// It's not an error to tear down a resource which is already being torn down.
+	// The call blocks until all resource finalizers are empty.
+	TeardownAndDestroy(context.Context, resource.Pointer, ...TeardownAndDestroyOption) error
 }

@@ -152,6 +152,21 @@ func WithDestroyOwner(owner string) DestroyOption {
 	}
 }
 
+// TeardownAndDestroyOption builds TeardownAndDestroyOption.
+type TeardownAndDestroyOption func(*TeardownAndDestroyOptions)
+
+// TeardownAndDestroyOptions for the CoreState.TeardownAndDestroy function.
+type TeardownAndDestroyOptions struct {
+	Owner string
+}
+
+// WithTeardownAndDestroyOwner checks an owner on the object being destroyed.
+func WithTeardownAndDestroyOwner(owner string) TeardownAndDestroyOption {
+	return func(opts *TeardownAndDestroyOptions) {
+		opts.Owner = owner
+	}
+}
+
 // WatchOptions for the CoreState.Watch function.
 type WatchOptions struct {
 	StartFromBookmark Bookmark
