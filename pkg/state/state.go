@@ -143,5 +143,5 @@ type State interface {
 	// If a resource doesn't exist, error is returned.
 	// It's not an error to tear down a resource which is already being torn down.
 	// The call blocks until all resource finalizers are empty.
-	TeardownAndDestroy(context.Context, resource.Pointer, ...TeardownAndDestroyOption) error
+	TeardownAndDestroy(context.Context, resource.Pointer, ...TeardownAndDestroyOption) (bool, error)
 }

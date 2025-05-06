@@ -1406,12 +1406,14 @@ func (suite *StateSuite) TestContextWithTeardown() {
 func (suite *StateSuite) TestTeardownAndDestroy() {
 	ns := suite.getNamespace()
 
-	res := NewPathResource(ns, "tmp/4")
+	path1 := NewPathResource(ns, "tmp/4")
+	path2 := NewPathResource(ns, "tmp/5")
 
 	ctx, cancel := context.WithTimeout(context.Background(), time.Second*5)
 	defer cancel()
 
-	finalizer := "A"
+	finalizerA := "A"
+	finalizerB := "B"
 
 	eg := errgroup.Group{}
 
@@ -1436,23 +1438,42 @@ func (suite *StateSuite) TestTeardownAndDestroy() {
 					continue
 				}
 
-				if !e.Resource.Metadata().Finalizers().Has(finalizer) {
+				if !e.Resource.Metadata().Finalizers().Has(finalizerA) {
 					continue
 				}
 
-				if err = suite.State.RemoveFinalizer(ctx, e.Resource.Metadata(), finalizer); err != nil {
+				if err = suite.State.RemoveFinalizer(ctx, e.Resource.Metadata(), finalizerA); err != nil {
 					return err
 				}
 			}
 		}
 	})
 
-	suite.Require().NoError(suite.State.Create(ctx, res))
+	suite.Require().NoError(suite.State.Create(ctx, path1))
+	suite.Require().NoError(suite.State.Create(ctx, path2))
 
-	suite.Assert().NoError(suite.State.AddFinalizer(ctx, res.Metadata(), finalizer))
+	suite.Assert().NoError(suite.State.AddFinalizer(ctx, path1.Metadata(), finalizerA))
+	suite.Assert().NoError(suite.State.AddFinalizer(ctx, path2.Metadata(), finalizerB))
 
-	err := suite.State.TeardownAndDestroy(ctx, res.Metadata())
+	_, err := suite.State.TeardownAndDestroy(ctx, path1.Metadata())
 	suite.Require().NoError(err)
+
+	ready, err := suite.State.TeardownAndDestroy(ctx, path2.Metadata(), state.WithNoBlocking())
+	suite.Require().NoError(err)
+	suite.Assert().False(ready)
+
+	r, err := suite.State.Get(ctx, path2.Metadata())
+	suite.Require().NoError(err)
+	suite.Assert().Equal(resource.PhaseTearingDown, r.Metadata().Phase())
+
+	suite.Assert().NoError(suite.State.RemoveFinalizer(ctx, path2.Metadata(), finalizerB))
+
+	ready, err = suite.State.TeardownAndDestroy(ctx, path2.Metadata(), state.WithNoBlocking())
+	suite.Assert().True(ready)
+	suite.Require().NoError(err)
+
+	_, err = suite.State.Get(ctx, path2.Metadata())
+	suite.Require().True(state.IsNotFoundError(err))
 
 	cancel()
 

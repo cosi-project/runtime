@@ -214,7 +214,7 @@ func (state coreWrapper) ContextWithTeardown(ctx context.Context, resourcePointe
 // If a resource doesn't exist, error is returned.
 // It's not an error to tear down a resource which is already being torn down.
 // The call blocks until all resource finalizers are empty.
-func (state coreWrapper) TeardownAndDestroy(ctx context.Context, resourcePointer resource.Pointer, opts ...TeardownAndDestroyOption) error {
+func (state coreWrapper) TeardownAndDestroy(ctx context.Context, resourcePointer resource.Pointer, opts ...TeardownAndDestroyOption) (bool, error) {
 	var options TeardownAndDestroyOptions
 
 	for _, opt := range opts {
@@ -223,17 +223,21 @@ func (state coreWrapper) TeardownAndDestroy(ctx context.Context, resourcePointer
 
 	ready, err := state.Teardown(ctx, resourcePointer, WithTeardownOwner(options.Owner))
 	if err != nil {
-		return err
+		return ready, err
 	}
 
 	if ready {
-		return state.Destroy(ctx, resourcePointer, WithDestroyOwner(options.Owner))
+		return ready, state.Destroy(ctx, resourcePointer, WithDestroyOwner(options.Owner))
+	}
+
+	if options.NonBlocking {
+		return ready, nil
 	}
 
 	_, err = state.WatchFor(ctx, resourcePointer, WithFinalizerEmpty())
 	if err != nil {
-		return err
+		return ready, err
 	}
 
-	return state.Destroy(ctx, resourcePointer, WithDestroyOwner(options.Owner))
+	return true, state.Destroy(ctx, resourcePointer, WithDestroyOwner(options.Owner))
 }

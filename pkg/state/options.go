@@ -157,13 +157,22 @@ type TeardownAndDestroyOption func(*TeardownAndDestroyOptions)
 
 // TeardownAndDestroyOptions for the CoreState.TeardownAndDestroy function.
 type TeardownAndDestroyOptions struct {
-	Owner string
+	Owner       string
+	NonBlocking bool
 }
 
 // WithTeardownAndDestroyOwner checks an owner on the object being destroyed.
 func WithTeardownAndDestroyOwner(owner string) TeardownAndDestroyOption {
 	return func(opts *TeardownAndDestroyOptions) {
 		opts.Owner = owner
+	}
+}
+
+// WithNoBlocking makes teardown and destroy not wait for finalizers empty.
+// Then if the finalizers empty it will try destroying the resource.
+func WithNoBlocking() TeardownAndDestroyOption {
+	return func(opts *TeardownAndDestroyOptions) {
+		opts.NonBlocking = true
 	}
 }
 
