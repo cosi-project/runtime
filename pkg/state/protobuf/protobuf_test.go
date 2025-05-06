@@ -13,6 +13,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/siderolabs/gen/ensure"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"github.com/stretchr/testify/suite"
@@ -49,6 +50,8 @@ func ProtobufSetup(t *testing.T) (grpc.ClientConnInterface, *grpc.Server, func()
 	serverState := server.NewState(coreState)
 
 	runServer := func() *grpc.Server {
+		t.Logf("opening listen socket %v", sock.Name())
+
 		l, lErr := net.Listen("unix", sock.Name())
 		require.NoError(t, lErr)
 
@@ -81,12 +84,14 @@ func ProtobufSetup(t *testing.T) (grpc.ClientConnInterface, *grpc.Server, func()
 	return grpcConn, grpcServer, runServer, coreState
 }
 
+func init() {
+	ensure.NoError(protobuf.RegisterResource(conformance.PathResourceType, &conformance.PathResource{}))
+}
+
 func TestProtobufConformance(t *testing.T) {
 	grpcConn, _, _, _ := ProtobufSetup(t) //nolint:dogsled
 
 	stateClient := v1alpha1.NewStateClient(grpcConn)
-
-	require.NoError(t, protobuf.RegisterResource(conformance.PathResourceType, &conformance.PathResource{}))
 
 	suite.Run(t, &conformance.StateSuite{
 		State:      state.WrapCore(client.NewAdapter(stateClient)),

@@ -117,7 +117,7 @@ watchKindChLoop:
 
 			// buffer overrun
 			require.Equal(t, state.Errored, ev.Type)
-			require.EqualError(t, ev.Error, fmt.Sprintf("buffer overrun: namespace %q type %q", namespace, conformance.PathResourceType))
+			require.ErrorContains(t, ev.Error, fmt.Sprintf("buffer overrun: namespace %q type %q", namespace, conformance.PathResourceType))
 
 			break watchKindChLoop
 		case <-time.After(time.Second):
@@ -145,7 +145,7 @@ watchLoop:
 
 			// buffer overrun
 			require.Equal(t, state.Errored, ev.Type)
-			require.EqualError(t, ev.Error, fmt.Sprintf("buffer overrun: namespace %q type %q", namespace, conformance.PathResourceType))
+			require.ErrorContains(t, ev.Error, fmt.Sprintf("buffer overrun: namespace %q type %q", namespace, conformance.PathResourceType))
 
 			break watchLoop
 		case <-time.After(time.Second):

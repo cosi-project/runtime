@@ -7,6 +7,7 @@ package protobuf_test
 import (
 	"testing"
 
+	"github.com/siderolabs/gen/ensure"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
@@ -15,9 +16,11 @@ import (
 	"github.com/cosi-project/runtime/pkg/state/conformance"
 )
 
-func BenchmarkCreateResource(b *testing.B) {
-	_ = protobuf.RegisterResource(conformance.PathResourceType, &conformance.PathResource{}) //nolint:errcheck
+func init() {
+	ensure.NoError(protobuf.RegisterResource(conformance.PathResourceType, &conformance.PathResource{}))
+}
 
+func BenchmarkCreateResource(b *testing.B) {
 	protoR := &v1alpha1.Resource{
 		Metadata: &v1alpha1.Metadata{
 			Namespace: "ns",
@@ -52,8 +55,6 @@ func BenchmarkCreateResource(b *testing.B) {
 
 func TestRegistry(t *testing.T) {
 	t.Parallel()
-
-	require.NoError(t, protobuf.RegisterResource(conformance.PathResourceType, &conformance.PathResource{}))
 
 	protoR := &v1alpha1.Resource{
 		Metadata: &v1alpha1.Metadata{

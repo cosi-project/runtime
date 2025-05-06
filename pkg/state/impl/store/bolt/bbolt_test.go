@@ -8,6 +8,7 @@ import (
 	"path/filepath"
 	"testing"
 
+	"github.com/siderolabs/gen/ensure"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"go.etcd.io/bbolt"
@@ -19,10 +20,12 @@ import (
 	"github.com/cosi-project/runtime/pkg/state/impl/store/bolt"
 )
 
+func init() {
+	ensure.NoError(protobuf.RegisterResource(conformance.PathResourceType, &conformance.PathResource{}))
+}
+
 func TestBboltStore(t *testing.T) { //nolint:tparallel
 	t.Parallel()
-
-	require.NoError(t, protobuf.RegisterResource(conformance.PathResourceType, &conformance.PathResource{}))
 
 	tmpDir := t.TempDir()
 

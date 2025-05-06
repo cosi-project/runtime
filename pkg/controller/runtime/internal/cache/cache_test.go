@@ -28,6 +28,8 @@ func resourceIDGenerator(i int) resource.ID {
 }
 
 func TestCacheOperations(t *testing.T) {
+	metrics.CachedResources.Init()
+
 	ctx, cancel := context.WithTimeout(t.Context(), 10*time.Second)
 	defer cancel()
 

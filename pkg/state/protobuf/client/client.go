@@ -477,14 +477,14 @@ func (adapter *Adapter) watchAdapter(
 			channel.SendWithContext(ctx, singleCh,
 				state.Event{
 					Type:  state.Errored,
-					Error: err,
+					Error: fmt.Errorf("namespace %q type %q: %w", watchRequest.Namespace, watchRequest.Type, err),
 				},
 			)
 		case aggregatedCh != nil:
 			channel.SendWithContext(ctx, aggregatedCh, []state.Event{
 				{
 					Type:  state.Errored,
-					Error: err,
+					Error: fmt.Errorf("namespace %q type %q: %w", watchRequest.Namespace, watchRequest.Type, err),
 				},
 			},
 			)

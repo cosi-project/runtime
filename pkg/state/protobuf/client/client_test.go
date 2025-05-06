@@ -13,6 +13,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/siderolabs/gen/ensure"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"go.uber.org/goleak"
@@ -30,6 +31,10 @@ import (
 	"github.com/cosi-project/runtime/pkg/state/protobuf/client"
 	"github.com/cosi-project/runtime/pkg/state/protobuf/server"
 )
+
+func init() {
+	ensure.NoError(protobuf.RegisterResource(conformance.PathResourceType, &conformance.PathResource{}))
+}
 
 func TestProtobufSkipUnmarshal(t *testing.T) {
 	defer goleak.VerifyNone(t, goleak.IgnoreCurrent())
@@ -64,8 +69,6 @@ func TestProtobufSkipUnmarshal(t *testing.T) {
 	defer noError(t, (*grpc.ClientConn).Close, grpcConn)
 
 	stateClient := v1alpha1.NewStateClient(grpcConn)
-
-	require.NoError(t, protobuf.RegisterResource(conformance.PathResourceType, &conformance.PathResource{}))
 
 	grpcState := state.WrapCore(client.NewAdapter(stateClient))
 

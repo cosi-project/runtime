@@ -9,6 +9,8 @@ import (
 	"testing"
 	"time"
 
+	"github.com/siderolabs/gen/ensure"
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"go.uber.org/zap/zaptest"
 
@@ -21,10 +23,12 @@ import (
 	"github.com/cosi-project/runtime/pkg/state/protobuf/client"
 )
 
-func TestProtobufWatchRuntimeRestart(t *testing.T) {
-	require.NoError(t, protobuf.RegisterResource(conformance.IntResourceType, &conformance.IntResource{}))
-	require.NoError(t, protobuf.RegisterResource(conformance.StrResourceType, &conformance.StrResource{}))
+func init() {
+	ensure.NoError(protobuf.RegisterResource(conformance.IntResourceType, &conformance.IntResource{}))
+	ensure.NoError(protobuf.RegisterResource(conformance.StrResourceType, &conformance.StrResource{}))
+}
 
+func TestProtobufWatchRuntimeRestart(t *testing.T) {
 	grpcConn, grpcServer, restartServer, _ := ProtobufSetup(t)
 
 	stateClient := v1alpha1.NewStateClient(grpcConn)
@@ -53,9 +57,12 @@ func TestProtobufWatchRuntimeRestart(t *testing.T) {
 	}))
 
 	require.NoError(t, st.Create(ctx, conformance.NewIntResource("one", "1", 1)))
+	require.NoError(t, st.Create(ctx, conformance.NewIntResource("another", "4", 4)))
 
 	// wait for controller to start up
 	_, err = st.WatchFor(ctx, conformance.NewStrResource("default", "1", "1").Metadata(), state.WithEventTypes(state.Created))
+	require.NoError(t, err)
+	_, err = st.WatchFor(ctx, conformance.NewIntResource("default", "4", 8).Metadata(), state.WithEventTypes(state.Created))
 	require.NoError(t, err)
 
 	// abort the server, watch should enter retry loop
@@ -70,7 +77,12 @@ func TestProtobufWatchRuntimeRestart(t *testing.T) {
 	_ = restartServer()
 
 	// now another resource
-	require.NoError(t, st.Create(ctx, conformance.NewIntResource("another", "2", 2)))
+	require.EventuallyWithT(t, func(collectT *assert.CollectT) {
+		asrt := assert.New(collectT)
+
+		// the call might fail as the connection is re-established
+		asrt.NoError(st.Create(ctx, conformance.NewIntResource("another", "2", 2)))
+	}, time.Second, 10*time.Millisecond, "failed to create resource")
 
 	// wait for controller to start up
 	_, err = st.WatchFor(ctx, conformance.NewIntResource("default", "2", 4).Metadata(), state.WithEventTypes(state.Created))

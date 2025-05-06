@@ -399,12 +399,17 @@ func (collection *ResourceCollection) Watch(ctx context.Context, id resource.ID,
 			}
 
 			if collection.writePos-pos > int64(collection.capacity) {
+				collectionWritePos, collectionCapacity := collection.writePos, collection.capacity
+
 				collection.mu.Unlock()
 
 				channel.SendWithContext(ctx, ch,
 					state.Event{
-						Type:  state.Errored,
-						Error: fmt.Errorf("buffer overrun: namespace %q type %q", collection.ns, collection.typ),
+						Type: state.Errored,
+						Error: fmt.Errorf(
+							"buffer overrun: namespace %q type %q, write pos %d, pos %d, capacity %d",
+							collection.ns, collection.typ, collectionWritePos, pos, collectionCapacity,
+						),
 					},
 				)
 
@@ -608,11 +613,16 @@ func (collection *ResourceCollection) WatchAll(ctx context.Context, singleCh cha
 			}
 
 			if collection.writePos-pos > int64(collection.capacity) {
+				collectionWritePos, collectionCapacity := collection.writePos, collection.capacity
+
 				collection.mu.Unlock()
 
 				overrunEvent := state.Event{
-					Type:  state.Errored,
-					Error: fmt.Errorf("buffer overrun: namespace %q type %q", collection.ns, collection.typ),
+					Type: state.Errored,
+					Error: fmt.Errorf(
+						"buffer overrun: namespace %q type %q, write pos %d, pos %d, capacity %d",
+						collection.ns, collection.typ, collectionWritePos, pos, collectionCapacity,
+					),
 				}
 
 				switch {

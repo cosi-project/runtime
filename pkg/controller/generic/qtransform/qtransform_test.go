@@ -621,7 +621,7 @@ func TestDestroyInputFinalizers(t *testing.T) {
 
 		// controller should remove finalizer on inputs
 		rtestutils.AssertResources(ctx, t, st, []resource.ID{"2"}, func(r *A, assert *assert.Assertions) {
-			assert.True(r.Metadata().Finalizers().Add("TransformABController"))
+			assert.False(r.Metadata().Finalizers().Has("QTransformABController"))
 		})
 
 		require.NoError(t, st.Destroy(ctx, NewA("2", ASpec{}).Metadata()))
