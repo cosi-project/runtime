@@ -201,12 +201,12 @@ func StateWatchKind[T resource.Resource](ctx context.Context, st state.CoreState
 }
 
 // List is a type safe wrapper around resource.List.
-type List[T any] struct {
+type List[T resource.Resource] struct {
 	list resource.List
 }
 
 // NewList creates a new List.
-func NewList[T any](list resource.List) List[T] {
+func NewList[T resource.Resource](list resource.List) List[T] {
 	return List[T]{list}
 }
 
@@ -316,8 +316,19 @@ func (l *List[T]) All() iter.Seq[T] {
 	}
 }
 
+// Pointers returns a new rangefunc iterator over each resource pointer in the list.
+func (l *List[T]) Pointers() iter.Seq[resource.Pointer] {
+	return func(yield func(resource.Pointer) bool) {
+		for i := range l.list.Items {
+			if !yield(l.Get(i).Metadata()) {
+				return
+			}
+		}
+	}
+}
+
 // ListIterator is a generic iterator over resource.Resource slice.
-type ListIterator[T any] struct {
+type ListIterator[T resource.Resource] struct {
 	list List[T]
 	pos  int
 }
@@ -325,7 +336,7 @@ type ListIterator[T any] struct {
 // IteratorFromList returns a new iterator over the given list.
 //
 // Deprecated: use [List.All] instead.
-func IteratorFromList[T any](list List[T]) ListIterator[T] {
+func IteratorFromList[T resource.Resource](list List[T]) ListIterator[T] {
 	return ListIterator[T]{pos: 0, list: list}
 }
 

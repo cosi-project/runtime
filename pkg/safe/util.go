@@ -15,7 +15,7 @@ import (
 
 // Map applies the given function to each element of the list and returns a new slice with the results. It
 // returns an error if the given function had returned an error.
-func Map[T any, R any](list List[T], fn func(T) (R, error)) ([]R, error) {
+func Map[T, R resource.Resource](list List[T], fn func(T) (R, error)) ([]R, error) {
 	result := make([]R, 0, list.Len())
 
 	for _, item := range list.list.Items {
@@ -31,7 +31,7 @@ func Map[T any, R any](list List[T], fn func(T) (R, error)) ([]R, error) {
 }
 
 // ToSlice applies the given function to each element of the list and returns a new slice with the results.
-func ToSlice[T any, R any](list List[T], fn func(T) R) []R {
+func ToSlice[T, R resource.Resource](list List[T], fn func(T) R) []R {
 	result := make([]R, 0, list.Len())
 
 	for _, item := range list.list.Items {
