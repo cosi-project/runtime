@@ -6,6 +6,9 @@ package state
 
 import (
 	"context"
+	"fmt"
+
+	"github.com/siderolabs/go-pointer"
 
 	"github.com/cosi-project/runtime/pkg/resource"
 )
@@ -236,4 +239,50 @@ func (state coreWrapper) TeardownAndDestroy(ctx context.Context, resourcePointer
 	}
 
 	return state.Destroy(ctx, resourcePointer, WithDestroyOwner(options.Owner))
+}
+
+// Modify modifies an existing resource or creates a new one.
+//
+// It is a shorthand for Get+UpdateWithConflicts+Create.
+func (state coreWrapper) Modify(
+	ctx context.Context, emptyResource resource.Resource, updateFunc func(resource.Resource) error, options ...UpdateOption,
+) error {
+	_, err := state.ModifyWithResult(ctx, emptyResource, updateFunc, options...)
+
+	return err
+}
+
+// ModifyWithResult modifies an existing resource or creates a new one.
+//
+// It is a shorthand for Get+UpdateWithConflicts+Create.
+func (state coreWrapper) ModifyWithResult(
+	ctx context.Context, emptyResource resource.Resource, updateFunc func(resource.Resource) error, options ...UpdateOption,
+) (resource.Resource, error) {
+	opts := UpdateOptions{
+		ExpectedPhase: pointer.To(resource.PhaseRunning),
+	}
+
+	for _, opt := range options {
+		opt(&opts)
+	}
+
+	_, err := state.Get(ctx, emptyResource.Metadata())
+	if err != nil {
+		if IsNotFoundError(err) {
+			err = updateFunc(emptyResource)
+			if err != nil {
+				return nil, err
+			}
+
+			if err = state.Create(ctx, emptyResource, WithCreateOwner(opts.Owner)); err != nil {
+				return nil, err
+			}
+
+			return emptyResource, nil
+		}
+
+		return nil, fmt.Errorf("error querying current object state: %w", err)
+	}
+
+	return state.UpdateWithConflicts(ctx, emptyResource.Metadata(), updateFunc, WithUpdateOptions(opts))
 }

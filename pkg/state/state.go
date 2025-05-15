@@ -144,4 +144,14 @@ type State interface {
 	// It's not an error to tear down a resource which is already being torn down.
 	// The call blocks until all resource finalizers are empty.
 	TeardownAndDestroy(context.Context, resource.Pointer, ...TeardownAndDestroyOption) error
+
+	// Modify modifies an existing resource or creates a new one.
+	//
+	// It is a shorthand for Get+UpdateWithConflicts+Create.
+	Modify(ctx context.Context, emptyResource resource.Resource, updateFunc func(resource.Resource) error, options ...UpdateOption) error
+
+	// ModifyWithResult modifies an existing resource or creates a new one.
+	//
+	// It is a shorthand for Get+UpdateWithConflicts+Create.
+	ModifyWithResult(ctx context.Context, emptyResource resource.Resource, updateFunc func(resource.Resource) error, options ...UpdateOption) (resource.Resource, error)
 }

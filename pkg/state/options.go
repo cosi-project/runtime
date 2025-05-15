@@ -122,6 +122,13 @@ func WithExpectedPhaseAny() UpdateOption {
 	}
 }
 
+// WithUpdateOptions sets update options for the update request.
+func WithUpdateOptions(opts UpdateOptions) UpdateOption {
+	return func(options *UpdateOptions) {
+		*options = opts
+	}
+}
+
 // TeardownOptions for the CoreState.Teardown function.
 type TeardownOptions struct {
 	Owner string

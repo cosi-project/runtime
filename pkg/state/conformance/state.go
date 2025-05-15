@@ -6,6 +6,7 @@ package conformance
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"math/rand"
 	"regexp"
@@ -1457,6 +1458,103 @@ func (suite *StateSuite) TestTeardownAndDestroy() {
 	cancel()
 
 	suite.Require().NoError(eg.Wait())
+}
+
+// TestModify verifies Modify.
+func (suite *StateSuite) TestModify() {
+	path1 := NewPathResource(suite.getNamespace(), "var/run/modify")
+
+	ctx := context.Background()
+
+	p1, err := safe.StateModifyWithResult(ctx, suite.State, path1, func(r *PathResource) error {
+		r.Metadata().Labels().Set("foo", "bar")
+
+		return nil
+	})
+	suite.Require().NoError(err)
+
+	suite.Assert().Equal(resource.String(path1), resource.String(p1))
+	suite.Assert().Equal("bar", p1.Metadata().Labels().Raw()["foo"])
+	suite.Assert().Empty(p1.Metadata().Owner())
+
+	p2, err := safe.StateGet[*PathResource](ctx, suite.State, path1.Metadata())
+	suite.Require().NoError(err)
+
+	suite.Assert().Equal(resource.String(path1), resource.String(p2))
+	suite.Assert().Equal("bar", p2.Metadata().Labels().Raw()["foo"])
+
+	p1, err = safe.StateModifyWithResult(ctx, suite.State, path1, func(r *PathResource) error {
+		r.Metadata().Labels().Delete("foo")
+
+		return nil
+	})
+	suite.Require().NoError(err)
+
+	suite.Assert().True(p1.Metadata().Labels().Empty())
+
+	p2, err = safe.StateGet[*PathResource](ctx, suite.State, path1.Metadata())
+	suite.Require().NoError(err)
+
+	suite.Assert().True(p2.Metadata().Labels().Empty())
+
+	_, err = safe.StateModifyWithResult(ctx, suite.State, path1, func(*PathResource) error {
+		return errors.New("modify error")
+	})
+	suite.Require().EqualError(err, "modify error")
+
+	_, err = suite.State.Teardown(ctx, path1.Metadata())
+	suite.Require().NoError(err)
+
+	_, err = safe.StateModifyWithResult(ctx, suite.State, path1, func(r *PathResource) error {
+		r.Metadata().Labels().Set("foo", "bar")
+
+		return nil
+	})
+	suite.Require().Error(err)
+	suite.Assert().True(state.IsPhaseConflictError(err))
+
+	p1, err = safe.StateModifyWithResult(ctx, suite.State, path1, func(r *PathResource) error {
+		r.Metadata().Labels().Set("foo", "bar2")
+
+		return nil
+	}, state.WithExpectedPhaseAny())
+	suite.Require().NoError(err)
+	suite.Assert().Equal(resource.PhaseTearingDown, p1.Metadata().Phase())
+	suite.Assert().Equal("bar2", p1.Metadata().Labels().Raw()["foo"])
+}
+
+// TestModifyWithOwner verifies Modify with Owner.
+func (suite *StateSuite) TestModifyWithOwner() {
+	path1 := NewPathResource(suite.getNamespace(), "var/run/modify/owned")
+
+	ctx := context.Background()
+
+	p1, err := safe.StateModifyWithResult(ctx, suite.State, path1, func(*PathResource) error {
+		return nil
+	}, state.WithUpdateOwner("owner"))
+	suite.Require().NoError(err)
+
+	suite.Assert().Equal(resource.String(path1), resource.String(p1))
+	suite.Assert().Equal("owner", p1.Metadata().Owner())
+
+	p1, err = safe.StateModifyWithResult(ctx, suite.State, path1, func(r *PathResource) error {
+		r.Metadata().Labels().Set("foo", "bar")
+
+		return nil
+	}, state.WithUpdateOwner("owner"))
+	suite.Require().NoError(err)
+
+	suite.Assert().Equal(resource.String(path1), resource.String(p1))
+	suite.Assert().Equal("owner", p1.Metadata().Owner())
+	suite.Assert().Equal("bar", p1.Metadata().Labels().Raw()["foo"])
+
+	_, err = safe.StateModifyWithResult(ctx, suite.State, path1, func(r *PathResource) error {
+		r.Metadata().Labels().Set("foo", "baz")
+
+		return nil
+	})
+	suite.Require().Error(err)
+	suite.Require().True(state.IsOwnerConflictError(err))
 }
 
 func assertContextIsCanceled(t *testing.T, ctx context.Context) { //nolint:revive

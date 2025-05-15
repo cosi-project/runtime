@@ -223,24 +223,6 @@ func (adapter *StateAdapter) modify(
 			emptyResource.Metadata().Namespace(), emptyResource.Metadata().Type(), adapter.Name, emptyResource.Metadata().ID())
 	}
 
-	_, err := adapter.State.Get(ctx, emptyResource.Metadata())
-	if err != nil {
-		if state.IsNotFoundError(err) {
-			err = updateFunc(emptyResource)
-			if err != nil {
-				return nil, err
-			}
-
-			if err = adapter.State.Create(ctx, emptyResource, state.WithCreateOwner(adapter.Name)); err != nil {
-				return nil, err
-			}
-
-			return emptyResource, nil
-		}
-
-		return nil, fmt.Errorf("error querying current object state: %w", err)
-	}
-
 	updateOptions := []state.UpdateOption{state.WithUpdateOwner(adapter.Name)}
 
 	modifyOptions := controller.ToModifyOptions(options...)
@@ -250,7 +232,7 @@ func (adapter *StateAdapter) modify(
 		updateOptions = append(updateOptions, state.WithExpectedPhaseAny())
 	}
 
-	return adapter.State.UpdateWithConflicts(ctx, emptyResource.Metadata(), updateFunc, updateOptions...)
+	return adapter.State.ModifyWithResult(ctx, emptyResource, updateFunc, updateOptions...)
 }
 
 // AddFinalizer implements controller.Runtime interface.

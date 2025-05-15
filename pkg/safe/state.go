@@ -200,6 +200,32 @@ func StateWatchKind[T resource.Resource](ctx context.Context, st state.CoreState
 	return nil
 }
 
+// StateModify is a type safe wrapper around state.Modify.
+func StateModify[T resource.Resource](ctx context.Context, st state.State, r T, fn func(T) error, options ...state.UpdateOption) error {
+	return st.Modify(ctx, r, func(r resource.Resource) error {
+		arg, ok := r.(T)
+		if !ok {
+			return fmt.Errorf("type mismatch: expected %T, got %T", arg, r)
+		}
+
+		return fn(arg)
+	}, options...)
+}
+
+// StateModifyWithResult is a type safe wrapper around state.ModifyWithResult.
+func StateModifyWithResult[T resource.Resource](ctx context.Context, st state.State, r T, fn func(T) error, options ...state.UpdateOption) (T, error) {
+	got, err := st.ModifyWithResult(ctx, r, func(r resource.Resource) error {
+		arg, ok := r.(T)
+		if !ok {
+			return fmt.Errorf("type mismatch: expected %T, got %T", arg, r)
+		}
+
+		return fn(arg)
+	}, options...)
+
+	return typeAssertOrZero[T](got, err)
+}
+
 // List is a type safe wrapper around resource.List.
 type List[T resource.Resource] struct {
 	list resource.List
