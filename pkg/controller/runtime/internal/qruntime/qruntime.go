@@ -27,6 +27,7 @@ import (
 	"github.com/cosi-project/runtime/pkg/controller/runtime/metrics"
 	"github.com/cosi-project/runtime/pkg/logging"
 	"github.com/cosi-project/runtime/pkg/resource"
+	"github.com/cosi-project/runtime/pkg/state/owned"
 )
 
 type resourceNamespaceType struct {
@@ -105,7 +106,7 @@ func NewAdapter(
 
 	return &Adapter{
 		StateAdapter: controllerstate.StateAdapter{
-			State:               state,
+			OwnedState:          owned.New(state, name),
 			Cache:               adapterOptions.Cache,
 			Name:                name,
 			UpdateLimiter:       rate.NewLimiter(adapterOptions.RuntimeOptions.ChangeRateLimit, adapterOptions.RuntimeOptions.ChangeBurst),

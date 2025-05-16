@@ -22,6 +22,7 @@ import (
 	"github.com/cosi-project/runtime/pkg/controller/runtime/metrics"
 	"github.com/cosi-project/runtime/pkg/controller/runtime/options"
 	"github.com/cosi-project/runtime/pkg/resource"
+	"github.com/cosi-project/runtime/pkg/state/owned"
 )
 
 // Adapter connects common controller-runtime and rruntime controller.
@@ -64,7 +65,7 @@ func NewAdapter(
 	adapter := &Adapter{
 		StateAdapter: controllerstate.StateAdapter{
 			Name:                ctrl.Name(),
-			State:               state,
+			OwnedState:          owned.New(state, ctrl.Name()),
 			Cache:               adapterOptions.Cache,
 			Outputs:             slices.Clone(ctrl.Outputs()),
 			UpdateLimiter:       rate.NewLimiter(adapterOptions.RuntimeOptions.ChangeRateLimit, adapterOptions.RuntimeOptions.ChangeBurst),
