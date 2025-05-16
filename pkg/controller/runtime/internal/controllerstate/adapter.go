@@ -17,15 +17,16 @@ import (
 	"github.com/cosi-project/runtime/pkg/controller/runtime/internal/cache"
 	"github.com/cosi-project/runtime/pkg/resource"
 	"github.com/cosi-project/runtime/pkg/state"
+	"github.com/cosi-project/runtime/pkg/state/owned"
 )
 
 // StateAdapter implements filtered access to the resource state by controller inputs/outputs.
 //
 // If the read cache is enabled for a resource type, controller.Reader interface will be redirected to the cache.
 type StateAdapter struct {
-	State state.State
-	Cache *cache.ResourceCache
-	Name  string
+	OwnedState *owned.State
+	Cache      *cache.ResourceCache
+	Name       string
 
 	UpdateLimiter *rate.Limiter
 	Logger        *zap.Logger
@@ -120,7 +121,7 @@ func (adapter *StateAdapter) get(ctx context.Context, disableCache bool, resourc
 		adapter.Logger.Warn("get uncached resource", zap.String("namespace", resourcePointer.Namespace()), zap.String("type", resourcePointer.Type()), zap.String("id", resourcePointer.ID()))
 	}
 
-	return adapter.State.Get(ctx, resourcePointer, opts...)
+	return adapter.OwnedState.Get(ctx, resourcePointer, opts...)
 }
 
 // List implements controller.Runtime interface.
@@ -147,7 +148,7 @@ func (adapter *StateAdapter) list(ctx context.Context, disableCache bool, resour
 		adapter.Logger.Warn("list uncached resource", zap.String("namespace", resourceKind.Namespace()), zap.String("type", resourceKind.Type()))
 	}
 
-	return adapter.State.List(ctx, resourceKind, opts...)
+	return adapter.OwnedState.List(ctx, resourceKind, opts...)
 }
 
 // ContextWithTeardown implements controller.Runtime interface.
@@ -164,7 +165,7 @@ func (adapter *StateAdapter) ContextWithTeardown(ctx context.Context, resourcePo
 		adapter.Logger.Warn("context with teardown on uncached resource", zap.String("namespace", resourcePointer.Namespace()), zap.String("type", resourcePointer.Type()))
 	}
 
-	return adapter.State.ContextWithTeardown(ctx, resourcePointer)
+	return adapter.OwnedState.ContextWithTeardown(ctx, resourcePointer)
 }
 
 // Create implements controller.Runtime interface.
@@ -178,7 +179,7 @@ func (adapter *StateAdapter) Create(ctx context.Context, r resource.Resource) er
 			r.Metadata().Namespace(), r.Metadata().Type(), adapter.Name, r.Metadata().ID())
 	}
 
-	return adapter.State.Create(ctx, r, state.WithCreateOwner(adapter.Name))
+	return adapter.OwnedState.Create(ctx, r)
 }
 
 // Update implements controller.Runtime interface.
@@ -192,7 +193,7 @@ func (adapter *StateAdapter) Update(ctx context.Context, newResource resource.Re
 			newResource.Metadata().Namespace(), newResource.Metadata().Type(), adapter.Name, newResource.Metadata().ID())
 	}
 
-	return adapter.State.Update(ctx, newResource, state.WithUpdateOwner(adapter.Name))
+	return adapter.OwnedState.Update(ctx, newResource)
 }
 
 // Modify implements controller.Runtime interface.
@@ -223,16 +224,7 @@ func (adapter *StateAdapter) modify(
 			emptyResource.Metadata().Namespace(), emptyResource.Metadata().Type(), adapter.Name, emptyResource.Metadata().ID())
 	}
 
-	updateOptions := []state.UpdateOption{state.WithUpdateOwner(adapter.Name)}
-
-	modifyOptions := controller.ToModifyOptions(options...)
-	if modifyOptions.ExpectedPhase != nil {
-		updateOptions = append(updateOptions, state.WithExpectedPhase(*modifyOptions.ExpectedPhase))
-	} else {
-		updateOptions = append(updateOptions, state.WithExpectedPhaseAny())
-	}
-
-	return adapter.State.ModifyWithResult(ctx, emptyResource, updateFunc, updateOptions...)
+	return adapter.OwnedState.ModifyWithResult(ctx, emptyResource, updateFunc, options...)
 }
 
 // AddFinalizer implements controller.Runtime interface.
@@ -245,7 +237,7 @@ func (adapter *StateAdapter) AddFinalizer(ctx context.Context, resourcePointer r
 		return err
 	}
 
-	return adapter.State.AddFinalizer(ctx, resourcePointer, fins...)
+	return adapter.OwnedState.AddFinalizer(ctx, resourcePointer, fins...)
 }
 
 // RemoveFinalizer implements controller.Runtime interface.
@@ -258,7 +250,7 @@ func (adapter *StateAdapter) RemoveFinalizer(ctx context.Context, resourcePointe
 		return err
 	}
 
-	err := adapter.State.RemoveFinalizer(ctx, resourcePointer, fins...)
+	err := adapter.OwnedState.RemoveFinalizer(ctx, resourcePointer, fins...)
 	if state.IsNotFoundError(err) {
 		err = nil
 	}
@@ -276,16 +268,7 @@ func (adapter *StateAdapter) Teardown(ctx context.Context, resourcePointer resou
 		return false, fmt.Errorf("resource %q/%q is not an output for controller %q, teardown attempted on %q", resourcePointer.Namespace(), resourcePointer.Type(), adapter.Name, resourcePointer.ID())
 	}
 
-	var opts []state.TeardownOption
-
-	opOpt := controller.ToDeleteOptions(opOpts...)
-	if opOpt.Owner != nil {
-		opts = append(opts, state.WithTeardownOwner(*opOpt.Owner))
-	} else {
-		opts = append(opts, state.WithTeardownOwner(adapter.Name))
-	}
-
-	return adapter.State.Teardown(ctx, resourcePointer, opts...)
+	return adapter.OwnedState.Teardown(ctx, resourcePointer, opOpts...)
 }
 
 // Destroy implements controller.Runtime interface.
@@ -298,14 +281,5 @@ func (adapter *StateAdapter) Destroy(ctx context.Context, resourcePointer resour
 		return fmt.Errorf("resource %q/%q is not an output for controller %q, destroy attempted on %q", resourcePointer.Namespace(), resourcePointer.Type(), adapter.Name, resourcePointer.ID())
 	}
 
-	var opts []state.DestroyOption
-
-	opOpt := controller.ToDeleteOptions(opOpts...)
-	if opOpt.Owner != nil {
-		opts = append(opts, state.WithDestroyOwner(*opOpt.Owner))
-	} else {
-		opts = append(opts, state.WithDestroyOwner(adapter.Name))
-	}
-
-	return adapter.State.Destroy(ctx, resourcePointer, opts...)
+	return adapter.OwnedState.Destroy(ctx, resourcePointer, opOpts...)
 }
