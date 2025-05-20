@@ -226,13 +226,20 @@ func StateModifyWithResult[T resource.Resource](ctx context.Context, st state.St
 	return typeAssertOrZero[T](got, err)
 }
 
+// ListedResource is an interface that represents a resource in a list.
+//
+// It is a subset of resource.Resource that only exposes required methods.
+type ListedResource interface {
+	Metadata() *resource.Metadata
+}
+
 // List is a type safe wrapper around resource.List.
-type List[T resource.Resource] struct {
+type List[T ListedResource] struct {
 	list resource.List
 }
 
 // NewList creates a new List.
-func NewList[T resource.Resource](list resource.List) List[T] {
+func NewList[T ListedResource](list resource.List) List[T] {
 	return List[T]{list}
 }
 
@@ -354,7 +361,7 @@ func (l *List[T]) Pointers() iter.Seq[resource.Pointer] {
 }
 
 // ListIterator is a generic iterator over resource.Resource slice.
-type ListIterator[T resource.Resource] struct {
+type ListIterator[T ListedResource] struct {
 	list List[T]
 	pos  int
 }
@@ -362,7 +369,7 @@ type ListIterator[T resource.Resource] struct {
 // IteratorFromList returns a new iterator over the given list.
 //
 // Deprecated: use [List.All] instead.
-func IteratorFromList[T resource.Resource](list List[T]) ListIterator[T] {
+func IteratorFromList[T ListedResource](list List[T]) ListIterator[T] {
 	return ListIterator[T]{pos: 0, list: list}
 }
 
