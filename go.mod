@@ -7,7 +7,7 @@ go 1.24.0
 replace gopkg.in/yaml.v3 => github.com/unix4ever/yaml v0.0.0-20220527175918-f17b0f05cf2c
 
 require (
-	github.com/ProtonMail/gopenpgp/v2 v2.8.3
+	github.com/ProtonMail/gopenpgp/v2 v2.9.0
 	github.com/cenkalti/backoff/v4 v4.3.0
 	github.com/gertd/go-pluralize v0.2.1
 	github.com/grpc-ecosystem/grpc-gateway/v2 v2.26.3
@@ -30,7 +30,7 @@ require (
 )
 
 require (
-	github.com/ProtonMail/go-crypto v1.2.0 // indirect
+	github.com/ProtonMail/go-crypto v1.3.0 // indirect
 	github.com/ProtonMail/go-mime v0.0.0-20230322103455-7d82a3887f2f // indirect
 	github.com/cloudflare/circl v1.6.1 // indirect
 	github.com/davecgh/go-spew v1.1.1 // indirect
