@@ -289,6 +289,95 @@ func AssertLength[R ResourceWithRD](ctx context.Context, t *testing.T, st state.
 	}
 }
 
+// AssertOptionalResources asserts that at least one of the resources exists and passes the assertionFunc.
+func AssertOptionalResources[R ResourceWithRD](
+	ctx context.Context,
+	t *testing.T,
+	st state.State,
+	ids []resource.ID,
+	assertionFunc func(r R, assertion *assert.Assertions),
+	opts ...Option,
+) {
+	require := require.New(t)
+
+	var r R
+
+	rds := r.ResourceDefinition()
+
+	ctx, cancel := context.WithCancel(ctx)
+	defer cancel()
+
+	watchCh := make(chan state.Event)
+	opt := makeOptions(opts...)
+	namespace := pick(opt.Namespace != "", opt.Namespace, rds.DefaultNamespace)
+
+	require.NoError(st.WatchKind(ctx, resource.NewMetadata(namespace, rds.Type, "", resource.VersionUndefined), watchCh))
+
+	reportTicker := time.NewTicker(opt.ReportInterval)
+	defer reportTicker.Stop()
+
+	var (
+		doReport               bool
+		lastReportedAggregator assertionAggregator
+		lastReportedOk         int
+	)
+
+	for {
+		ok := 0
+
+		var aggregator assertionAggregator
+		asserter := assert.New(&aggregator)
+
+		for _, id := range ids {
+			res, err := safe.StateGet[R](ctx, st, resource.NewMetadata(namespace, rds.Type, id, resource.VersionUndefined))
+			if err != nil {
+				if state.IsNotFoundError(err) {
+					asserter.NoError(err)
+					continue
+				}
+				require.NoError(err)
+			}
+
+			aggregator.hadErrors = false
+
+			assertionFunc(res, asserter)
+
+			if !aggregator.hadErrors {
+				ok++
+			}
+		}
+
+		if ok > 0 {
+			return
+		}
+
+		if doReport {
+			// suppress duplicate reports
+			if !lastReportedAggregator.Equal(&aggregator) || lastReportedOk != ok {
+				t.Logf("ok: %d/%d, assertions:\n%s", ok, len(ids), &aggregator)
+			}
+
+			lastReportedOk = ok
+			lastReportedAggregator = aggregator
+		}
+
+		var ev state.Event
+
+		select {
+		case <-ctx.Done():
+			require.FailNow("timeout", "at least one resource should exist and pass assertions:\n%s", &aggregator)
+		case ev = <-watchCh:
+			doReport = false
+
+			if ev.Type == state.Errored {
+				require.NoError(ev.Error)
+			}
+		case <-reportTicker.C:
+			doReport = true
+		}
+	}
+}
+
 // Options is a set of options for the test utils.
 type Options struct {
 	Namespace      string
