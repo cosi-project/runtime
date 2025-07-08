@@ -57,20 +57,16 @@ func AssertResource[R ResourceWithRD](
 
 		res, err := safe.StateGet[R](ctx, st, resource.NewMetadata(namespace, rds.Type, id, resource.VersionUndefined))
 		if err != nil {
-			if state.IsNotFoundError(err) {
-				asserter.NoError(err)
-
-				t.Logf("assertions:\n%s", &aggregator)
-
-				continue
+			if !state.IsNotFoundError(err) {
+				require.NoError(err)
 			}
 
-			require.NoError(err)
+			asserter.NoError(err)
 		}
 
-		aggregator.hadErrors = false
-
-		assertionFunc(res, asserter)
+		if !aggregator.hadErrors { // the resource was found, run the assertions
+			assertionFunc(res, asserter)
+		}
 
 		if !aggregator.hadErrors {
 			return
@@ -132,7 +128,7 @@ func AssertResources[R ResourceWithRD](
 	var (
 		doReport               bool
 		lastReportedAggregator assertionAggregator
-		lastReporedOk          int
+		lastReportedOk         int
 	)
 
 	for {
@@ -144,18 +140,18 @@ func AssertResources[R ResourceWithRD](
 		for _, id := range ids {
 			res, err := safe.StateGet[R](ctx, st, resource.NewMetadata(namespace, rds.Type, id, resource.VersionUndefined))
 			if err != nil {
-				if state.IsNotFoundError(err) {
-					asserter.NoError(err)
-
-					continue
+				if !state.IsNotFoundError(err) {
+					require.NoError(err)
 				}
 
-				require.NoError(err)
+				asserter.NoError(err)
+			} else {
+				aggregator.hadErrors = false
 			}
 
-			aggregator.hadErrors = false
-
-			assertionFunc(res, asserter)
+			if !aggregator.hadErrors { // the resource was found, run the assertions
+				assertionFunc(res, asserter)
+			}
 
 			if !aggregator.hadErrors {
 				ok++
@@ -168,11 +164,11 @@ func AssertResources[R ResourceWithRD](
 
 		if doReport {
 			// suppress duplicate reports
-			if !lastReportedAggregator.Equal(&aggregator) || lastReporedOk != ok {
+			if !lastReportedAggregator.Equal(&aggregator) || lastReportedOk != ok {
 				t.Logf("ok: %d/%d, assertions:\n%s", ok, len(ids), &aggregator)
 			}
 
-			lastReporedOk = ok
+			lastReportedOk = ok
 			lastReportedAggregator = aggregator
 		}
 
