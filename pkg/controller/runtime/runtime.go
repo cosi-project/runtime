@@ -263,7 +263,7 @@ func (runtime *Runtime) watch(resourceNamespace resource.Namespace, resourceType
 
 	kind := resource.NewMetadata(resourceNamespace, resourceType, "", resource.Version{})
 
-	return runtime.state.WatchKindAggregated(runtime.runCtx, kind, runtime.watchCh)
+	return runtime.state.WatchKindAggregated(runtime.runCtx, kind, runtime.watchCh, state.WithBootstrapBookmark(true))
 }
 
 type dedup map[reduced.Metadata]struct{}
