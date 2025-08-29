@@ -162,11 +162,41 @@ func NewABCController(opts ...qtransform.ControllerOption) *ABController {
 		},
 		append(
 			opts,
-			qtransform.WithExtraMappedInput(func(_ context.Context, _ *zap.Logger, _ controller.QRuntime, c *C) ([]resource.Pointer, error) {
-				return []resource.Pointer{
-					NewA(c.Metadata().ID(), ASpec{}).Metadata(),
-				}, nil
-			}),
+			qtransform.WithExtraMappedInput[*C](qtransform.MapperSameID[*A]()),
+		)...,
+	)
+}
+
+func NewABCLabelsController(opts ...qtransform.ControllerOption) *ABController {
+	return qtransform.NewQController(
+		qtransform.Settings[*A, *B]{
+			Name: "QTransformABCController",
+			MapMetadataFunc: func(in *A) *B {
+				return NewB("transformed-"+in.Metadata().ID(), BSpec{})
+			},
+			UnmapMetadataFunc: func(in *B) *A {
+				return NewA(strings.TrimPrefix(in.Metadata().ID(), "transformed-"), ASpec{})
+			},
+			TransformFunc: func(ctx context.Context, r controller.Reader, _ *zap.Logger, in *A, out *B) error {
+				cList, err := safe.ReaderListAll[*C](ctx, r, state.WithLabelQuery(resource.LabelEqual("a", in.Metadata().ID())))
+				if err != nil && !state.IsNotFoundError(err) {
+					return err
+				}
+
+				out.TypedSpec().Out = fmt.Sprintf("%q-%d", in.TypedSpec().Str, in.TypedSpec().Int)
+
+				for c := range cList.All() {
+					out.TypedSpec().Out += fmt.Sprintf("-%d", c.TypedSpec().Aux)
+				}
+
+				out.TypedSpec().TransformCount++
+
+				return nil
+			},
+		},
+		append(
+			opts,
+			qtransform.WithExtraMappedInput[*C](qtransform.MapExtractLabelValue[*A]("a")),
 		)...,
 	)
 }
@@ -722,6 +752,19 @@ func TestRemappedInput(t *testing.T) {
 				assert.Equal(`"baz"-3`, r.TypedSpec().Out)
 			}
 		})
+
+		require.NoError(t, st.Destroy(ctx, NewC("1", CSpec{}).Metadata()))
+
+		rtestutils.AssertResources(ctx, t, st, []resource.ID{"transformed-1", "transformed-2", "transformed-3"}, func(r *B, assert *assert.Assertions) {
+			switch r.Metadata().ID() {
+			case "transformed-1":
+				assert.Equal(`"foo"-1`, r.TypedSpec().Out)
+			case "transformed-2":
+				assert.Equal(`"bar"-2-22`, r.TypedSpec().Out)
+			case "transformed-3":
+				assert.Equal(`"baz"-3`, r.TypedSpec().Out)
+			}
+		})
 	})
 }
 
@@ -763,6 +806,84 @@ func TestRequeueErrorBackoff(t *testing.T) {
 		rtestutils.AssertResource(ctx, t, st, "transformed-1", func(r *B, assert *assert.Assertions) {
 			assert.Equal(`"foo"-1`, r.TypedSpec().Out)
 			assert.Equal(2, r.TypedSpec().TransformCount)
+		})
+	})
+}
+
+func TestMappedByLabelInput(t *testing.T) {
+	setup(t, func(ctx context.Context, st state.State, runtime *runtime.Runtime) {
+		require.NoError(t, runtime.RegisterQController(NewABCLabelsController()))
+
+		for _, a := range []*A{
+			NewA("1", ASpec{Str: "foo", Int: 1}),
+			NewA("2", ASpec{Str: "bar", Int: 2}),
+			NewA("3", ASpec{Str: "baz", Int: 3}),
+		} {
+			require.NoError(t, st.Create(ctx, a))
+		}
+
+		rtestutils.AssertResources(ctx, t, st, []resource.ID{"transformed-1", "transformed-2", "transformed-3"}, func(r *B, assert *assert.Assertions) {
+			switch r.Metadata().ID() {
+			case "transformed-1":
+				assert.Equal(`"foo"-1`, r.TypedSpec().Out)
+			case "transformed-2":
+				assert.Equal(`"bar"-2`, r.TypedSpec().Out)
+			case "transformed-3":
+				assert.Equal(`"baz"-3`, r.TypedSpec().Out)
+			}
+		})
+
+		c1 := NewC("cA", CSpec{Aux: 11})
+		c1.Metadata().Labels().Set("a", "1")
+		require.NoError(t, st.Create(ctx, c1))
+
+		c2 := NewC("cB", CSpec{Aux: 22})
+		c2.Metadata().Labels().Set("a", "2")
+		require.NoError(t, st.Create(ctx, c2))
+
+		c3 := NewC("cC", CSpec{Aux: 33})
+		c3.Metadata().Labels().Set("a", "1")
+		require.NoError(t, st.Create(ctx, c3))
+
+		rtestutils.AssertResources(ctx, t, st, []resource.ID{"transformed-1", "transformed-2", "transformed-3"}, func(r *B, assert *assert.Assertions) {
+			switch r.Metadata().ID() {
+			case "transformed-1":
+				assert.Equal(`"foo"-1-11-33`, r.TypedSpec().Out)
+			case "transformed-2":
+				assert.Equal(`"bar"-2-22`, r.TypedSpec().Out)
+			case "transformed-3":
+				assert.Equal(`"baz"-3`, r.TypedSpec().Out)
+			}
+		})
+
+		require.NoError(t, st.Destroy(ctx, c2.Metadata()))
+
+		rtestutils.AssertResources(ctx, t, st, []resource.ID{"transformed-1", "transformed-2", "transformed-3"}, func(r *B, assert *assert.Assertions) {
+			switch r.Metadata().ID() {
+			case "transformed-1":
+				assert.Equal(`"foo"-1-11-33`, r.TypedSpec().Out)
+			case "transformed-2":
+				assert.Equal(`"bar"-2`, r.TypedSpec().Out)
+			case "transformed-3":
+				assert.Equal(`"baz"-3`, r.TypedSpec().Out)
+			}
+		})
+
+		require.NoError(t, st.Destroy(ctx, c1.Metadata()))
+
+		c4 := NewC("cD", CSpec{Aux: 44})
+		c4.Metadata().Labels().Set("a", "3")
+		require.NoError(t, st.Create(ctx, c4))
+
+		rtestutils.AssertResources(ctx, t, st, []resource.ID{"transformed-1", "transformed-2", "transformed-3"}, func(r *B, assert *assert.Assertions) {
+			switch r.Metadata().ID() {
+			case "transformed-1":
+				assert.Equal(`"foo"-1-33`, r.TypedSpec().Out)
+			case "transformed-2":
+				assert.Equal(`"bar"-2`, r.TypedSpec().Out)
+			case "transformed-3":
+				assert.Equal(`"baz"-3-44`, r.TypedSpec().Out)
+			}
 		})
 	})
 }

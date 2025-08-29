@@ -45,7 +45,7 @@ func (tracker *itemTracker) doneWith(item int) {
 }
 
 func TestQueue(t *testing.T) {
-	q := queue.NewQueue[int]()
+	q := queue.NewQueue[int, struct{}]()
 
 	tracker := &itemTracker{
 		processed:  make(map[int]int),
@@ -78,7 +78,7 @@ func TestQueue(t *testing.T) {
 				case <-ctx.Done():
 					return nil
 				case item := <-q.Get():
-					if err := tracker.start(item.Value()); err != nil {
+					if err := tracker.start(item.Key()); err != nil {
 						item.Release()
 
 						return err
@@ -86,7 +86,7 @@ func TestQueue(t *testing.T) {
 
 					time.Sleep(5 * time.Millisecond)
 
-					tracker.doneWith(item.Value())
+					tracker.doneWith(item.Key())
 
 					if i%2 == 0 {
 						item.Requeue(time.Now().Add(10 * time.Millisecond))
@@ -100,7 +100,7 @@ func TestQueue(t *testing.T) {
 
 	for range numIterations {
 		for i := range numItems {
-			q.Put(i)
+			q.Put(i, struct{}{})
 
 			time.Sleep(time.Millisecond)
 		}

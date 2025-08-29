@@ -141,7 +141,7 @@ func (ctrl *QIntToStrController) Reconcile(ctx context.Context, _ *zap.Logger, r
 }
 
 // MapInput implements controller.QController interface.
-func (ctrl *QIntToStrController) MapInput(_ context.Context, _ *zap.Logger, _ controller.QRuntime, ptr resource.Pointer) ([]resource.Pointer, error) {
+func (ctrl *QIntToStrController) MapInput(_ context.Context, _ *zap.Logger, _ controller.QRuntime, ptr controller.ReducedResourceMetadata) ([]resource.Pointer, error) {
 	switch {
 	case ptr.Namespace() == ctrl.TargetNamespace && ptr.Type() == StrResourceType:
 		// remap output to input to recheck on finalizer removal
@@ -219,7 +219,7 @@ func (ctrl *QFailingController) Reconcile(ctx context.Context, _ *zap.Logger, r 
 }
 
 // MapInput implements controller.QController interface.
-func (ctrl *QFailingController) MapInput(context.Context, *zap.Logger, controller.QRuntime, resource.Pointer) ([]resource.Pointer, error) {
+func (ctrl *QFailingController) MapInput(context.Context, *zap.Logger, controller.QRuntime, controller.ReducedResourceMetadata) ([]resource.Pointer, error) {
 	panic("not going to map anything")
 }
 
@@ -335,7 +335,7 @@ func (ctrl *QIntToStrSleepingController) Reconcile(ctx context.Context, logger *
 }
 
 // MapInput implements controller.QController interface.
-func (ctrl *QIntToStrSleepingController) MapInput(_ context.Context, _ *zap.Logger, _ controller.QRuntime, ptr resource.Pointer) ([]resource.Pointer, error) {
+func (ctrl *QIntToStrSleepingController) MapInput(_ context.Context, _ *zap.Logger, _ controller.QRuntime, ptr controller.ReducedResourceMetadata) ([]resource.Pointer, error) {
 	switch {
 	case ptr.Namespace() == ctrl.TargetNamespace && ptr.Type() == StrResourceType:
 		// remap output to input to recheck on finalizer removal

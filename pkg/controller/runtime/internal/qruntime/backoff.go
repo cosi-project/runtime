@@ -10,7 +10,7 @@ import (
 	"github.com/cenkalti/backoff/v4"
 )
 
-func (adapter *Adapter) getBackoffInterval(item QItem) time.Duration {
+func (adapter *Adapter) getBackoffInterval(item QKey) time.Duration {
 	adapter.backoffsMu.Lock()
 	defer adapter.backoffsMu.Unlock()
 
@@ -24,7 +24,7 @@ func (adapter *Adapter) getBackoffInterval(item QItem) time.Duration {
 	return bckoff.NextBackOff()
 }
 
-func (adapter *Adapter) clearBackoff(item QItem) {
+func (adapter *Adapter) clearBackoff(item QKey) {
 	adapter.backoffsMu.Lock()
 	defer adapter.backoffsMu.Unlock()
 

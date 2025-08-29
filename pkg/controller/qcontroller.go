@@ -52,7 +52,7 @@ type QController interface {
 	// For example, MapInput might convert watch events in secondary input to primary input items.
 	//
 	// MapInput failures are treated in the same way as Reconcile failures.
-	MapInput(context.Context, *zap.Logger, QRuntime, resource.Pointer) ([]resource.Pointer, error)
+	MapInput(context.Context, *zap.Logger, QRuntime, ReducedResourceMetadata) ([]resource.Pointer, error)
 }
 
 // QRuntime interface as presented to the QController.
@@ -68,6 +68,16 @@ type QSettings struct {
 	Inputs       []Input
 	Outputs      []Output
 	Concurrency  optional.Optional[uint]
+}
+
+// ReducedResourceMetadata is the input type for MapInput.
+//
+// It consists of mandatory resource.Pointer and some additional metadata properties.
+type ReducedResourceMetadata interface {
+	resource.Pointer
+	Phase() resource.Phase
+	Labels() *resource.Labels
+	FinalizersEmpty() bool
 }
 
 // RequeueError is returned by QController.Reconcile to requeue the item with specified backoff.

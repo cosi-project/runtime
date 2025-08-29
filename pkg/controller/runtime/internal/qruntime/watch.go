@@ -16,12 +16,15 @@ func (adapter *Adapter) WatchTrigger(md *reduced.Metadata) {
 		if in.Namespace == md.Namespace && in.Type == md.Typ {
 			switch in.Kind {
 			case controller.InputQPrimary:
-				adapter.queue.Put(NewQItemFromReduced(md, QJobReconcile))
+				item := NewQItemFromReduced(md, QJobReconcile)
+				adapter.queue.Put(item.QKey, item.QValue)
 			case controller.InputQMapped:
-				adapter.queue.Put(NewQItemFromReduced(md, QJobMap))
+				item := NewQItemFromReduced(md, QJobMap)
+				adapter.queue.Put(item.QKey, item.QValue)
 			case controller.InputQMappedDestroyReady:
 				if reduced.FilterDestroyReady(md) {
-					adapter.queue.Put(NewQItemFromReduced(md, QJobMap))
+					item := NewQItemFromReduced(md, QJobMap)
+					adapter.queue.Put(item.QKey, item.QValue)
 				}
 			}
 		}

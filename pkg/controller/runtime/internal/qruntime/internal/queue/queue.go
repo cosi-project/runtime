@@ -18,55 +18,61 @@ import (
 //
 // Queue is goroutine safe, Run() method should be called
 // in a separate goroutine for the queue to operate.
-type Queue[T comparable] struct {
-	getCh     chan *Item[T]
-	releaseCh chan valueWithBackoff[T]
-	putCh     chan T
+type Queue[K comparable, V any] struct {
+	getCh     chan *Item[K, V]
+	releaseCh chan keyAndValueWithBackoff[K, V]
+	putCh     chan keyAndValue[K, V]
 	doneCh    chan struct{}
 	length    atomic.Int64
 }
 
-// NewQueue creates a new queue.
-func NewQueue[T comparable]() *Queue[T] {
-	return &Queue[T]{
-		getCh:     make(chan *Item[T]),
-		releaseCh: make(chan valueWithBackoff[T]),
-		putCh:     make(chan T),
-		doneCh:    make(chan struct{}),
-	}
+type keyAndValue[K comparable, V any] struct {
+	Key   K
+	Value V
 }
 
-type valueWithBackoff[T comparable] struct {
-	Value        T
+type keyAndValueWithBackoff[K comparable, V any] struct {
+	Key          K
+	Value        V
 	ReleaseAfter time.Time
+}
+
+// NewQueue creates a new queue.
+func NewQueue[K comparable, V any]() *Queue[K, V] {
+	return &Queue[K, V]{
+		getCh:     make(chan *Item[K, V]),
+		releaseCh: make(chan keyAndValueWithBackoff[K, V]),
+		putCh:     make(chan keyAndValue[K, V]),
+		doneCh:    make(chan struct{}),
+	}
 }
 
 // Run should be called in a goroutine.
 //
 // Run returns when the context is canceled. You can call Run only once.
-func (queue *Queue[T]) Run(ctx context.Context) {
+func (queue *Queue[K, V]) Run(ctx context.Context) {
 	defer close(queue.doneCh)
 
 	var (
 		timer       timer.ResettableTimer
-		pqueue      containers.PriorityQueue[T]
-		onHold      containers.SliceSet[T]
-		onHoldQueue containers.SliceSet[T]
+		pqueue      containers.PriorityQueue[K, V]
+		onHold      containers.SliceSet[K]
+		onHoldQueue = map[K]V{}
 	)
 
 	for {
 		var (
-			getCh              chan *Item[T]
-			topOfQueueReleaser *Item[T]
+			getCh              chan *Item[K, V]
+			topOfQueueReleaser *Item[K, V]
 		)
 
-		topOfQueue, delay := pqueue.Peek(time.Now())
+		topOfQueueK, topOfQueueV, delay := pqueue.Peek(time.Now())
 
 		timer.Reset(delay)
 
-		if topOfQueueValue, ok := topOfQueue.Get(); ok {
+		if topOfQueueKey, ok := topOfQueueK.Get(); ok {
 			getCh = queue.getCh
-			topOfQueueReleaser = newItem(topOfQueueValue, queue)
+			topOfQueueReleaser = newItem(topOfQueueKey, topOfQueueV.ValueOrZero(), queue)
 		}
 
 		select {
@@ -74,7 +80,7 @@ func (queue *Queue[T]) Run(ctx context.Context) {
 			return
 		case getCh <- topOfQueueReleaser:
 			// put the item to the on-hold list
-			onHold.Add(topOfQueueReleaser.Value())
+			onHold.Add(topOfQueueReleaser.Key())
 
 			pqueue.Pop()
 			queue.length.Add(-1)
@@ -85,31 +91,39 @@ func (queue *Queue[T]) Run(ctx context.Context) {
 			//
 			// 1. any on-hold item equal to the released item should be put to the queue
 			// 2. if releaseAfter is non-zero, put the item back to the queue with the specified backoff
-			onHold.Remove(released.Value)
+			onHold.Remove(released.Key)
 
 			if !released.ReleaseAfter.IsZero() {
-				if pqueue.Push(released.Value, released.ReleaseAfter) {
+				// released value might be stale, so don't overwrite if we have a fresh one
+				if pqueue.Push(released.Key, released.Value, released.ReleaseAfter, false) {
 					queue.length.Add(1)
 				}
 			}
 
-			if onHoldQueue.Remove(released.Value) {
-				if !pqueue.Push(released.Value, time.Now()) {
+			if onHoldValue, wasOnHold := onHoldQueue[released.Key]; wasOnHold {
+				delete(onHoldQueue, released.Key)
+
+				// on hold value is fresh, so overwrite any previous value
+				if !pqueue.Push(released.Key, onHoldValue, time.Now(), true) {
 					queue.length.Add(-1)
 				}
 			}
 		case item := <-queue.putCh:
 			// new item was Put to the queue
-			if onHold.Contains(item) {
+			if onHold.Contains(item.Key) {
 				// the item is on-hold
-				if onHoldQueue.Add(item) {
+				_, alreadyOnHold := onHoldQueue[item.Key]
+				onHoldQueue[item.Key] = item.Value
+
+				if !alreadyOnHold {
 					queue.length.Add(1)
 				}
 
 				continue
 			}
 
-			if pqueue.Push(item, time.Now()) {
+			// new item has fresh value, overwrite
+			if pqueue.Push(item.Key, item.Value, time.Now(), true) {
 				queue.length.Add(1)
 			}
 		}
@@ -117,7 +131,7 @@ func (queue *Queue[T]) Run(ctx context.Context) {
 }
 
 // Get should never return same Item until this Item is released.
-func (queue *Queue[T]) Get() <-chan *Item[T] {
+func (queue *Queue[K, V]) Get() <-chan *Item[K, V] {
 	return queue.getCh
 }
 
@@ -125,9 +139,9 @@ func (queue *Queue[T]) Get() <-chan *Item[T] {
 //
 // Put should deduplicate Items, i.e. if the same Item is Put twice,
 // only one Item should be returned by Get.
-func (queue *Queue[T]) Put(value T) {
+func (queue *Queue[K, V]) Put(key K, value V) {
 	select {
-	case queue.putCh <- value:
+	case queue.putCh <- keyAndValue[K, V]{Key: key, Value: value}:
 	case <-queue.doneCh:
 	}
 }
@@ -135,12 +149,13 @@ func (queue *Queue[T]) Put(value T) {
 // Len returns the number of items in the queue.
 //
 // Len includes items which are on-hold.
-func (queue *Queue[T]) Len() int64 {
+func (queue *Queue[K, V]) Len() int64 {
 	return queue.length.Load()
 }
 
-func newItem[T comparable](value T, queue *Queue[T]) *Item[T] {
-	return &Item[T]{
+func newItem[K comparable, V any](key K, value V, queue *Queue[K, V]) *Item[K, V] {
+	return &Item[K, V]{
+		key:   key,
 		value: value,
 		queue: queue,
 	}
@@ -149,26 +164,32 @@ func newItem[T comparable](value T, queue *Queue[T]) *Item[T] {
 // Item returns a value from the queue.
 //
 // Once the Value is processed, either Release() or Requeue() must be called.
-type Item[T comparable] struct {
-	value    T
-	queue    *Queue[T]
+type Item[K comparable, V any] struct {
+	key      K
+	value    V
+	queue    *Queue[K, V]
 	released bool
 }
 
-// Value returns the value from the queue.
-func (item *Item[T]) Value() T {
-	return item.value
+// Get returns the key and value from the queue.
+func (item *Item[K, V]) Get() (K, V) {
+	return item.key, item.value
+}
+
+// Key returns just the key.
+func (item *Item[K, V]) Key() K {
+	return item.key
 }
 
 // Release removes the Item from the queue.
 //
 // Calling Release after Requeue is a no-op.
-func (item *Item[T]) Release() {
+func (item *Item[K, V]) Release() {
 	item.Requeue(time.Time{})
 }
 
 // Requeue puts the Item back to the queue with specified backoff.
-func (item *Item[T]) Requeue(requeueAfter time.Time) {
+func (item *Item[K, V]) Requeue(requeueAfter time.Time) {
 	if item.released {
 		return
 	}
@@ -176,7 +197,8 @@ func (item *Item[T]) Requeue(requeueAfter time.Time) {
 	item.released = true
 
 	select {
-	case item.queue.releaseCh <- valueWithBackoff[T]{
+	case item.queue.releaseCh <- keyAndValueWithBackoff[K, V]{
+		Key:          item.key,
 		Value:        item.value,
 		ReleaseAfter: requeueAfter,
 	}:

@@ -11,30 +11,39 @@ import (
 	"github.com/siderolabs/gen/optional"
 )
 
-type itemWithBackoff[T comparable] struct {
-	Item         T
+type itemWithBackoff[K comparable, V any] struct {
+	Key          K
+	Value        V
 	ReleaseAfter time.Time
 }
 
 // PriorityQueue keeps a priority queue of items with backoff (release after).
 //
-// PriorityQueue deduplicates by item (T).
-type PriorityQueue[T comparable] struct {
-	items []itemWithBackoff[T]
+// PriorityQueue deduplicates by key (K), while it overwrites the value (V) on duplication.
+type PriorityQueue[K comparable, V any] struct {
+	items []itemWithBackoff[K, V]
 }
 
 // Push item to the queue with releaseAfter time.
 //
-// If the item is not in the queue, it will be added.
-// If the item is in the queue, and releaseAfter is less than the existing releaseAfter, it will be re-added in the new position.
+// If the item (by key) is not in the queue, it will be added.
+// If the item (by key) is in the queue, and releaseAfter is less than the existing releaseAfter, it will be re-added in the new position.
+//
+// If the new item is added to the queue, the value is always set.
+// The value is going to be updated for an existing item if overwriteValue is true.
 //
 // Push returns true if the item was added, and false if the existing item in the queue was updated (or skipped).
-func (queue *PriorityQueue[T]) Push(item T, releaseAfter time.Time) bool {
-	idx := slices.IndexFunc(queue.items, func(queueItem itemWithBackoff[T]) bool {
-		return queueItem.Item == item
+func (queue *PriorityQueue[K, V]) Push(key K, value V, releaseAfter time.Time, overwriteValue bool) bool {
+	idx := slices.IndexFunc(queue.items, func(queueItem itemWithBackoff[K, V]) bool {
+		return queueItem.Key == key
 	})
 
 	if idx != -1 { // the item is already in the queue
+		// update the value
+		if overwriteValue {
+			queue.items[idx].Value = value
+		}
+
 		// if new releaseAfter > existing releaseAfter, do nothing
 		if releaseAfter.Compare(queue.items[idx].ReleaseAfter) > 0 {
 			return false
@@ -45,7 +54,7 @@ func (queue *PriorityQueue[T]) Push(item T, releaseAfter time.Time) bool {
 	}
 
 	// find a position and add an item to the queue
-	newIdx, _ := slices.BinarySearchFunc(queue.items, releaseAfter, func(queueItem itemWithBackoff[T], releaseAfter time.Time) int {
+	newIdx, _ := slices.BinarySearchFunc(queue.items, releaseAfter, func(queueItem itemWithBackoff[K, V], releaseAfter time.Time) int {
 		c := queueItem.ReleaseAfter.Compare(releaseAfter)
 		if c == 0 {
 			// force the binary search to insert to the "tail" if it encounters the same releaseAfter value
@@ -56,7 +65,7 @@ func (queue *PriorityQueue[T]) Push(item T, releaseAfter time.Time) bool {
 		return c
 	})
 
-	queue.items = slices.Insert(queue.items, newIdx, itemWithBackoff[T]{Item: item, ReleaseAfter: releaseAfter})
+	queue.items = slices.Insert(queue.items, newIdx, itemWithBackoff[K, V]{Key: key, Value: value, ReleaseAfter: releaseAfter})
 
 	return idx == -1
 }
@@ -65,28 +74,28 @@ func (queue *PriorityQueue[T]) Push(item T, releaseAfter time.Time) bool {
 //
 // If Peek returns optional.None, it also returns delay to get the next item from the queue.
 // If there are no items in the queue, Peek returns optional.None and zero delay.
-func (queue *PriorityQueue[T]) Peek(now time.Time) (item optional.Optional[T], nextDelay time.Duration) {
+func (queue *PriorityQueue[K, V]) Peek(now time.Time) (key optional.Optional[K], value optional.Optional[V], nextDelay time.Duration) {
 	if len(queue.items) > 0 {
 		delay := queue.items[0].ReleaseAfter.Sub(now)
 
 		if delay <= 0 {
-			return optional.Some[T](queue.items[0].Item), 0
+			return optional.Some(queue.items[0].Key), optional.Some(queue.items[0].Value), 0
 		}
 
-		return optional.None[T](), delay
+		return optional.None[K](), optional.None[V](), delay
 	}
 
-	return optional.None[T](), 0
+	return optional.None[K](), optional.None[V](), 0
 }
 
 // Pop removes the top item from the queue.
 //
 // Pop should only be called if Peek returned optional.Some.
-func (queue *PriorityQueue[T]) Pop() {
+func (queue *PriorityQueue[K, V]) Pop() {
 	queue.items = slices.Delete(queue.items, 0, 1)
 }
 
 // Len returns the number of items in the queue.
-func (queue *PriorityQueue[T]) Len() int {
+func (queue *PriorityQueue[K, V]) Len() int {
 	return len(queue.items)
 }

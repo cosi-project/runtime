@@ -30,45 +30,69 @@ func (job QJob) String() string {
 }
 
 // NewQItem creates a new QItem.
-func NewQItem(md resource.Pointer, job QJob) QItem {
-	return QItem{
-		namespace: md.Namespace(),
-		typ:       md.Type(),
-		id:        md.ID(),
-		job:       job,
-	}
+func NewQItem(md *resource.Metadata, job QJob) QItem {
+	red := reduced.NewMetadata(md)
+
+	return NewQItemFromReduced(&red, job)
 }
 
 // NewQItemFromReduced creates a new QItem from a reduced Metadata.
 func NewQItemFromReduced(md *reduced.Metadata, job QJob) QItem {
 	return QItem{
-		namespace: md.Namespace,
-		typ:       md.Typ,
-		id:        md.ID,
-		job:       job,
+		QKey: QKey{
+			key: md.Key,
+			job: job,
+		},
+		QValue: QValue{
+			value: md.Value,
+		},
 	}
 }
 
-// QItem is stored in the reconcile queue.
-type QItem struct {
-	namespace resource.Namespace
-	typ       resource.Type
-	id        resource.ID
+// QKey is the key of the reconcile queue.
+type QKey struct {
+	key reduced.Key
 
 	job QJob
 }
 
+// QValue is the value of the reconcile queue.
+type QValue struct {
+	value reduced.Value
+}
+
+// QItem is a key-value pair stored in the reconcole queue.
+type QItem struct {
+	QKey
+	QValue
+}
+
 // Namespace implements resource.Pointer interface.
-func (item QItem) Namespace() resource.Namespace {
-	return item.namespace
+func (item QKey) Namespace() resource.Namespace {
+	return item.key.Namespace
 }
 
 // Type implements resource.Pointer interface.
-func (item QItem) Type() resource.Type {
-	return item.typ
+func (item QKey) Type() resource.Type {
+	return item.key.Typ
 }
 
 // ID implements resource.Pointer interface.
-func (item QItem) ID() resource.ID {
-	return item.id
+func (item QKey) ID() resource.ID {
+	return item.key.ID
+}
+
+// Phase implements ReducedResourceMetadata interface.
+func (item QValue) Phase() resource.Phase {
+	return item.value.Phase
+}
+
+// FinalizersEmpty implements ReducedResourceMetadata interface.
+func (item QValue) FinalizersEmpty() bool {
+	return item.value.FinalizersEmpty
+}
+
+// Labels implements ReducedResourceMetadata interface.
+func (item QValue) Labels() *resource.Labels {
+	return item.value.Labels
 }

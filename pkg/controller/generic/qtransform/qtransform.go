@@ -358,17 +358,20 @@ func (ctrl *QController[Input, Output]) reconcileTearingDown(ctx context.Context
 }
 
 // MapInput implements controller.QController interface.
-func (ctrl *QController[Input, Output]) MapInput(ctx context.Context, logger *zap.Logger, r controller.QRuntime, ptr resource.Pointer) ([]resource.Pointer, error) {
-	in, err := r.Get(ctx, ptr)
-	if err != nil {
-		if state.IsNotFoundError(err) {
-			return nil, nil
+func (ctrl *QController[Input, Output]) MapInput(ctx context.Context, logger *zap.Logger, r controller.QRuntime, ptr controller.ReducedResourceMetadata) ([]resource.Pointer, error) {
+	var zeroOut Output
+
+	// this is our output, destroy ready
+	if ptr.Type() == zeroOut.ResourceDefinition().Type {
+		out, err := safe.ReaderGet[Output](ctx, r, ptr)
+		if err != nil {
+			if state.IsNotFoundError(err) {
+				return nil, nil
+			}
+
+			return nil, fmt.Errorf("error reading output mapped resource: %w", err)
 		}
 
-		return nil, fmt.Errorf("error reading input mapped resource: %w", err)
-	}
-
-	if out, ok := in.(Output); ok {
 		// output destroy ready, remap to input
 		input := ctrl.unmapFunc(out)
 
@@ -386,5 +389,5 @@ func (ctrl *QController[Input, Output]) MapInput(ctx context.Context, logger *za
 		return nil, fmt.Errorf("no mapper for %q", nsType)
 	}
 
-	return mapperFunc(ctx, logger, r, in)
+	return mapperFunc(ctx, logger, r, ptr)
 }

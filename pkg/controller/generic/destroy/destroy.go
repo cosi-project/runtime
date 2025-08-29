@@ -93,6 +93,6 @@ func (ctrl *Controller[Input]) Reconcile(ctx context.Context, logger *zap.Logger
 }
 
 // MapInput implements controller.QController interface.
-func (ctrl *Controller[Input]) MapInput(context.Context, *zap.Logger, controller.QRuntime, resource.Pointer) ([]resource.Pointer, error) {
+func (ctrl *Controller[Input]) MapInput(context.Context, *zap.Logger, controller.QRuntime, controller.ReducedResourceMetadata) ([]resource.Pointer, error) {
 	return nil, nil
 }

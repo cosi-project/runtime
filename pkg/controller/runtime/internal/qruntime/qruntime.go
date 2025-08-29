@@ -37,12 +37,12 @@ type resourceNamespaceType struct {
 
 // Adapter implements QRuntime interface for the QController.
 type Adapter struct {
-	queue          *queue.Queue[QItem]
+	queue          *queue.Queue[QKey, QValue]
 	logger         *zap.Logger
 	controller     controller.QController
 	queueLenExpVar *expvar.Int
 
-	backoffs      map[QItem]*backoff.ExponentialBackOff
+	backoffs      map[QKey]*backoff.ExponentialBackOff
 	primaryInputs map[resourceNamespaceType]struct{}
 
 	controllerstate.StateAdapter
@@ -115,8 +115,8 @@ func NewAdapter(
 			Outputs:             settings.Outputs,
 			WarnOnUncachedReads: adapterOptions.RuntimeOptions.WarnOnUncachedReads,
 		},
-		queue:          queue.NewQueue[QItem](),
-		backoffs:       map[QItem]*backoff.ExponentialBackOff{},
+		queue:          queue.NewQueue[QKey, QValue](),
+		backoffs:       map[QKey]*backoff.ExponentialBackOff{},
 		logger:         logger,
 		controller:     ctrl,
 		queueLenExpVar: queueLenExpVar,
@@ -215,7 +215,8 @@ func (adapter *Adapter) listPrimary(ctx context.Context, resourceNamespace resou
 		}
 
 		for _, item := range items.Items {
-			adapter.queue.Put(NewQItem(item.Metadata(), QJobReconcile))
+			qitem := NewQItem(item.Metadata(), QJobReconcile)
+			adapter.queue.Put(qitem.QKey, qitem.QValue)
 		}
 
 		adapter.logger.Debug("injected primary inputs into the queue",
@@ -231,7 +232,7 @@ func (adapter *Adapter) listPrimary(ctx context.Context, resourceNamespace resou
 //nolint:gocognit
 func (adapter *Adapter) runReconcile(ctx context.Context) {
 	for {
-		var item *queue.Item[QItem]
+		var item *queue.Item[QKey, QValue]
 
 		if adapter.queueLenExpVar != nil {
 			adapter.queueLenExpVar.Set(adapter.queue.Len())
@@ -247,15 +248,16 @@ func (adapter *Adapter) runReconcile(ctx context.Context) {
 			defer item.Release()
 
 			logger := adapter.logger.With(
-				zap.String("namespace", item.Value().Namespace()),
-				zap.String("type", item.Value().Type()),
-				zap.String("id", item.Value().ID()),
-				zap.String("job", item.Value().job.String()),
+				zap.String("namespace", item.Key().Namespace()),
+				zap.String("type", item.Key().Type()),
+				zap.String("id", item.Key().ID()),
+				zap.String("job", item.Key().job.String()),
 			)
 
 			start := time.Now()
 
-			reconcileError := adapter.runOnce(ctx, logger, item.Value())
+			itemKey, itemValue := item.Get()
+			reconcileError := adapter.runOnce(ctx, logger, QItem{itemKey, itemValue})
 
 			busy := time.Since(start)
 
@@ -278,7 +280,7 @@ func (adapter *Adapter) runReconcile(ctx context.Context) {
 					metrics.QControllerRequeues.Add(adapter.Name, 1)
 				}
 
-				if item.Value().job == QJobReconcile {
+				if item.Key().job == QJobReconcile {
 					metrics.QControllerReconcileBusy.AddFloat(adapter.Name, busy.Seconds())
 				} else {
 					metrics.QControllerMapBusy.AddFloat(adapter.Name, busy.Seconds())
@@ -287,7 +289,7 @@ func (adapter *Adapter) runReconcile(ctx context.Context) {
 
 			if reconcileError != nil {
 				if interval == 0 {
-					interval = adapter.getBackoffInterval(item.Value())
+					interval = adapter.getBackoffInterval(item.Key())
 				}
 
 				logger.Error("reconcile failed",
@@ -297,11 +299,11 @@ func (adapter *Adapter) runReconcile(ctx context.Context) {
 					zapSkipIfZero(requeued, zap.Bool("requeued", requeued)),
 				)
 			} else {
-				adapter.clearBackoff(item.Value())
+				adapter.clearBackoff(item.Key())
 
 				level := zapcore.InfoLevel
 
-				if item.Value().job == QJobMap {
+				if item.Key().job == QJobMap {
 					level = zapcore.DebugLevel
 				}
 
@@ -348,7 +350,7 @@ func (adapter *Adapter) runOnce(ctx context.Context, logger *zap.Logger, item QI
 			metrics.QControllerProcessed.Add(adapter.Name, 1)
 		}
 
-		err = adapter.controller.Reconcile(ctx, logger, adapter, item)
+		err = adapter.controller.Reconcile(ctx, logger, adapter, item.QKey)
 	case QJobMap:
 		var mappedItems []resource.Pointer
 
@@ -365,7 +367,9 @@ func (adapter *Adapter) runOnce(ctx context.Context, logger *zap.Logger, item QI
 					panic(fmt.Sprintf("unexpected primary input in the mapped output: %s/%s", mappedItem.Namespace(), mappedItem.Type()))
 				}
 
-				adapter.queue.Put(NewQItem(mappedItem, QJobReconcile))
+				mappedMd := resource.NewMetadata(mappedItem.Namespace(), mappedItem.Type(), mappedItem.ID(), resource.VersionUndefined)
+				qitem := NewQItem(&mappedMd, QJobReconcile)
+				adapter.queue.Put(qitem.QKey, qitem.QValue)
 			}
 		}
 	}
