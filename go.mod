@@ -7,30 +7,30 @@ go 1.24.0
 replace gopkg.in/yaml.v3 => github.com/unix4ever/yaml v0.0.0-20220527175918-f17b0f05cf2c
 
 require (
-	github.com/ProtonMail/gopenpgp/v2 v2.8.3
+	github.com/ProtonMail/gopenpgp/v2 v2.9.0
 	github.com/cenkalti/backoff/v4 v4.3.0
 	github.com/gertd/go-pluralize v0.2.1
-	github.com/grpc-ecosystem/grpc-gateway/v2 v2.26.3
+	github.com/grpc-ecosystem/grpc-gateway/v2 v2.27.2
 	github.com/hashicorp/go-multierror v1.1.1
 	github.com/klauspost/compress v1.18.0
 	github.com/planetscale/vtprotobuf v0.6.1-0.20240319094008-0393e58bdf10
-	github.com/siderolabs/gen v0.8.1
+	github.com/siderolabs/gen v0.8.5
 	github.com/siderolabs/go-pointer v1.0.1
 	github.com/siderolabs/go-retry v0.3.3
-	github.com/siderolabs/protoenc v0.2.2
-	github.com/stretchr/testify v1.10.0
-	go.etcd.io/bbolt v1.4.0
+	github.com/siderolabs/protoenc v0.2.3
+	github.com/stretchr/testify v1.11.1
+	go.etcd.io/bbolt v1.4.3
 	go.uber.org/goleak v1.3.0
 	go.uber.org/zap v1.27.0
-	golang.org/x/sync v0.14.0
-	golang.org/x/time v0.11.0
-	google.golang.org/grpc v1.72.0
-	google.golang.org/protobuf v1.36.6
+	golang.org/x/sync v0.16.0
+	golang.org/x/time v0.12.0
+	google.golang.org/grpc v1.75.0
+	google.golang.org/protobuf v1.36.8
 	gopkg.in/yaml.v3 v3.0.1
 )
 
 require (
-	github.com/ProtonMail/go-crypto v1.2.0 // indirect
+	github.com/ProtonMail/go-crypto v1.3.0 // indirect
 	github.com/ProtonMail/go-mime v0.0.0-20230322103455-7d82a3887f2f // indirect
 	github.com/cloudflare/circl v1.6.1 // indirect
 	github.com/davecgh/go-spew v1.1.1 // indirect
@@ -39,12 +39,12 @@ require (
 	github.com/pmezard/go-difflib v1.0.0 // indirect
 	github.com/rogpeppe/go-internal v1.14.1 // indirect
 	go.uber.org/multierr v1.11.0 // indirect
-	golang.org/x/crypto v0.38.0 // indirect
-	golang.org/x/net v0.40.0 // indirect
+	golang.org/x/crypto v0.39.0 // indirect
+	golang.org/x/net v0.41.0 // indirect
 	golang.org/x/sys v0.33.0 // indirect
-	golang.org/x/text v0.25.0 // indirect
-	google.golang.org/genproto/googleapis/api v0.0.0-20250512202823-5a2f75b736a9 // indirect
-	google.golang.org/genproto/googleapis/rpc v0.0.0-20250512202823-5a2f75b736a9 // indirect
+	golang.org/x/text v0.28.0 // indirect
+	google.golang.org/genproto/googleapis/api v0.0.0-20250818200422-3122310a409c // indirect
+	google.golang.org/genproto/googleapis/rpc v0.0.0-20250818200422-3122310a409c // indirect
 )
 
 retract (

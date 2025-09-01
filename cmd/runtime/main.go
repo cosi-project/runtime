@@ -72,7 +72,7 @@ func run() error {
 		}
 	}
 
-	l, err := net.Listen(network, address)
+	l, err := (&net.ListenConfig{}).Listen(ctx, network, address)
 	if err != nil {
 		return fmt.Errorf("failed to listen on network address: %w", err)
 	}

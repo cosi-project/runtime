@@ -135,6 +135,7 @@ func AssertResources[R ResourceWithRD](
 		ok := 0
 
 		var aggregator assertionAggregator
+
 		asserter := assert.New(&aggregator)
 
 		for _, id := range ids {

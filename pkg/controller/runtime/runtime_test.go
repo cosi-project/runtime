@@ -116,7 +116,7 @@ func TestRuntimeConformance(t *testing.T) {
 			suiterunner.Run(t, &conformance.RuntimeSuite{
 				MetricsReadCacheEnabled: tt.metricsReadCacheEnabled,
 				SetupRuntime: func(rs *conformance.RuntimeSuite) {
-					l := must.Value(net.Listen("tcp", listenOn))(rs.T())
+					l := must.Value((&net.ListenConfig{}).Listen(t.Context(), "tcp", listenOn))(rs.T())
 
 					grpcServer := grpc.NewServer()
 					inmemState := state.WrapCore(namespaced.NewState(inmem.Build))

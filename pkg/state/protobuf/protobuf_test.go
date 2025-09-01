@@ -52,7 +52,7 @@ func ProtobufSetup(t *testing.T) (grpc.ClientConnInterface, *grpc.Server, func()
 	runServer := func() *grpc.Server {
 		t.Logf("opening listen socket %v", sock.Name())
 
-		l, lErr := net.Listen("unix", sock.Name())
+		l, lErr := (&net.ListenConfig{}).Listen(t.Context(), "unix", sock.Name())
 		require.NoError(t, lErr)
 
 		grpcServer := grpc.NewServer()

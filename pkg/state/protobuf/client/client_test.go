@@ -46,16 +46,16 @@ func TestProtobufSkipUnmarshal(t *testing.T) {
 
 	defer noError(t, os.Remove, sock.Name(), fs.ErrNotExist)
 
-	l, err := net.Listen("unix", sock.Name())
+	ctx, cancel := context.WithCancel(t.Context())
+	defer cancel()
+
+	l, err := (&net.ListenConfig{}).Listen(ctx, "unix", sock.Name())
 	require.NoError(t, err)
 
 	memState := state.WrapCore(namespaced.NewState(inmem.Build))
 
 	grpcServer := grpc.NewServer()
 	v1alpha1.RegisterStateServer(grpcServer, server.NewState(memState))
-
-	ctx, cancel := context.WithCancel(t.Context())
-	defer cancel()
 
 	ctx, errCh := future.GoContext(ctx, func(context.Context) error { return grpcServer.Serve(l) })
 

@@ -294,6 +294,7 @@ func (runtime *Runtime) processWatched() {
 	// There is no locking required, as the map is owned by a single goroutine at a single moment of time.
 	// Additional channel 'empty' is used to block the second goroutine when there are no events to process.
 	ch := make(chan dedup, 1)
+
 	empty := make(chan dedup, 1)
 	empty <- dedup{}
 

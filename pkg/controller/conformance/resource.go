@@ -15,6 +15,7 @@ type Resource[T any, S Spec[T], SS SpecPtr[T, S]] struct {
 // NewResource creates new Resource.
 func NewResource[T any, S Spec[T], SS SpecPtr[T, S]](md resource.Metadata, value T) *Resource[T, S, SS] {
 	var s S
+
 	ss := SS(&s)
 	ss.SetValue(value)
 

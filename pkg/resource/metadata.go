@@ -367,6 +367,7 @@ func mappingParser[T any, S settable[T]](val *yaml.Node) T {
 	}
 
 	var instance T
+
 	ptrTo := S(&instance)
 
 	for i := 0; i < len(val.Content); i += 2 {

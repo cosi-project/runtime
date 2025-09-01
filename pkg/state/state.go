@@ -32,6 +32,7 @@ const (
 
 func _() {
 	var x [1]struct{}
+
 	_ = x[Created]
 	_ = x[Updated-1]
 	_ = x[Destroyed-2]
