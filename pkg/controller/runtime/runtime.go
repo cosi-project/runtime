@@ -266,13 +266,18 @@ func (runtime *Runtime) watch(resourceNamespace resource.Namespace, resourceType
 	return runtime.state.WatchKindAggregated(runtime.runCtx, kind, runtime.watchCh, state.WithBootstrapBookmark(true))
 }
 
-type dedup map[reduced.Metadata]struct{}
+type dedup map[reduced.Key]reduced.Value
 
 func (d dedup) takeOne() reduced.Metadata {
 	for k := range d {
+		md := reduced.Metadata{
+			Key:   k,
+			Value: d[k],
+		}
+
 		delete(d, k)
 
-		return k
+		return md
 	}
 
 	panic("dedup is empty")
@@ -353,7 +358,8 @@ eventLoop:
 			}
 		}
 
-		m[reduced.NewMetadata(e.Resource.Metadata())] = struct{}{}
+		reducedMD := reduced.NewMetadata(e.Resource.Metadata())
+		m[reducedMD.Key] = reducedMD.Value
 	}
 
 	return true
