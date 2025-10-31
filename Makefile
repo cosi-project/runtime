@@ -1,6 +1,6 @@
 # THIS FILE WAS AUTOMATICALLY GENERATED, PLEASE DO NOT EDIT.
 #
-# Generated on 2025-09-01T12:59:11Z by kres 784fa1f.
+# Generated on 2025-10-31T02:58:52Z by kres cd5a938.
 
 # common variables
 
@@ -17,16 +17,16 @@ WITH_RACE ?= false
 REGISTRY ?= ghcr.io
 USERNAME ?= cosi-project
 REGISTRY_AND_USERNAME ?= $(REGISTRY)/$(USERNAME)
-PROTOBUF_GO_VERSION ?= 1.36.7
+PROTOBUF_GO_VERSION ?= 1.36.10
 GRPC_GO_VERSION ?= 1.5.1
-GRPC_GATEWAY_VERSION ?= 2.27.1
+GRPC_GATEWAY_VERSION ?= 2.27.3
 VTPROTOBUF_VERSION ?= 0.6.0
-GOIMPORTS_VERSION ?= 0.36.0
+GOIMPORTS_VERSION ?= 0.38.0
 GOMOCK_VERSION ?= 0.6.0
 DEEPCOPY_VERSION ?= v0.5.8
-GOLANGCILINT_VERSION ?= v2.4.0
-GOFUMPT_VERSION ?= v0.8.0
-GO_VERSION ?= 1.25.0
+GOLANGCILINT_VERSION ?= v2.5.0
+GOFUMPT_VERSION ?= v0.9.1
+GO_VERSION ?= 1.25.3
 GO_BUILDFLAGS ?=
 GO_LDFLAGS ?=
 CGO_ENABLED ?= 0
@@ -214,6 +214,9 @@ lint-markdown:  ## Runs markdownlint.
 
 .PHONY: lint
 lint: lint-golangci-lint lint-gofumpt lint-govulncheck lint-markdown  ## Run all linters for the project.
+
+.PHONY: lint-fmt
+lint-fmt: lint-golangci-lint-fmt  ## Run all linter formatters and fix up the source tree.
 
 .PHONY: image-runtime
 image-runtime:  ## Builds image for runtime.
