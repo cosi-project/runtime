@@ -13,19 +13,19 @@ type LabelOp int
 
 // LabelOp values.
 const (
-	// Label with the key exists.
+	// LabelOpExists is the operation for checking if a label with the key exists.
 	LabelOpExists LabelOp = iota
-	// Label with the key matches the value.
+	// LabelOpEqual is the operation for checking if a label with the key matches the value.
 	LabelOpEqual
-	// Label value is in the set.
+	// LabelOpIn is the operation for checking if a label value is in the set.
 	LabelOpIn
-	// Label value is less.
+	// LabelOpLT is the operation for checking if a label value is less than the specified value.
 	LabelOpLT
-	// Label value is less or equal.
+	// LabelOpLTE is the operation for checking if a label value is less than or equal to the specified value.
 	LabelOpLTE
-	// Label value is less than number.
+	// LabelOpLTNumeric is the operation for checking if a label value is less than the specified numeric value.
 	LabelOpLTNumeric
-	// Label value is less or equal numeric.
+	// LabelOpLTENumeric is the operation for checking if a label value is less than or equal to the specified numeric value.
 	LabelOpLTENumeric
 )
 

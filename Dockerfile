@@ -1,8 +1,8 @@
-# syntax = docker/dockerfile-upstream:1.17.1-labs
+# syntax = docker/dockerfile-upstream:1.19.0-labs
 
 # THIS FILE WAS AUTOMATICALLY GENERATED, PLEASE DO NOT EDIT.
 #
-# Generated on 2025-09-01T12:59:11Z by kres 784fa1f.
+# Generated on 2025-10-31T08:08:31Z by kres cd5a938.
 
 ARG TOOLCHAIN
 
@@ -11,7 +11,7 @@ FROM ghcr.io/siderolabs/ca-certificates:v1.11.0 AS image-ca-certificates
 FROM ghcr.io/siderolabs/fhs:v1.11.0 AS image-fhs
 
 # runs markdownlint
-FROM docker.io/oven/bun:1.2.20-alpine AS lint-markdown
+FROM docker.io/oven/bun:1.3.0-alpine AS lint-markdown
 WORKDIR /src
 RUN bun i markdownlint-cli@0.45.0 sentences-per-line@0.3.0
 COPY .markdownlint.json .
@@ -123,13 +123,13 @@ RUN --mount=type=cache,target=/root/.cache/go-build,id=runtime/root/.cache/go-bu
 FROM base AS unit-tests-race
 WORKDIR /src
 ARG TESTPKGS
-RUN --mount=type=cache,target=/root/.cache/go-build,id=runtime/root/.cache/go-build --mount=type=cache,target=/go/pkg,id=runtime/go/pkg --mount=type=cache,target=/tmp,id=runtime/tmp CGO_ENABLED=1 go test -race -p 1 ${TESTPKGS}
+RUN --mount=type=cache,target=/root/.cache/go-build,id=runtime/root/.cache/go-build --mount=type=cache,target=/go/pkg,id=runtime/go/pkg --mount=type=cache,target=/tmp,id=runtime/tmp CGO_ENABLED=1 go test -race ${TESTPKGS}
 
 # runs unit-tests
 FROM base AS unit-tests-run
 WORKDIR /src
 ARG TESTPKGS
-RUN --mount=type=cache,target=/root/.cache/go-build,id=runtime/root/.cache/go-build --mount=type=cache,target=/go/pkg,id=runtime/go/pkg --mount=type=cache,target=/tmp,id=runtime/tmp go test -covermode=atomic -coverprofile=coverage.txt -coverpkg=${TESTPKGS} -p 1 ${TESTPKGS}
+RUN --mount=type=cache,target=/root/.cache/go-build,id=runtime/root/.cache/go-build --mount=type=cache,target=/go/pkg,id=runtime/go/pkg --mount=type=cache,target=/tmp,id=runtime/tmp go test -covermode=atomic -coverprofile=coverage.txt -coverpkg=${TESTPKGS} ${TESTPKGS}
 
 # cleaned up specs and compiled versions
 FROM scratch AS generate

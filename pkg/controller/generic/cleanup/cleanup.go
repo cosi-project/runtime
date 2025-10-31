@@ -319,7 +319,6 @@ func RemoveOutputs[O generic.ResourceWithRD, I generic.ResourceWithRD](
 
 				if owner != "" && !allowedOwner {
 					// owned resource, skip if it's not explicitly enabled for destroy
-
 					continue
 				}
 

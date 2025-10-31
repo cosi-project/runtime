@@ -16,17 +16,17 @@ type EventType int
 
 // Various EventTypes.
 const (
-	// Resource got created.
+	// Created is the event type for when a resource got created.
 	Created EventType = iota
-	// Resource got changed.
+	// Updated is the event type for when a resource got changed.
 	Updated
-	// Resource was destroyed.
+	// Destroyed is the event type for when a resource was destroyed.
 	Destroyed
-	// Initial set of items for WatchKind(WithBootstrapContents) was sent.
+	// Bootstrapped is the event type for when the initial set of items for WatchKind(WithBootstrapContents) was sent.
 	Bootstrapped
-	// Error happened in the watch.
+	// Errored is the event type for when an error happened in the watch.
 	Errored
-	// Noop event.
+	// Noop is the event type for a no-op event.
 	Noop
 )
 

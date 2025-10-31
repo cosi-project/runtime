@@ -22,14 +22,6 @@ spec:
       genGateway: false
       external: false
 ---
-kind: golang.UnitTests
-spec:
-  extraArgs: "-p 1" # limit parallelism to avoid flakiness on busy GH runners
----
-kind: auto.CI
-spec:
-  provider: drone
----
 kind: service.CodeCov
 spec:
   targetThreshold: 45
