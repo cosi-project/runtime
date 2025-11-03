@@ -7,9 +7,9 @@ package protobuf
 import (
 	"encoding/json"
 
+	"go.yaml.in/yaml/v4"
 	"google.golang.org/protobuf/encoding/protojson"
 	"google.golang.org/protobuf/proto"
-	"gopkg.in/yaml.v3"
 )
 
 // Spec should be proto.Message and pointer.

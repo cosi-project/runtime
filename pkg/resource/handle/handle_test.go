@@ -13,7 +13,7 @@ import (
 
 	"github.com/siderolabs/gen/xtesting/must"
 	"github.com/stretchr/testify/require"
-	"gopkg.in/yaml.v3"
+	"go.yaml.in/yaml/v4"
 
 	"github.com/cosi-project/runtime/pkg/resource"
 	"github.com/cosi-project/runtime/pkg/resource/handle"

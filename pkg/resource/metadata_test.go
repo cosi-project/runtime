@@ -12,8 +12,8 @@ import (
 
 	"github.com/siderolabs/gen/ensure"
 	"github.com/stretchr/testify/assert"
+	"go.yaml.in/yaml/v4"
 	timestamppb "google.golang.org/protobuf/types/known/timestamppb"
-	"gopkg.in/yaml.v3"
 
 	"github.com/cosi-project/runtime/pkg/resource"
 )

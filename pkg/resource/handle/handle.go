@@ -11,7 +11,7 @@ import (
 	"errors"
 	"reflect"
 
-	"gopkg.in/yaml.v3"
+	"go.yaml.in/yaml/v4"
 )
 
 // Spec should be yaml.Marshaler.

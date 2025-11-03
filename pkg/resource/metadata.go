@@ -10,8 +10,8 @@ import (
 	"time"
 
 	"github.com/siderolabs/gen/xslices"
+	"go.yaml.in/yaml/v4"
 	"google.golang.org/protobuf/types/known/timestamppb"
-	"gopkg.in/yaml.v3"
 )
 
 var _ Reference = Metadata{}

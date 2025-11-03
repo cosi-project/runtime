@@ -12,8 +12,8 @@ import (
 	"github.com/siderolabs/gen/ensure"
 	"github.com/siderolabs/gen/xtesting/must"
 	"github.com/stretchr/testify/require"
+	"go.yaml.in/yaml/v4"
 	"google.golang.org/protobuf/proto"
-	"gopkg.in/yaml.v3"
 
 	"github.com/cosi-project/runtime/api/v1alpha1"
 	"github.com/cosi-project/runtime/pkg/resource"

@@ -2,10 +2,6 @@ module github.com/cosi-project/runtime
 
 go 1.24.0
 
-// forked yaml that introduces RawYAML interface that can be used to provide YAML encoder bytes
-// which are then encoded as a valid YAML block with proper indentiation
-replace gopkg.in/yaml.v3 => github.com/unix4ever/yaml v0.0.0-20220527175918-f17b0f05cf2c
-
 require (
 	github.com/ProtonMail/gopenpgp/v2 v2.9.0
 	github.com/cenkalti/backoff/v4 v4.3.0
@@ -22,11 +18,11 @@ require (
 	go.etcd.io/bbolt v1.4.3
 	go.uber.org/goleak v1.3.0
 	go.uber.org/zap v1.27.0
+	go.yaml.in/yaml/v4 v4.0.0-rc.2
 	golang.org/x/sync v0.16.0
 	golang.org/x/time v0.12.0
 	google.golang.org/grpc v1.75.0
 	google.golang.org/protobuf v1.36.8
-	gopkg.in/yaml.v3 v3.0.1
 )
 
 require (
@@ -45,6 +41,7 @@ require (
 	golang.org/x/text v0.28.0 // indirect
 	google.golang.org/genproto/googleapis/api v0.0.0-20250818200422-3122310a409c // indirect
 	google.golang.org/genproto/googleapis/rpc v0.0.0-20250818200422-3122310a409c // indirect
+	gopkg.in/yaml.v3 v3.0.1 // indirect
 )
 
 retract (

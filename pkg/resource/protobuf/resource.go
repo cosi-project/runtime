@@ -5,11 +5,12 @@
 package protobuf
 
 import (
+	"errors"
 	"fmt"
 	"slices"
 
+	"go.yaml.in/yaml/v4"
 	timestamppb "google.golang.org/protobuf/types/known/timestamppb"
-	"gopkg.in/yaml.v3"
 
 	"github.com/cosi-project/runtime/api/v1alpha1"
 	"github.com/cosi-project/runtime/pkg/resource"
@@ -28,13 +29,24 @@ type protoSpec struct {
 	protobuf []byte
 }
 
-// MarshalYAMLBytes implements RawYAML interface.
-func (s protoSpec) MarshalYAMLBytes() ([]byte, error) {
+// MarshalYAML implements yaml.Marshaler interface.
+func (s protoSpec) MarshalYAML() (any, error) {
 	if s.yaml == "" {
 		return nil, fmt.Errorf("YAML spec is not specified")
 	}
 
-	return []byte(s.yaml), nil
+	var node yaml.Node
+
+	if err := yaml.Unmarshal([]byte(s.yaml), &node); err != nil {
+		return nil, err
+	}
+
+	// the `node` is expected to be a document node
+	if node.Kind != yaml.DocumentNode || len(node.Content) == 0 {
+		return nil, errors.New("invalid YAML content")
+	}
+
+	return &node.Content[0], nil
 }
 
 func (r *Resource) String() string {

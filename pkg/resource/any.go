@@ -5,7 +5,9 @@
 package resource
 
 import (
-	"gopkg.in/yaml.v3"
+	"errors"
+
+	"go.yaml.in/yaml/v4"
 )
 
 // Any can hold data from any resource type.
@@ -19,9 +21,20 @@ type anySpec struct {
 	yaml  []byte
 }
 
-// MarshalYAMLBytes implements RawYAML interface.
-func (s anySpec) MarshalYAMLBytes() ([]byte, error) {
-	return s.yaml, nil
+// MarshalYAML implements yaml.Marshaler interface.
+func (s anySpec) MarshalYAML() (any, error) {
+	var node yaml.Node
+
+	if err := yaml.Unmarshal(s.yaml, &node); err != nil {
+		return nil, err
+	}
+
+	// the `node` is expected to be a document node
+	if node.Kind != yaml.DocumentNode || len(node.Content) == 0 {
+		return nil, errors.New("invalid YAML content")
+	}
+
+	return &node.Content[0], nil
 }
 
 // SpecProto is a protobuf interface of resource spec.

@@ -10,7 +10,7 @@ import (
 	"github.com/siderolabs/gen/ensure"
 	"github.com/siderolabs/go-pointer"
 	"github.com/stretchr/testify/require"
-	"gopkg.in/yaml.v3"
+	"go.yaml.in/yaml/v4"
 
 	"github.com/cosi-project/runtime/api/v1alpha1"
 	"github.com/cosi-project/runtime/pkg/resource"

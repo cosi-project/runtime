@@ -10,8 +10,8 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"go.yaml.in/yaml/v4"
 	"google.golang.org/protobuf/types/known/timestamppb"
-	"gopkg.in/yaml.v3"
 
 	"github.com/cosi-project/runtime/api/v1alpha1"
 	"github.com/cosi-project/runtime/pkg/resource"
@@ -87,8 +87,7 @@ func TestMarshalUnmarshal(t *testing.T) {
     finalizers:
         - a1
         - a2
-spec:
-    true
+spec: true
 `,
 		string(yy))
 }
