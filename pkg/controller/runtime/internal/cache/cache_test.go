@@ -171,6 +171,9 @@ func TestCacheOperations(t *testing.T) {
 	})
 
 	assert.Equal(t, "1000", metrics.CachedResources.Get("A").String())
+	assert.Equal(t, "10000", metrics.CachedResources.Get("B").String()) // drops do not cause the cache to be cleared due to the tombstone
+
+	c.ClearTombstones("b", "B")
 	assert.Equal(t, "5000", metrics.CachedResources.Get("B").String())
 }
 

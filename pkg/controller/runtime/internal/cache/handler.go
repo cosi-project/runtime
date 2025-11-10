@@ -79,8 +79,13 @@ func (h *cacheHandler) get(ctx context.Context, id resource.ID, opts ...state.Ge
 		return nil, ErrNotFound(resource.NewMetadata(h.key.Namespace, h.key.Type, id, resource.VersionUndefined))
 	}
 
+	res := h.resources[idx]
+	if isCacheTombstone(res) {
+		return nil, ErrNotFound(resource.NewMetadata(h.key.Namespace, h.key.Type, id, resource.VersionUndefined))
+	}
+
 	// return a copy of the resource to satisfy State semantics
-	return h.resources[idx].DeepCopy(), nil
+	return res.DeepCopy(), nil
 }
 
 func (h *cacheHandler) contextWithTeardown(ctx context.Context, id resource.ID) (context.Context, error) {
@@ -160,6 +165,10 @@ func (h *cacheHandler) list(ctx context.Context, opts ...state.ListOption) (reso
 	resources := slices.Clone(h.resources)
 	h.mu.Unlock()
 
+	resources = xslices.Filter(resources, func(r resource.Resource) bool {
+		return !isCacheTombstone(r)
+	})
+
 	// micro optimization: apply filter only if some filters are specified
 	if !value.IsZero(options.IDQuery) || options.LabelQueries != nil {
 		resources = xslices.Filter(resources, func(r resource.Resource) bool {
@@ -190,6 +199,15 @@ func (h *cacheHandler) put(r resource.Resource) {
 	})
 
 	if found {
+		existing := h.resources[idx]
+		existingVersion := existing.Metadata().Version()
+		newVersion := r.Metadata().Version()
+
+		stale := !isCacheTombstone(existing) && newVersion.Value() < existingVersion.Value()
+		if stale {
+			return
+		}
+
 		h.resources[idx] = r
 	} else {
 		h.resources = slices.Insert(h.resources, idx, r)
@@ -205,24 +223,16 @@ func (h *cacheHandler) put(r resource.Resource) {
 	}
 }
 
-func (h *cacheHandler) remove(r resource.Resource) {
+func (h *cacheHandler) clearTombstones() {
 	h.mu.Lock()
 	defer h.mu.Unlock()
 
-	idx, found := slices.BinarySearchFunc(h.resources, r.Metadata().ID(), func(r resource.Resource, id resource.ID) int {
-		return cmp.Compare(r.Metadata().ID(), id)
-	})
+	before := len(h.resources)
+	h.resources = slices.DeleteFunc(h.resources, isCacheTombstone)
+	after := len(h.resources)
+	delta := after - before
 
-	if found {
-		h.resources = slices.Delete(h.resources, idx, idx+1)
-
-		metrics.CachedResources.Add(r.Metadata().Type(), -1)
-	}
-
-	if ch, ok := h.teardownWaiters[r.Metadata().ID()]; ok {
-		close(ch)
-		delete(h.teardownWaiters, r.Metadata().ID())
-	}
+	metrics.CachedResources.Add(h.key.Type, int64(delta))
 }
 
 func (h *cacheHandler) len() int {
