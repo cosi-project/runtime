@@ -150,6 +150,14 @@ func WithOwner(owner string) DeleteOption {
 	return owned.WithOwner(owner)
 }
 
+// CreateOption for operation Create.
+type CreateOption = owned.CreateOption
+
+// WithCreateNoOwner creates the resource without setting the owner.
+func WithCreateNoOwner() CreateOption {
+	return owned.WithCreateNoOwner()
+}
+
 // ModifyOption for operation Modify.
 type ModifyOption = owned.ModifyOption
 
@@ -161,4 +169,9 @@ func WithExpectedPhase(phase resource.Phase) ModifyOption {
 // WithExpectedPhaseAny allows to specify any phase of the resource.
 func WithExpectedPhaseAny() ModifyOption {
 	return owned.WithExpectedPhaseAny()
+}
+
+// WithModifyNoOwner creates/updates the resource without setting the controller as the owner.
+func WithModifyNoOwner() ModifyOption {
+	return owned.WithModifyNoOwner()
 }

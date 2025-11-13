@@ -43,8 +43,20 @@ func (st *State) ContextWithTeardown(ctx context.Context, ptr resource.Pointer) 
 // Create creates a resource in the state.
 //
 // Create enforces that the resource is owned by the designated owner.
-func (st *State) Create(ctx context.Context, res resource.Resource) error {
-	return st.state.Create(ctx, res, state.WithCreateOwner(st.owner))
+func (st *State) Create(ctx context.Context, res resource.Resource, options ...CreateOption) error {
+	var opts CreateOptions
+
+	for _, o := range options {
+		o(&opts)
+	}
+
+	owner := st.owner
+
+	if opts.WithNoOwner {
+		owner = ""
+	}
+
+	return st.state.Create(ctx, res, state.WithCreateOwner(owner))
 }
 
 // Update updates a resource in the state.
@@ -67,9 +79,16 @@ func (st *State) Modify(ctx context.Context, emptyResource resource.Resource, up
 //
 // ModifyWithResult enforces that the resource is owned by the designated owner.
 func (st *State) ModifyWithResult(ctx context.Context, emptyResource resource.Resource, updateFunc func(resource.Resource) error, options ...ModifyOption) (resource.Resource, error) {
-	updateOptions := []state.UpdateOption{state.WithUpdateOwner(st.owner)}
+	owner := st.owner
 
 	modifyOptions := ToModifyOptions(options...)
+
+	if modifyOptions.WithNoOwner {
+		owner = ""
+	}
+
+	updateOptions := []state.UpdateOption{state.WithUpdateOwner(owner)}
+
 	if modifyOptions.ExpectedPhase != nil {
 		updateOptions = append(updateOptions, state.WithExpectedPhase(*modifyOptions.ExpectedPhase))
 	} else {

@@ -26,7 +26,7 @@ type Reader interface {
 //
 // Write methods enforce that the resources are owned by the designated owner.
 type Writer interface {
-	Create(context.Context, resource.Resource) error
+	Create(context.Context, resource.Resource, ...CreateOption) error
 	Update(context.Context, resource.Resource) error
 	Modify(context.Context, resource.Resource, func(resource.Resource) error, ...ModifyOption) error
 	ModifyWithResult(context.Context, resource.Resource, func(resource.Resource) error, ...ModifyOption) (resource.Resource, error)
@@ -69,12 +69,28 @@ func ToDeleteOptions(opts ...DeleteOption) DeleteOptions {
 	return options
 }
 
+// CreateOptions for operation Create.
+type CreateOptions struct {
+	WithNoOwner bool
+}
+
+// WithCreateNoOwner creates the resource without setting the owner.
+func WithCreateNoOwner() CreateOption {
+	return func(o *CreateOptions) {
+		o.WithNoOwner = true
+	}
+}
+
+// CreateOption for operation Create.
+type CreateOption func(*CreateOptions)
+
 // ModifyOption for operation Modify.
 type ModifyOption func(*ModifyOptions)
 
 // ModifyOptions for operation Modify.
 type ModifyOptions struct {
 	ExpectedPhase *resource.Phase
+	WithNoOwner   bool
 }
 
 // WithExpectedPhase allows to specify expected phase of the resource.
@@ -88,6 +104,13 @@ func WithExpectedPhase(phase resource.Phase) ModifyOption {
 func WithExpectedPhaseAny() ModifyOption {
 	return func(o *ModifyOptions) {
 		o.ExpectedPhase = nil
+	}
+}
+
+// WithModifyNoOwner creates/updates the resource without setting the owner.
+func WithModifyNoOwner() ModifyOption {
+	return func(o *ModifyOptions) {
+		o.WithNoOwner = true
 	}
 }
 

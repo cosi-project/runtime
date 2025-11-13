@@ -9,11 +9,12 @@ import (
 
 	"github.com/cosi-project/runtime/pkg/controller"
 	"github.com/cosi-project/runtime/pkg/resource"
+	"github.com/cosi-project/runtime/pkg/state/owned"
 )
 
 // Create augments StateAdapter Create with output tracking.
-func (adapter *Adapter) Create(ctx context.Context, r resource.Resource) error {
-	err := adapter.StateAdapter.Create(ctx, r)
+func (adapter *Adapter) Create(ctx context.Context, r resource.Resource, options ...owned.CreateOption) error {
+	err := adapter.StateAdapter.Create(ctx, r, options...)
 
 	if adapter.outputTracker != nil {
 		adapter.outputTracker[makeOutputTrackingID(r.Metadata())] = struct{}{}

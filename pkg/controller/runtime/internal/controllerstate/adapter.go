@@ -169,7 +169,7 @@ func (adapter *StateAdapter) ContextWithTeardown(ctx context.Context, resourcePo
 }
 
 // Create implements controller.Runtime interface.
-func (adapter *StateAdapter) Create(ctx context.Context, r resource.Resource) error {
+func (adapter *StateAdapter) Create(ctx context.Context, r resource.Resource, options ...controller.CreateOption) error {
 	if err := adapter.UpdateLimiter.Wait(ctx); err != nil {
 		return fmt.Errorf("create rate limited: %w", err)
 	}
@@ -179,7 +179,7 @@ func (adapter *StateAdapter) Create(ctx context.Context, r resource.Resource) er
 			r.Metadata().Namespace(), r.Metadata().Type(), adapter.Name, r.Metadata().ID())
 	}
 
-	return adapter.OwnedState.Create(ctx, r)
+	return adapter.OwnedState.Create(ctx, r, options...)
 }
 
 // Update implements controller.Runtime interface.

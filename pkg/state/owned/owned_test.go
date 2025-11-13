@@ -123,4 +123,26 @@ func TestOwned(t *testing.T) {
 
 	rtestutils.AssertNoResource[*A](ctx, t, st, r1.Metadata().ID())
 	rtestutils.AssertNoResource[*A](ctx, t, st, r2.Metadata().ID())
+
+	r3 := NewA("r3")
+
+	err = ownedState1.Modify(ctx, r3, func(r resource.Resource) error {
+		return nil
+	}, owned.WithModifyNoOwner())
+	require.NoError(t, err)
+
+	res, err := ownedState1.Get(ctx, r3.Metadata())
+
+	require.NoError(t, err)
+	require.Empty(t, res.Metadata().Owner())
+
+	r4 := NewA("r4")
+
+	err = ownedState1.Create(ctx, r4, owned.WithCreateNoOwner())
+	require.NoError(t, err)
+
+	res, err = ownedState1.Get(ctx, r4.Metadata())
+
+	require.NoError(t, err)
+	require.Empty(t, res.Metadata().Owner())
 }
