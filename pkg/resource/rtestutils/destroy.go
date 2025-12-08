@@ -19,12 +19,12 @@ import (
 )
 
 // DestroyAll performs graceful teardown/destroy sequence for all resources of type.
-func DestroyAll[R ResourceWithRD](ctx context.Context, t *testing.T, st state.State) {
+func DestroyAll[R ResourceWithRD](ctx context.Context, t *testing.T, st state.State, opts ...state.DestroyOption) {
 	Destroy[R](ctx, t, st, ResourceIDsWithOwner[R](ctx, t, st, pointer.To("")))
 }
 
 // Destroy performs graceful teardown/destroy sequence for specified IDs.
-func Destroy[R ResourceWithRD](ctx context.Context, t *testing.T, st state.State, ids []string) {
+func Destroy[R ResourceWithRD](ctx context.Context, t *testing.T, st state.State, ids []string, opts ...state.DestroyOption) {
 	var r R
 
 	rds := r.ResourceDefinition()
@@ -37,7 +37,19 @@ func Destroy[R ResourceWithRD](ctx context.Context, t *testing.T, st state.State
 	// start watching before tearing down, so that we don't lose events
 	require.NoError(t, safe.StateWatchKind(ctx, st, resource.NewMetadata(rds.DefaultNamespace, rds.Type, "", resource.VersionUndefined), watchCh, state.WithBootstrapContents(true)))
 
-	ids = Teardown[R](ctx, t, st, ids)
+	var destroyOptions state.DestroyOptions
+
+	for _, opt := range opts {
+		opt(&destroyOptions)
+	}
+
+	var teardownOptions []state.TeardownOption
+
+	if destroyOptions.Owner != "" {
+		teardownOptions = append(teardownOptions, state.WithTeardownOwner(destroyOptions.Owner))
+	}
+
+	ids = Teardown[R](ctx, t, st, ids, teardownOptions...)
 	idMap := xslices.ToSet(ids)
 
 	for len(idMap) > 0 {
@@ -68,7 +80,7 @@ func Destroy[R ResourceWithRD](ctx context.Context, t *testing.T, st state.State
 
 			if r.Metadata().Phase() == resource.PhaseTearingDown && r.Metadata().Finalizers().Empty() {
 				// time to destroy
-				require.NoError(t, ignoreNonCriticalErrors(st.Destroy(ctx, r.Metadata())))
+				require.NoError(t, ignoreNonCriticalErrors(st.Destroy(ctx, r.Metadata(), opts...)))
 
 				t.Logf("cleaned up %s ID %q", rds.Type, r.Metadata().ID())
 			}
@@ -83,21 +95,21 @@ func Destroy[R ResourceWithRD](ctx context.Context, t *testing.T, st state.State
 // Teardown moves provided resources to the PhaseTearingDown.
 //
 // Teardown ignores not found resources and returns a list of resources that were actually torn down.
-func Teardown[R ResourceWithRD](ctx context.Context, t *testing.T, st state.State, ids []string) []string {
+func Teardown[R ResourceWithRD](ctx context.Context, t *testing.T, st state.State, ids []string, opts ...state.TeardownOption) []string {
 	var r R
 
-	torndown, err := teardown(ctx, st, ids, r.ResourceDefinition())
+	torndown, err := teardown(ctx, st, ids, r.ResourceDefinition(), opts...)
 
 	require.NoError(t, err)
 
 	return torndown
 }
 
-func teardown(ctx context.Context, st state.State, ids []string, rds meta.ResourceDefinitionSpec) ([]string, error) {
+func teardown(ctx context.Context, st state.State, ids []string, rds meta.ResourceDefinitionSpec, opts ...state.TeardownOption) ([]string, error) {
 	tornDown := make([]string, 0, len(ids))
 
 	for _, id := range ids {
-		if _, err := st.Teardown(ctx, resource.NewMetadata(rds.DefaultNamespace, rds.Type, id, resource.VersionUndefined)); err == nil {
+		if _, err := st.Teardown(ctx, resource.NewMetadata(rds.DefaultNamespace, rds.Type, id, resource.VersionUndefined), opts...); err == nil {
 			tornDown = append(tornDown, id)
 		} else if ignoreNonCriticalErrors(err) != nil {
 			return nil, err
