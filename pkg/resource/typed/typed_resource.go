@@ -85,7 +85,7 @@ func (t *Resource[T, E]) makeRD() (any, bool) {
 func LookupExtension[I any](res resource.Resource) (I, bool) {
 	var zero I
 
-	typ := reflect.TypeOf((*I)(nil)).Elem()
+	typ := reflect.TypeFor[I]()
 	if typ.Kind() != reflect.Interface {
 		panic("can only be used with interface types")
 	}

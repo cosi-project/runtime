@@ -311,6 +311,14 @@ func (md *Metadata) UnmarshalYAML(value *yaml.Node) (err error) {
 		}
 	}()
 
+	if value.Kind == yaml.DocumentNode {
+		if len(value.Content) != 1 {
+			panicFormatf("%d:%d expected single document content, got %d", value.Line, value.Column, len(value.Content))
+		}
+
+		value = value.Content[0]
+	}
+
 	if value.Kind != yaml.MappingNode {
 		panicFormatf("%d:%d expected mapping node, got %d", value.Line, value.Column, value.Kind)
 	}

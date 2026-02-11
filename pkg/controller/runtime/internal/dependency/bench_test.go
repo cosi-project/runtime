@@ -44,9 +44,7 @@ func BenchmarkGetDependentControllers(b *testing.B) {
 		ID:        optional.Some[resource.ID]("aaaa"),
 	}
 
-	b.ResetTimer()
-
-	for range b.N {
+	for b.Loop() {
 		_, err := db.GetDependentControllers(in)
 		if err != nil {
 			b.FailNow()

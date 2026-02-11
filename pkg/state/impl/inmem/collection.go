@@ -321,11 +321,7 @@ func (collection *ResourceCollection) Watch(ctx context.Context, id resource.ID,
 	switch {
 	case options.TailEvents > 0:
 		foundEvents := 0
-		minPos := collection.writePos - int64(collection.capacity) + int64(collection.gap)
-
-		if minPos < 0 {
-			minPos = 0
-		}
+		minPos := max(collection.writePos-int64(collection.capacity)+int64(collection.gap), 0)
 
 		for ; pos > minPos && foundEvents < options.TailEvents; pos-- {
 			if collection.stream[(pos-1)%int64(collection.capacity)].Resource.Metadata().ID() == id {

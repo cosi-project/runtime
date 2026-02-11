@@ -66,9 +66,8 @@ func BenchmarkZstd(b *testing.B) {
 	initialMem := memStats()
 
 	b.ReportAllocs()
-	b.ResetTimer()
 
-	for range b.N {
+	for b.Loop() {
 		_, err := marshaler.MarshalResource(path)
 		require.NoError(b, err)
 	}

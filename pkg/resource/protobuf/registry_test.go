@@ -38,9 +38,7 @@ func BenchmarkCreateResource(b *testing.B) {
 	r, err := protobuf.Unmarshal(protoR)
 	require.NoError(b, err)
 
-	b.ResetTimer()
-
-	for range b.N {
+	for b.Loop() {
 		rr, err := protobuf.UnmarshalResource(r)
 
 		if _, ok := rr.(*conformance.PathResource); !ok {

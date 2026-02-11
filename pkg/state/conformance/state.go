@@ -677,13 +677,9 @@ func (suite *StateSuite) TestWatchFor() {
 
 	suite.Assert().Equal(r.Metadata().String(), path1.Metadata().String())
 
-	wg.Add(1)
-
-	go func() {
-		defer wg.Done()
-
+	wg.Go(func() {
 		r, err = suite.State.WatchFor(ctx, path1MdCopy, state.WithPhases(resource.PhaseTearingDown))
-	}()
+	})
 
 	ready, e := suite.State.Teardown(ctx, path1.Metadata())
 	suite.Require().NoError(e)
@@ -694,13 +690,9 @@ func (suite *StateSuite) TestWatchFor() {
 	suite.Assert().Equal(r.Metadata().ID(), path1.Metadata().ID())
 	suite.Assert().Equal(resource.PhaseTearingDown, r.Metadata().Phase())
 
-	wg.Add(1)
-
-	go func() {
-		defer wg.Done()
-
+	wg.Go(func() {
 		r, err = suite.State.WatchFor(ctx, path1MdCopy, state.WithEventTypes(state.Destroyed))
-	}()
+	})
 
 	suite.Assert().NoError(suite.State.AddFinalizer(ctx, path1.Metadata(), "A"))
 	suite.Assert().NoError(suite.State.RemoveFinalizer(ctx, path1.Metadata(), "A"))

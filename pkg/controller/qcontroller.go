@@ -123,7 +123,7 @@ func NewRequeueError(err error, interval time.Duration) *RequeueError {
 }
 
 // NewRequeueErrorf creates a new RequeueError with specified backoff interval.
-func NewRequeueErrorf(interval time.Duration, format string, args ...interface{}) *RequeueError {
+func NewRequeueErrorf(interval time.Duration, format string, args ...any) *RequeueError {
 	return NewRequeueError(fmt.Errorf(format, args...), interval)
 }
 

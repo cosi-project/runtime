@@ -43,7 +43,7 @@ func BenchmarkProto(b *testing.B) {
 
 	marshaler := store.ProtobufMarshaler{}
 
-	for range b.N {
+	for b.Loop() {
 		_, err := marshaler.MarshalResource(path)
 		require.NoError(b, err)
 	}

@@ -5,6 +5,8 @@
 package state
 
 import (
+	"slices"
+
 	"github.com/cosi-project/runtime/pkg/resource"
 )
 
@@ -26,15 +28,7 @@ type WatchForCondition struct {
 // Matches checks whether event matches a condition.
 func (condition *WatchForCondition) Matches(event Event) (bool, error) {
 	if condition.EventTypes != nil {
-		matched := false
-
-		for _, typ := range condition.EventTypes {
-			if typ == event.Type {
-				matched = true
-
-				break
-			}
-		}
+		matched := slices.Contains(condition.EventTypes, event.Type)
 
 		if !matched {
 			return false, nil
@@ -68,15 +62,7 @@ func (condition *WatchForCondition) Matches(event Event) (bool, error) {
 	}
 
 	if condition.Phases != nil {
-		matched := false
-
-		for _, phase := range condition.Phases {
-			if event.Resource.Metadata().Phase() == phase {
-				matched = true
-
-				break
-			}
-		}
+		matched := slices.Contains(condition.Phases, event.Resource.Metadata().Phase())
 
 		if !matched {
 			return false, nil

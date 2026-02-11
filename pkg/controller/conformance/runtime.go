@@ -56,18 +56,14 @@ func (suite *RuntimeSuite) SetupTest() {
 }
 
 func (suite *RuntimeSuite) startRuntime(ctx context.Context) {
-	suite.wg.Add(1)
-
-	go func() {
-		defer suite.wg.Done()
-
+	suite.wg.Go(func() {
 		err := suite.Runtime.Run(ctx)
 		// we can safely ignore canceled error,
 		// but we can't check for it using errors.Is because it's a rpc error
 		if err != nil && !strings.Contains(err.Error(), "context canceled") {
 			suite.Assert().NoError(err)
 		}
-	}()
+	})
 }
 
 func (suite *RuntimeSuite) assertStrObjects(ns resource.Namespace, typ resource.Type, ids []string, values []string) retry.RetryableFunc {

@@ -29,6 +29,15 @@ func (r *YAMLResource) Resource() resource.Resource {
 
 // UnmarshalYAML implements yaml.Unmarshaler.
 func (r *YAMLResource) UnmarshalYAML(value *yaml.Node) error {
+	// Unwrap DocumentNode to get the inner MappingNode.
+	if value.Kind == yaml.DocumentNode {
+		if len(value.Content) != 1 {
+			return fmt.Errorf("expected single document content, got %d", len(value.Content))
+		}
+
+		value = value.Content[0]
+	}
+
 	if value.Kind != yaml.MappingNode {
 		return fmt.Errorf("expected mapping node, got %d", value.Kind)
 	}
