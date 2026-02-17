@@ -56,8 +56,9 @@ func TestLocalConformance(t *testing.T) {
 			t.Parallel()
 
 			suite.Run(t, &conformance.StateSuite{
-				State:      state.WrapCore(tt.builder),
-				Namespaces: []resource.Namespace{"default"},
+				State:           state.WrapCore(tt.builder),
+				Namespaces:      []resource.Namespace{"default"},
+				FilterSupported: true,
 			})
 		})
 	}

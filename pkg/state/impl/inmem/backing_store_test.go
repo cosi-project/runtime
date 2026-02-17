@@ -57,7 +57,8 @@ func TestLocalConformanceWithBackingStore(t *testing.T) {
 		State: state.WrapCore(inmem.NewStateWithOptions(
 			inmem.WithBackingStore(&backingStoreMock{store: map[string]resource.Resource{}}))("default"),
 		),
-		Namespaces: []resource.Namespace{"default"},
+		Namespaces:      []resource.Namespace{"default"},
+		FilterSupported: true,
 	})
 }
 

@@ -20,7 +20,8 @@ func TestWrapConformance(t *testing.T) {
 	t.Parallel()
 
 	suite.Run(t, &conformance.StateSuite{
-		State:      state.WrapCore(namespaced.NewState(inmem.Build)),
-		Namespaces: []resource.Namespace{"default", "controller", "system", "runtime"},
+		State:           state.WrapCore(namespaced.NewState(inmem.Build)),
+		Namespaces:      []resource.Namespace{"default", "controller", "system", "runtime"},
+		FilterSupported: true,
 	})
 }

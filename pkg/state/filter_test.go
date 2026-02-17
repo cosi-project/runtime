@@ -32,7 +32,8 @@ func TestFilterPasshtroughConformance(t *testing.T) {
 				},
 			),
 		),
-		Namespaces: []resource.Namespace{"default", "controller", "system", "runtime"},
+		Namespaces:      []resource.Namespace{"default", "controller", "system", "runtime"},
+		FilterSupported: true,
 	})
 }
 

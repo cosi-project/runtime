@@ -31,6 +31,10 @@ type StateSuite struct {
 	State state.State
 
 	Namespaces []resource.Namespace
+
+	// FilterSupported indicates that WatchWithFilter is supported by the state implementation.
+	// This is only true for local (in-memory) state, not for protobuf/remote state.
+	FilterSupported bool
 }
 
 func (suite *StateSuite) getNamespace() resource.Namespace {
@@ -400,6 +404,124 @@ func (suite *StateSuite) TestWatchKindWithLabels() {
 // TestWatchKindAggregatedWithLabels verifies WatchKind API with aggregated watch and label selectors.
 func (suite *StateSuite) TestWatchKindAggregatedWithLabels() {
 	suite.testWatchKindWithLabels(true)
+}
+
+// TestWatchKindWithFilter verifies WatchKind API with predicate filter.
+func (suite *StateSuite) TestWatchKindWithFilter() {
+	if !suite.FilterSupported {
+		suite.T().Skip("WatchWithFilter not supported by this state implementation")
+	}
+
+	suite.testWatchKindWithFilter(false)
+}
+
+// TestWatchKindAggregatedWithFilter verifies WatchKind API with aggregated watch and predicate filter.
+func (suite *StateSuite) TestWatchKindAggregatedWithFilter() {
+	if !suite.FilterSupported {
+		suite.T().Skip("WatchWithFilter not supported by this state implementation")
+	}
+
+	suite.testWatchKindWithFilter(true)
+}
+
+func (suite *StateSuite) testWatchKindWithFilter(useAggregated bool) {
+	ns := suite.getNamespace()
+
+	filterLabel := fmt.Sprintf("filter/%v", useAggregated)
+
+	path1 := NewPathResource(ns, fmt.Sprintf("var/filter1/%v", useAggregated))
+	path1.Metadata().Labels().Set(filterLabel, "included")
+
+	path2 := NewPathResource(ns, fmt.Sprintf("var/filter2/%v", useAggregated))
+
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	suite.Require().NoError(suite.State.Create(ctx, path1))
+	suite.Require().NoError(suite.State.Create(ctx, path2))
+
+	ch := make(chan state.Event)
+
+	// watch with a predicate filter that checks for a label
+	suite.Require().NoError(watchAggregateAdapter(
+		ctx,
+		useAggregated,
+		suite.State,
+		path1.Metadata(),
+		ch,
+		state.WithBootstrapContents(true),
+		state.WatchWithFilter(func(res resource.Resource) bool {
+			_, ok := res.Metadata().Labels().Get(filterLabel)
+
+			return ok
+		}),
+	))
+
+	// bootstrap: only path1 should be sent (path2 doesn't have the label)
+	select {
+	case event := <-ch:
+		suite.Assert().Equal(state.Created, event.Type)
+		suite.Assert().Equal(resource.String(path1), resource.String(event.Resource))
+	case <-time.After(time.Second):
+		suite.FailNow("timed out waiting for event")
+	}
+
+	select {
+	case event := <-ch:
+		suite.Assert().Equal(state.Bootstrapped, event.Type)
+	case <-time.After(time.Second):
+		suite.FailNow("timed out waiting for event")
+	}
+
+	// update path1 to remove the label → should synthesize Destroyed
+	_, err := safe.StateUpdateWithConflicts(ctx, suite.State, path1.Metadata(), func(r *PathResource) error {
+		r.Metadata().Labels().Delete(filterLabel)
+
+		return nil
+	})
+	suite.Require().NoError(err)
+
+	select {
+	case event := <-ch:
+		suite.Assert().Equal(state.Destroyed, event.Type)
+		suite.Assert().Equal(resource.String(path1), resource.String(event.Resource))
+		suite.Assert().Nil(event.Old)
+	case <-time.After(time.Second):
+		suite.FailNow("timed out waiting for event")
+	}
+
+	// update path2 to add the label → should synthesize Created
+	_, err = safe.StateUpdateWithConflicts(ctx, suite.State, path2.Metadata(), func(r *PathResource) error {
+		r.Metadata().Labels().Set(filterLabel, "included")
+
+		return nil
+	})
+	suite.Require().NoError(err)
+
+	select {
+	case event := <-ch:
+		suite.Assert().Equal(state.Created, event.Type)
+		suite.Assert().Equal(resource.String(path2), resource.String(event.Resource))
+		suite.Assert().Nil(event.Old)
+	case <-time.After(time.Second):
+		suite.FailNow("timed out waiting for event")
+	}
+
+	// update path2 while it still matches → should pass through as Updated
+	_, err = safe.StateUpdateWithConflicts(ctx, suite.State, path2.Metadata(), func(r *PathResource) error {
+		r.Metadata().Labels().Set("unrelated", "value")
+
+		return nil
+	})
+	suite.Require().NoError(err)
+
+	select {
+	case event := <-ch:
+		suite.Assert().Equal(state.Updated, event.Type)
+		suite.Assert().Equal(resource.String(path2), resource.String(event.Resource))
+	case <-time.After(time.Second):
+		suite.FailNow("timed out waiting for event")
+	}
 }
 
 //nolint:gocyclo,cyclop

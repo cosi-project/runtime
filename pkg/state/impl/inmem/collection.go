@@ -450,7 +450,9 @@ func (collection *ResourceCollection) WatchAll(ctx context.Context, singleCh cha
 	}
 
 	matches := func(res resource.Resource) bool {
-		return options.IDQuery.Matches(*res.Metadata()) && options.LabelQueries.Matches(*res.Metadata().Labels())
+		return options.IDQuery.Matches(*res.Metadata()) &&
+			options.LabelQueries.Matches(*res.Metadata().Labels()) &&
+			(options.Filter == nil || options.Filter(res))
 	}
 
 	collection.mu.Lock()

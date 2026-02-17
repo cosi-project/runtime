@@ -211,6 +211,7 @@ func WithStartFromBookmark(bookmark Bookmark) WatchOption {
 type WatchKindOptions struct {
 	IDQuery           resource.IDQuery
 	LabelQueries      resource.LabelQueries
+	Filter            func(resource.Resource) bool
 	StartFromBookmark Bookmark
 	UnmarshalOptions  UnmarshalOptions
 	BootstrapContents bool
@@ -277,6 +278,19 @@ func WatchWithIDQuery(opt ...resource.IDQueryOption) WatchKindOption {
 		for _, o := range opt {
 			o(&opts.IDQuery)
 		}
+	}
+}
+
+// WatchWithFilter sets a predicate function to filter watched resources.
+//
+// The filter is applied in the same way as label queries: resources that stop
+// matching the filter will produce synthesized Destroyed events, and resources
+// that start matching will produce synthesized Created events.
+//
+// This option is only supported for local (in-memory) state implementations.
+func WatchWithFilter(fn func(resource.Resource) bool) WatchKindOption {
+	return func(opts *WatchKindOptions) {
+		opts.Filter = fn
 	}
 }
 
