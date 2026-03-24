@@ -36,7 +36,7 @@ func NewState(state state.CoreState) *State {
 //
 // If a resource is not found, error is returned.
 func (server *State) Get(ctx context.Context, req *v1alpha1.GetRequest) (*v1alpha1.GetResponse, error) {
-	r, err := server.state.Get(ctx, resource.NewMetadata(req.Namespace, req.Type, req.Id, resource.VersionUndefined))
+	r, err := server.state.Get(ctx, resource.NewMetadata(req.GetNamespace(), req.GetType(), req.GetId(), resource.VersionUndefined))
 
 	switch {
 	case state.IsNotFoundError(err):
@@ -74,8 +74,8 @@ func (server *State) List(req *v1alpha1.ListRequest, srv v1alpha1.State_ListServ
 			opts = append(opts, state.WithLabelQuery(labelOpts...))
 		}
 
-		if req.Options.GetIdQuery() != nil {
-			idOpts, err := ConvertIDQuery(req.Options.GetIdQuery())
+		if req.GetOptions().GetIdQuery() != nil {
+			idOpts, err := ConvertIDQuery(req.GetOptions().GetIdQuery())
 			if err != nil {
 				return err
 			}
@@ -84,7 +84,7 @@ func (server *State) List(req *v1alpha1.ListRequest, srv v1alpha1.State_ListServ
 		}
 	}
 
-	items, err := server.state.List(srv.Context(), resource.NewMetadata(req.Namespace, req.Type, "", resource.VersionUndefined), opts...)
+	items, err := server.state.List(srv.Context(), resource.NewMetadata(req.GetNamespace(), req.GetType(), "", resource.VersionUndefined), opts...)
 
 	switch {
 	case state.IsNotFoundError(err):
@@ -118,7 +118,7 @@ func (server *State) List(req *v1alpha1.ListRequest, srv v1alpha1.State_ListServ
 //
 // If a resource already exists, Create returns an error.
 func (server *State) Create(ctx context.Context, req *v1alpha1.CreateRequest) (*v1alpha1.CreateResponse, error) {
-	protoR, err := protobuf.Unmarshal(req.Resource)
+	protoR, err := protobuf.Unmarshal(req.GetResource())
 	if err != nil {
 		return nil, err
 	}
@@ -171,7 +171,7 @@ func marshalResource(r resource.Resource) (*v1alpha1.Resource, error) {
 // On update current version of resource `new` in the state should match
 // curVersion, otherwise conflict error is returned.
 func (server *State) Update(ctx context.Context, req *v1alpha1.UpdateRequest) (*v1alpha1.UpdateResponse, error) {
-	protoR, err := protobuf.Unmarshal(req.NewResource)
+	protoR, err := protobuf.Unmarshal(req.GetNewResource())
 	if err != nil {
 		return nil, err
 	}
@@ -228,7 +228,7 @@ func (server *State) Update(ctx context.Context, req *v1alpha1.UpdateRequest) (*
 func (server *State) Destroy(ctx context.Context, req *v1alpha1.DestroyRequest) (*v1alpha1.DestroyResponse, error) {
 	err := server.state.Destroy(
 		ctx,
-		resource.NewMetadata(req.Namespace, req.Type, req.Id, resource.VersionUndefined),
+		resource.NewMetadata(req.GetNamespace(), req.GetType(), req.GetId(), resource.VersionUndefined),
 		state.WithDestroyOwner(req.GetOptions().GetOwner()),
 	)
 
@@ -266,19 +266,19 @@ func (server *State) Watch(req *v1alpha1.WatchRequest, srv v1alpha1.State_WatchS
 	if req.Id == nil {
 		var opts []state.WatchKindOption
 
-		if req.Options.BootstrapContents {
+		if req.GetOptions().GetBootstrapContents() {
 			opts = append(opts, state.WithBootstrapContents(true))
 		}
 
-		if req.Options.TailEvents > 0 {
-			opts = append(opts, state.WithKindTailEvents(int(req.Options.TailEvents)))
+		if req.GetOptions().GetTailEvents() > 0 {
+			opts = append(opts, state.WithKindTailEvents(int(req.GetOptions().GetTailEvents())))
 		}
 
-		if req.Options.StartFromBookmark != nil {
-			opts = append(opts, state.WithKindStartFromBookmark(req.Options.StartFromBookmark))
+		if req.GetOptions().GetStartFromBookmark() != nil {
+			opts = append(opts, state.WithKindStartFromBookmark(req.GetOptions().GetStartFromBookmark()))
 		}
 
-		if req.Options.BootstrapBookmark {
+		if req.GetOptions().GetBootstrapBookmark() {
 			opts = append(opts, state.WithBootstrapBookmark(true))
 		}
 
@@ -293,10 +293,10 @@ func (server *State) Watch(req *v1alpha1.WatchRequest, srv v1alpha1.State_WatchS
 			opts = append(opts, state.WatchWithLabelQuery(labelOpts...))
 		}
 
-		if req.Options.GetIdQuery() != nil {
+		if req.GetOptions().GetIdQuery() != nil {
 			var idOpts []resource.IDQueryOption
 
-			idOpts, err = ConvertIDQuery(req.Options.GetIdQuery())
+			idOpts, err = ConvertIDQuery(req.GetOptions().GetIdQuery())
 			if err != nil {
 				return err
 			}
@@ -304,31 +304,31 @@ func (server *State) Watch(req *v1alpha1.WatchRequest, srv v1alpha1.State_WatchS
 			opts = append(opts, state.WatchWithIDQuery(idOpts...))
 		}
 
-		if req.Options.Aggregated {
-			err = server.state.WatchKindAggregated(ctx, resource.NewMetadata(req.Namespace, req.Type, "", resource.VersionUndefined), aggregatedCh, opts...)
+		if req.GetOptions().GetAggregated() {
+			err = server.state.WatchKindAggregated(ctx, resource.NewMetadata(req.GetNamespace(), req.GetType(), "", resource.VersionUndefined), aggregatedCh, opts...)
 		} else {
-			err = server.state.WatchKind(ctx, resource.NewMetadata(req.Namespace, req.Type, "", resource.VersionUndefined), singleCh, opts...)
+			err = server.state.WatchKind(ctx, resource.NewMetadata(req.GetNamespace(), req.GetType(), "", resource.VersionUndefined), singleCh, opts...)
 		}
 	} else {
 		var opts []state.WatchOption
 
-		if req.Options.TailEvents > 0 {
-			opts = append(opts, state.WithTailEvents(int(req.Options.TailEvents)))
+		if req.GetOptions().GetTailEvents() > 0 {
+			opts = append(opts, state.WithTailEvents(int(req.GetOptions().GetTailEvents())))
 		}
 
-		if req.Options.StartFromBookmark != nil {
-			opts = append(opts, state.WithStartFromBookmark(req.Options.StartFromBookmark))
+		if req.GetOptions().GetStartFromBookmark() != nil {
+			opts = append(opts, state.WithStartFromBookmark(req.GetOptions().GetStartFromBookmark()))
 		}
 
-		if req.Options.BootstrapContents {
+		if req.GetOptions().GetBootstrapContents() {
 			return status.Error(codes.Unimplemented, "bootstrap contents is not implemented for resource watch")
 		}
 
-		if req.Options.LabelQuery != nil {
+		if req.GetOptions().GetLabelQuery() != nil {
 			return status.Error(codes.Unimplemented, "label query is not implemented for resource watch")
 		}
 
-		err = server.state.Watch(ctx, resource.NewMetadata(req.Namespace, req.Type, req.GetId(), resource.VersionUndefined), singleCh, opts...)
+		err = server.state.Watch(ctx, resource.NewMetadata(req.GetNamespace(), req.GetType(), req.GetId(), resource.VersionUndefined), singleCh, opts...)
 	}
 
 	if err != nil {
@@ -350,7 +350,7 @@ func (server *State) Watch(req *v1alpha1.WatchRequest, srv v1alpha1.State_WatchS
 		case event := <-singleCh:
 			var msgEvent *v1alpha1.Event
 
-			msgEvent, err = mapEvent(req.ApiVersion, event)
+			msgEvent, err = mapEvent(req.GetApiVersion(), event)
 			if err != nil {
 				return err
 			}
@@ -368,7 +368,7 @@ func (server *State) Watch(req *v1alpha1.WatchRequest, srv v1alpha1.State_WatchS
 			for _, event := range events {
 				var msgEvent *v1alpha1.Event
 
-				msgEvent, err = mapEvent(req.ApiVersion, event)
+				msgEvent, err = mapEvent(req.GetApiVersion(), event)
 				if err != nil {
 					return err
 				}
