@@ -137,7 +137,22 @@ func (cache *ResourceCache) CachePut(r resource.Resource) {
 
 // CacheRemove handles deleted objects.
 func (cache *ResourceCache) CacheRemove(r resource.Resource) {
-	cache.getHandler(r.Metadata().Namespace(), r.Metadata().Type()).remove(r)
+	cache.CacheRemoveByPointer(r.Metadata())
+}
+
+func (cache *ResourceCache) CacheRemoveByPointer(ptr *resource.Metadata) {
+	// cache.getHandler(ptr.Namespace(), ptr.Type()).remove(ptr)
+	tombstone := newCacheTombstone(ptr)
+	cache.getHandler(ptr.Namespace(), ptr.Type()).put(tombstone)
+}
+
+// ClearTombstones removes all tombstones from the cache.
+//
+// TODO: call this periodically in a goroutine, e.g., in the controller runtime.
+//
+// TODO: only remove tombstones older than X.
+func (cache *ResourceCache) ClearTombstones(namespace resource.Namespace, resourceType resource.Type) {
+	cache.getHandler(namespace, resourceType).clearTombstones()
 }
 
 // WrapState returns a cached wrapped state, which serves some operations from the cache bypassing the underlying state.
@@ -146,4 +161,58 @@ func (cache *ResourceCache) WrapState(st state.CoreState) state.CoreState {
 		cache: cache,
 		st:    st,
 	}
+}
+
+var _ resource.Resource = (*cacheTombstone)(nil)
+
+// cacheTombstone is a resource without a Spec.
+//
+// Tombstones are used to present state of a deleted resource.
+type cacheTombstone struct {
+	ref resource.Metadata
+}
+
+// newCacheTombstone builds a tombstone from resource reference.
+func newCacheTombstone(ref resource.Reference) *cacheTombstone {
+	return &cacheTombstone{
+		ref: resource.NewMetadata(ref.Namespace(), ref.Type(), ref.ID(), ref.Version()),
+	}
+}
+
+// String method for debugging/logging.
+func (t *cacheTombstone) String() string {
+	return fmt.Sprintf("cacheTombstone(%s)", t.ref.String())
+}
+
+// Metadata for the resource.
+//
+// Metadata.Version should change each time Spec changes.
+func (t *cacheTombstone) Metadata() *resource.Metadata {
+	return &t.ref
+}
+
+// Spec is not implemented for tobmstones.
+func (t *cacheTombstone) Spec() any {
+	panic("tombstone doesn't contain spec")
+}
+
+// DeepCopy returns self, as tombstone is immutable.
+func (t *cacheTombstone) DeepCopy() resource.Resource { //nolint:ireturn
+	return t
+}
+
+// cacheTombstone implements Tombstoned interface.
+func (t *cacheTombstone) cacheTombstone() {
+}
+
+// Tombstoned is a marker interface for Tombstones.
+type cacheTombstoned interface {
+	cacheTombstone()
+}
+
+// IsTombstone checks if resource is represented by the cacheTombstone.
+func isCacheTombstone(res resource.Resource) bool {
+	_, ok := res.(cacheTombstoned)
+
+	return ok
 }

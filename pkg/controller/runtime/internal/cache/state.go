@@ -6,6 +6,7 @@ package cache
 
 import (
 	"context"
+	"sync"
 
 	"github.com/cosi-project/runtime/pkg/resource"
 	"github.com/cosi-project/runtime/pkg/state"
@@ -20,6 +21,8 @@ import (
 type stateWrapper struct {
 	cache *ResourceCache
 	st    state.CoreState
+
+	lock sync.Mutex
 }
 
 // Check interfaces.
@@ -49,7 +52,19 @@ func (wrapper *stateWrapper) List(ctx context.Context, r resource.Kind, opts ...
 //
 // If a resource already exists, Create returns an error.
 func (wrapper *stateWrapper) Create(ctx context.Context, r resource.Resource, opts ...state.CreateOption) error {
-	return wrapper.st.Create(ctx, r, opts...)
+	wrapper.lock.Lock()
+	defer wrapper.lock.Unlock()
+
+	err := wrapper.st.Create(ctx, r, opts...)
+	if err != nil {
+		return err
+	}
+
+	if wrapper.cache.IsHandled(r.Metadata().Namespace(), r.Metadata().Type()) {
+		wrapper.cache.CachePut(r)
+	}
+
+	return nil
 }
 
 // Update a resource.
@@ -58,7 +73,18 @@ func (wrapper *stateWrapper) Create(ctx context.Context, r resource.Resource, op
 // On update current version of resource `new` in the state should match
 // the version on the backend, otherwise conflict error is returned.
 func (wrapper *stateWrapper) Update(ctx context.Context, newResource resource.Resource, opts ...state.UpdateOption) error {
-	return wrapper.st.Update(ctx, newResource, opts...)
+	wrapper.lock.Lock()
+	defer wrapper.lock.Unlock()
+
+	if err := wrapper.st.Update(ctx, newResource, opts...); err != nil {
+		return err
+	}
+
+	if wrapper.cache.IsHandled(newResource.Metadata().Namespace(), newResource.Metadata().Type()) {
+		wrapper.cache.CachePut(newResource)
+	}
+
+	return nil
 }
 
 // Destroy a resource.
@@ -66,7 +92,31 @@ func (wrapper *stateWrapper) Update(ctx context.Context, newResource resource.Re
 // If a resource doesn't exist, error is returned.
 // If a resource has pending finalizers, error is returned.
 func (wrapper *stateWrapper) Destroy(ctx context.Context, ptr resource.Pointer, opts ...state.DestroyOption) error {
-	return wrapper.st.Destroy(ctx, ptr, opts...)
+	wrapper.lock.Lock()
+	defer wrapper.lock.Unlock()
+
+	var cached resource.Resource
+
+	if wrapper.cache.IsHandled(ptr.Namespace(), ptr.Type()) {
+		var err error
+		if cached, err = wrapper.cache.Get(ctx, ptr); err != nil {
+			return err
+		}
+	}
+
+	if err := wrapper.st.Destroy(ctx, ptr, opts...); err != nil {
+		if cached != nil && state.IsNotFoundError(err) {
+			wrapper.cache.CacheRemoveByPointer(cached.Metadata())
+		}
+
+		return err
+	}
+
+	if cached != nil {
+		wrapper.cache.CacheRemoveByPointer(cached.Metadata())
+	}
+
+	return nil
 }
 
 // Watch state of a resource by type.

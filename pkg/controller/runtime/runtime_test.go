@@ -18,6 +18,7 @@ import (
 	suiterunner "github.com/stretchr/testify/suite"
 	"go.uber.org/goleak"
 	"go.uber.org/zap/zaptest"
+	"golang.org/x/sync/errgroup"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"
 
@@ -27,7 +28,10 @@ import (
 	"github.com/cosi-project/runtime/pkg/controller/runtime/options"
 	"github.com/cosi-project/runtime/pkg/future"
 	"github.com/cosi-project/runtime/pkg/resource"
+	"github.com/cosi-project/runtime/pkg/resource/meta"
 	"github.com/cosi-project/runtime/pkg/resource/protobuf"
+	"github.com/cosi-project/runtime/pkg/resource/rtestutils"
+	"github.com/cosi-project/runtime/pkg/resource/typed"
 	"github.com/cosi-project/runtime/pkg/safe"
 	"github.com/cosi-project/runtime/pkg/state"
 	stateconformance "github.com/cosi-project/runtime/pkg/state/conformance"
@@ -303,4 +307,144 @@ func TestRuntimeCachedState(t *testing.T) {
 	cancel()
 
 	require.NoError(t, <-errCh)
+}
+
+func TestNoStaleReadOnUpdate(t *testing.T) {
+	test := func(ctx context.Context) {
+		ctx, cancel := context.WithCancel(ctx)
+
+		st := state.WrapCore(namespaced.NewState(inmem.Build))
+
+		logger := zaptest.NewLogger(t)
+		rt, err := runtime.NewRuntime(st, logger, options.WithCachedResource("default", "TestType"))
+
+		require.NoError(t, err)
+
+		cachedState := state.WrapCore(rt.CachedState())
+
+		var eg errgroup.Group
+
+		eg.Go(func() error {
+			return rt.Run(ctx)
+		})
+
+		testRes := newTest("default", "test")
+		testRes.TypedSpec().Var = 2
+
+		require.NoError(t, cachedState.Create(ctx, testRes))
+
+		rtestutils.AssertResource(ctx, t, cachedState, "test", func(res *testResource, assertion *assert.Assertions) {
+			assertion.Equal(2, res.TypedSpec().Var)
+		})
+
+		// get out of maintenance
+		_, err = safe.StateUpdateWithConflicts(ctx, cachedState, testRes.Metadata(), func(res *testResource) error {
+			res.TypedSpec().Var = 1
+
+			return nil
+		})
+		require.NoError(t, err)
+
+		// should be visible in the actual state
+		rtestutils.AssertResource(ctx, t, st, "test", func(res *testResource, assertion *assert.Assertions) {
+			assertion.Equal(1, res.TypedSpec().Var)
+		})
+
+		rtestutils.AssertResource(ctx, t, cachedState, "test", func(res *testResource, assertion *assert.Assertions) {
+			assertion.Equal(1, res.TypedSpec().Var)
+		})
+
+		cancel()
+
+		require.NoError(t, eg.Wait())
+	}
+
+	defer goleak.VerifyNone(t, goleak.IgnoreCurrent())
+
+	ctx, cancel := context.WithTimeout(t.Context(), 10*time.Second)
+	defer cancel()
+
+	for range 1000 {
+		test(ctx)
+	}
+}
+
+func TestNoStaleReadOnDestroy(t *testing.T) {
+	test := func(ctx context.Context) {
+		ctx, cancel := context.WithCancel(ctx)
+		st := state.WrapCore(namespaced.NewState(inmem.Build))
+
+		logger := zaptest.NewLogger(t)
+		rt, err := runtime.NewRuntime(st, logger, options.WithCachedResource("default", "TestType"))
+
+		require.NoError(t, err)
+
+		cachedState := state.WrapCore(rt.CachedState())
+
+		var eg errgroup.Group
+
+		eg.Go(func() error {
+			return rt.Run(ctx)
+		})
+
+		testRes := newTest("default", "test")
+		testRes.TypedSpec().Var = 2
+
+		require.NoError(t, cachedState.Create(ctx, testRes))
+
+		rtestutils.AssertResource(ctx, t, cachedState, "test", func(res *testResource, assertion *assert.Assertions) {
+			assertion.Equal(2, res.TypedSpec().Var)
+		})
+
+		// get out of maintenance
+		require.NoError(t, cachedState.Destroy(ctx, testRes.Metadata()))
+
+		// should be gone from the actual state
+		rtestutils.AssertNoResource[*testResource](ctx, t, st, "test")
+
+		// rtestutils.AssertResource - FAILS!
+		_, err = cachedState.Get(ctx, testRes.Metadata())
+		require.Error(t, err)
+		assert.True(t, state.IsNotFoundError(err))
+
+		cancel()
+		require.NoError(t, eg.Wait())
+	}
+
+	defer goleak.VerifyNone(t, goleak.IgnoreCurrent())
+
+	ctx, cancel := context.WithTimeout(t.Context(), 10*time.Second)
+	defer cancel()
+
+	for range 1000 {
+		test(ctx)
+	}
+}
+
+type TestSpec struct {
+	Var int
+}
+
+func (t TestSpec) DeepCopy() TestSpec {
+	return t
+}
+
+type testResource = typed.Resource[TestSpec, TestExtension]
+
+var _ resource.Resource = (*testResource)(nil)
+
+func newTest(ns, id string) *testResource {
+	return typed.NewResource[TestSpec, TestExtension](
+		resource.NewMetadata(ns, "TestType", id, resource.VersionUndefined),
+		TestSpec{},
+	)
+}
+
+type TestExtension struct{}
+
+func (TestExtension) ResourceDefinition() meta.ResourceDefinitionSpec {
+	return meta.ResourceDefinitionSpec{
+		Type:             "TestType",
+		DefaultNamespace: "default",
+	}
 }
