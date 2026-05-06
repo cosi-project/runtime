@@ -15,45 +15,50 @@ import (
 	"github.com/cosi-project/runtime/pkg/controller"
 	"github.com/cosi-project/runtime/pkg/controller/generic"
 	"github.com/cosi-project/runtime/pkg/resource"
-	"github.com/cosi-project/runtime/pkg/safe"
+	"github.com/cosi-project/runtime/pkg/resource/meta"
 	"github.com/cosi-project/runtime/pkg/state"
 )
 
 // Controller provides a generic implementation of a QController which destroys tearing down resources without finalizers.
-type Controller[Input generic.ResourceWithRD] struct {
+type Controller struct {
 	generic.NamedController
-	concurrency optional.Optional[uint]
+	resourceType     resource.Type
+	defaultNamespace resource.Namespace
+	concurrency      optional.Optional[uint]
 }
 
-// NewController creates a new destroy Controller.
-func NewController[Input generic.ResourceWithRD](concurrency optional.Optional[uint]) *Controller[Input] {
+// NewController creates a new destroy Controller for the resource type given as a type parameter.
+func NewController[Input generic.ResourceWithRD](concurrency optional.Optional[uint]) *Controller {
 	var input Input
 
-	name := fmt.Sprintf("Destroy[%s]", input.ResourceDefinition().Type)
+	return NewControllerForResource(input.ResourceDefinition(), concurrency)
+}
 
-	return &Controller[Input]{
-		concurrency: concurrency,
+// NewControllerForResource creates a new destroy Controller for the resource described by the given definition.
+func NewControllerForResource(rd meta.ResourceDefinitionSpec, concurrency optional.Optional[uint]) *Controller {
+	return &Controller{
+		resourceType:     rd.Type,
+		defaultNamespace: rd.DefaultNamespace,
+		concurrency:      concurrency,
 		NamedController: generic.NamedController{
-			ControllerName: name,
+			ControllerName: fmt.Sprintf("Destroy[%s]", rd.Type),
 		},
 	}
 }
 
 // Settings implements controller.QController interface.
-func (ctrl *Controller[Input]) Settings() controller.QSettings {
-	var input Input
-
+func (ctrl *Controller) Settings() controller.QSettings {
 	return controller.QSettings{
 		Inputs: []controller.Input{
 			{
-				Namespace: input.ResourceDefinition().DefaultNamespace,
-				Type:      input.ResourceDefinition().Type,
+				Namespace: ctrl.defaultNamespace,
+				Type:      ctrl.resourceType,
 				Kind:      controller.InputQPrimary,
 			},
 		},
 		Outputs: []controller.Output{
 			{
-				Type: input.ResourceDefinition().Type,
+				Type: ctrl.resourceType,
 				Kind: controller.OutputShared,
 			},
 		},
@@ -62,8 +67,8 @@ func (ctrl *Controller[Input]) Settings() controller.QSettings {
 }
 
 // Reconcile implements controller.QController interface.
-func (ctrl *Controller[Input]) Reconcile(ctx context.Context, logger *zap.Logger, r controller.QRuntime, ptr resource.Pointer) error {
-	in, err := safe.ReaderGet[Input](ctx, r, ptr)
+func (ctrl *Controller) Reconcile(ctx context.Context, logger *zap.Logger, r controller.QRuntime, ptr resource.Pointer) error {
+	in, err := r.Get(ctx, ptr)
 	if err != nil {
 		if state.IsNotFoundError(err) {
 			return nil
@@ -93,6 +98,6 @@ func (ctrl *Controller[Input]) Reconcile(ctx context.Context, logger *zap.Logger
 }
 
 // MapInput implements controller.QController interface.
-func (ctrl *Controller[Input]) MapInput(context.Context, *zap.Logger, controller.QRuntime, controller.ReducedResourceMetadata) ([]resource.Pointer, error) {
+func (ctrl *Controller) MapInput(context.Context, *zap.Logger, controller.QRuntime, controller.ReducedResourceMetadata) ([]resource.Pointer, error) {
 	return nil, nil
 }

@@ -15,6 +15,7 @@ import (
 	"github.com/stretchr/testify/require"
 	"go.uber.org/goleak"
 
+	"github.com/cosi-project/runtime/pkg/controller"
 	"github.com/cosi-project/runtime/pkg/controller/generic/destroy"
 	"github.com/cosi-project/runtime/pkg/controller/runtime"
 	"github.com/cosi-project/runtime/pkg/future"
@@ -94,47 +95,65 @@ func runTest(t *testing.T, f func(ctx context.Context, t *testing.T, st state.St
 }
 
 func TestFlow(t *testing.T) {
-	runTest(t, func(ctx context.Context, t *testing.T, st state.State, rt *runtime.Runtime) {
-		ctrl := destroy.NewController[*A](optional.Some(uint(1)))
+	for _, tt := range []struct {
+		ctrl func() controller.QController
+		name string
+	}{
+		{
+			name: "typed",
+			ctrl: func() controller.QController {
+				return destroy.NewController[*A](optional.Some(uint(1)))
+			},
+		},
+		{
+			name: "for-resource",
+			ctrl: func() controller.QController {
+				return destroy.NewControllerForResource(AE{}.ResourceDefinition(), optional.Some(uint(1)))
+			},
+		},
+	} {
+		t.Run(tt.name, func(t *testing.T) {
+			runTest(t, func(ctx context.Context, t *testing.T, st state.State, rt *runtime.Runtime) {
+				require.NoError(t, rt.RegisterQController(tt.ctrl()))
 
-		require.NoError(t, rt.RegisterQController(ctrl))
+				a := NewA("1")
 
-		a := NewA("1")
+				require.NoError(t, st.Create(ctx, a))
 
-		require.NoError(t, st.Create(ctx, a))
+				_, err := st.Teardown(ctx, a.Metadata())
+				require.NoError(t, err)
 
-		_, err := st.Teardown(ctx, a.Metadata())
-		require.NoError(t, err)
+				rtestutils.AssertNoResource[*A](ctx, t, st, "1")
 
-		rtestutils.AssertNoResource[*A](ctx, t, st, "1")
+				// should remain until we remove finalizers
 
-		// should remain until we remove finalizers
+				a = NewA("1")
 
-		a = NewA("1")
+				a.Metadata().Finalizers().Add("something")
 
-		a.Metadata().Finalizers().Add("something")
+				require.NoError(t, st.Create(ctx, a))
 
-		require.NoError(t, st.Create(ctx, a))
+				_, err = st.Teardown(ctx, a.Metadata())
+				require.NoError(t, err)
 
-		_, err = st.Teardown(ctx, a.Metadata())
-		require.NoError(t, err)
+				rtestutils.AssertResource[*A](ctx, t, st, "1", func(*A, *assert.Assertions) {})
 
-		rtestutils.AssertResource[*A](ctx, t, st, "1", func(*A, *assert.Assertions) {})
+				require.NoError(t, st.RemoveFinalizer(ctx, a.Metadata(), "something"))
 
-		require.NoError(t, st.RemoveFinalizer(ctx, a.Metadata(), "something"))
+				rtestutils.AssertNoResource[*A](ctx, t, st, "1")
 
-		rtestutils.AssertNoResource[*A](ctx, t, st, "1")
+				// owned resources are not touched
+				a = NewA("2")
 
-		// owned resources are not touched
-		a = NewA("2")
+				require.NoError(t, st.Create(ctx, a, state.WithCreateOwner("pwned")))
 
-		require.NoError(t, st.Create(ctx, a, state.WithCreateOwner("pwned")))
+				_, err = st.Teardown(ctx, a.Metadata(), state.WithTeardownOwner("pwned"))
+				require.NoError(t, err)
 
-		_, err = st.Teardown(ctx, a.Metadata(), state.WithTeardownOwner("pwned"))
-		require.NoError(t, err)
+				time.Sleep(time.Second)
 
-		time.Sleep(time.Second)
-
-		rtestutils.AssertResource[*A](ctx, t, st, "2", func(*A, *assert.Assertions) {})
-	})
+				rtestutils.AssertResource[*A](ctx, t, st, "2", func(*A, *assert.Assertions) {})
+			})
+		})
+	}
 }
