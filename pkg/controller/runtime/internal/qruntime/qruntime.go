@@ -15,12 +15,13 @@ import (
 	"time"
 
 	"github.com/cenkalti/backoff/v4"
+	"github.com/siderolabs/gen/xerrors"
 	"go.uber.org/zap"
-	"go.uber.org/zap/zapcore"
 	"golang.org/x/sync/errgroup"
 	"golang.org/x/time/rate"
 
 	"github.com/cosi-project/runtime/pkg/controller"
+	"github.com/cosi-project/runtime/pkg/controller/generic/qtransform"
 	"github.com/cosi-project/runtime/pkg/controller/runtime/internal/adapter"
 	"github.com/cosi-project/runtime/pkg/controller/runtime/internal/controllerstate"
 	"github.com/cosi-project/runtime/pkg/controller/runtime/internal/qruntime/internal/queue"
@@ -273,10 +274,15 @@ func (adapter *Adapter) runReconcile(ctx context.Context) {
 				requeued = true
 			}
 
+			skipped := xerrors.TagIs[qtransform.SkipReconcileTag](reconcileError)
+
 			if adapter.metricsEnabled {
-				if reconcileError != nil {
+				switch {
+				case skipped:
+					metrics.QControllerSkips.Add(adapter.Name, 1)
+				case reconcileError != nil:
 					metrics.QControllerCrashes.Add(adapter.Name, 1)
-				} else if interval != 0 {
+				case interval != 0:
 					metrics.QControllerRequeues.Add(adapter.Name, 1)
 				}
 
@@ -287,7 +293,17 @@ func (adapter *Adapter) runReconcile(ctx context.Context) {
 				}
 			}
 
-			if reconcileError != nil {
+			switch {
+			case skipped:
+				adapter.clearBackoff(item.Key())
+
+				logger.Log(item.Key().job.LogLevel(), "reconcile skipped",
+					zap.String("reason", reconcileError.Error()),
+					zap.Duration("busy", busy),
+					zapSkipIfZero(interval, zap.Duration("interval", interval)),
+					zapSkipIfZero(requeued, zap.Bool("requeued", requeued)),
+				)
+			case reconcileError != nil:
 				if interval == 0 {
 					interval = adapter.getBackoffInterval(item.Key())
 				}
@@ -298,16 +314,10 @@ func (adapter *Adapter) runReconcile(ctx context.Context) {
 					zap.Duration("busy", busy),
 					zapSkipIfZero(requeued, zap.Bool("requeued", requeued)),
 				)
-			} else {
+			default:
 				adapter.clearBackoff(item.Key())
 
-				level := zapcore.InfoLevel
-
-				if item.Key().job == QJobMap {
-					level = zapcore.DebugLevel
-				}
-
-				logger.Log(level, "reconcile succeeded",
+				logger.Log(item.Key().job.LogLevel(), "reconcile succeeded",
 					zap.Duration("busy", busy),
 					zapSkipIfZero(interval, zap.Duration("interval", interval)),
 					zapSkipIfZero(requeued, zap.Bool("requeued", requeued)),

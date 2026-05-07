@@ -29,6 +29,9 @@ var (
 	// QControllerCrashes counts the number of crashes per QController.
 	QControllerCrashes = expvar.NewMap("qcontroller_crashes")
 
+	// QControllerSkips counts the number of skipped reconcile events per QController.
+	QControllerSkips = expvar.NewMap("qcontroller_skips")
+
 	// QControllerRequeues counts the number of requeue events per QController.
 	QControllerRequeues = expvar.NewMap("qcontroller_requeues")
 

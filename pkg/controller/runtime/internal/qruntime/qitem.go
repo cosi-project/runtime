@@ -5,6 +5,8 @@
 package qruntime
 
 import (
+	"go.uber.org/zap/zapcore"
+
 	"github.com/cosi-project/runtime/pkg/controller/runtime/internal/reduced"
 	"github.com/cosi-project/runtime/pkg/resource"
 )
@@ -27,6 +29,15 @@ func (job QJob) String() string {
 	default:
 		return "unknown"
 	}
+}
+
+// LogLevel returns the log level used for reconcile-outcome logs of this job kind.
+func (job QJob) LogLevel() zapcore.Level {
+	if job == QJobMap {
+		return zapcore.DebugLevel
+	}
+
+	return zapcore.InfoLevel
 }
 
 // NewQItem creates a new QItem.

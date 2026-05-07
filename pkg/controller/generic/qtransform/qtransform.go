@@ -268,7 +268,7 @@ func (ctrl *QController[Input, Output]) reconcileRunning(ctx context.Context, lo
 		}
 
 		if xerrors.TagIs[SkipReconcileTag](err) {
-			return nil
+			return err
 		}
 
 		if xerrors.TagIs[DestroyOutputTag](err) {
@@ -328,10 +328,6 @@ func (ctrl *QController[Input, Output]) handleDestroyOutput(ctx context.Context,
 func (ctrl *QController[Input, Output]) reconcileTearingDown(ctx context.Context, logger *zap.Logger, r controller.QRuntime, in Input, outPtr resource.Pointer) error {
 	if ctrl.finalizerRemovalFunc != nil {
 		if err := ctrl.finalizerRemovalFunc(ctx, r, logger, in); err != nil {
-			if xerrors.TagIs[SkipReconcileTag](err) {
-				return nil
-			}
-
 			return err
 		}
 	}
