@@ -1384,7 +1384,7 @@ func (suite *StateSuite) TestContextWithTeardown() {
 	assertContextIsNotCanceled(suite.T(), ctx1)
 	assertContextIsNotCanceled(suite.T(), ctx2)
 
-	suite.Require().NoError(suite.State.Destroy(ctx1, path1.Metadata()))
+	suite.Require().NoError(suite.State.Destroy(ctx, path1.Metadata()))
 
 	assertContextIsCanceled(suite.T(), ctx1)
 	assertContextIsNotCanceled(suite.T(), ctx2)
