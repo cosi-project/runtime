@@ -8,10 +8,16 @@ import (
 	"fmt"
 
 	"github.com/cosi-project/runtime/pkg/resource"
+	"github.com/cosi-project/runtime/pkg/resource/meta"
 )
 
-// PathResourceType is the type of PathResource.
-const PathResourceType = resource.Type("os/path")
+const (
+	// PathResourceType is the type of PathResource.
+	PathResourceType = resource.Type("os/path")
+
+	// PathResourceDefaultNamespace is the default namespace for the PathResource.
+	PathResourceDefaultNamespace = "default"
+)
 
 // PathResource represents a path in the filesystem.
 //
@@ -33,6 +39,11 @@ func NewPathResource(ns resource.Namespace, path string) *PathResource {
 	}
 
 	return r
+}
+
+// NewPathResourceWithDefaultNS creates new PathResource with default namespace.
+func NewPathResourceWithDefaultNS(path string) *PathResource {
+	return NewPathResource(PathResourceDefaultNamespace, path)
 }
 
 // Metadata implements resource.Resource.
@@ -61,4 +72,11 @@ func (path *PathResource) UnmarshalProto(md *resource.Metadata, protoSpec []byte
 	}
 
 	return nil
+}
+
+func (path *PathResource) ResourceDefinition() meta.ResourceDefinitionSpec {
+	return meta.ResourceDefinitionSpec{
+		Type:             PathResourceType,
+		DefaultNamespace: PathResourceDefaultNamespace,
+	}
 }

@@ -8,7 +8,6 @@ package server
 import (
 	"context"
 
-	"github.com/siderolabs/go-pointer"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 
@@ -246,6 +245,64 @@ func (server *State) Destroy(ctx context.Context, req *v1alpha1.DestroyRequest) 
 	return &v1alpha1.DestroyResponse{}, nil
 }
 
+// Teardown a resource (mark as being destroyed).
+//
+// If a resource doesn't exist, error is returned.
+// It's not an error to tear down a resource which is already being torn down.
+//
+// Teardown delegates to the wrapped CoreState if it implements [state.Teardowner];
+// otherwise it falls back to the default Get + Update implementation, performed
+// in-process against the wrapped state.
+func (server *State) Teardown(ctx context.Context, req *v1alpha1.TeardownRequest) (*v1alpha1.TeardownResponse, error) {
+	ready, err := state.WrapCore(server.state).Teardown(
+		ctx,
+		resource.NewMetadata(req.GetNamespace(), req.GetType(), req.GetId(), resource.VersionUndefined),
+		state.WithTeardownOwner(req.GetOptions().GetOwner()),
+	)
+
+	switch {
+	case state.IsNotFoundError(err):
+		return nil, status.Error(codes.NotFound, err.Error())
+	case state.IsOwnerConflictError(err):
+		return nil, status.Error(codes.PermissionDenied, err.Error())
+	case state.IsConflictError(err):
+		return nil, status.Error(codes.FailedPrecondition, err.Error())
+	case err != nil:
+		return nil, err
+	}
+
+	return &v1alpha1.TeardownResponse{DestroyReady: ready}, nil
+}
+
+// TeardownAndDestroy tears down a resource and destroys it once all finalizers are gone.
+//
+// The call blocks until the resource has no pending finalizers and has been destroyed.
+//
+// TeardownAndDestroy delegates to the wrapped CoreState if it implements
+// [state.TeardownAndDestroyer]; otherwise it falls back to the default
+// Teardown + WatchFor + Destroy implementation, performed in-process against
+// the wrapped state.
+func (server *State) TeardownAndDestroy(ctx context.Context, req *v1alpha1.TeardownAndDestroyRequest) (*v1alpha1.TeardownAndDestroyResponse, error) {
+	err := state.WrapCore(server.state).TeardownAndDestroy(
+		ctx,
+		resource.NewMetadata(req.GetNamespace(), req.GetType(), req.GetId(), resource.VersionUndefined),
+		state.WithTeardownAndDestroyOwner(req.GetOptions().GetOwner()),
+	)
+
+	switch {
+	case state.IsNotFoundError(err):
+		return nil, status.Error(codes.NotFound, err.Error())
+	case state.IsOwnerConflictError(err):
+		return nil, status.Error(codes.PermissionDenied, err.Error())
+	case state.IsConflictError(err):
+		return nil, status.Error(codes.FailedPrecondition, err.Error())
+	case err != nil:
+		return nil, err
+	}
+
+	return &v1alpha1.TeardownAndDestroyResponse{}, nil
+}
+
 // Watch state of a resource by (namespace, type) or a specific resource by (namespace, type, id).
 //
 // It's fine to watch for a resource which doesn't exist yet.
@@ -435,7 +492,7 @@ func mapEvent(apiVersion int32, event state.Event) (*v1alpha1.Event, error) {
 	var protoError *string
 
 	if event.Error != nil {
-		protoError = pointer.To(event.Error.Error())
+		protoError = new(event.Error.Error())
 	}
 
 	var eventType v1alpha1.EventType

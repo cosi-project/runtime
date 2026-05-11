@@ -9,7 +9,6 @@ import (
 	"testing"
 
 	"github.com/siderolabs/gen/xslices"
-	"github.com/siderolabs/go-pointer"
 	"github.com/stretchr/testify/require"
 
 	"github.com/cosi-project/runtime/pkg/resource"
@@ -20,7 +19,7 @@ import (
 
 // DestroyAll performs graceful teardown/destroy sequence for all resources of type.
 func DestroyAll[R ResourceWithRD](ctx context.Context, t *testing.T, st state.State, opts ...state.DestroyOption) {
-	Destroy[R](ctx, t, st, ResourceIDsWithOwner[R](ctx, t, st, pointer.To("")))
+	Destroy[R](ctx, t, st, ResourceIDsWithOwner[R](ctx, t, st, new("")))
 }
 
 // Destroy performs graceful teardown/destroy sequence for specified IDs.

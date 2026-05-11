@@ -8,7 +8,6 @@ import (
 	"testing"
 
 	"github.com/siderolabs/gen/ensure"
-	"github.com/siderolabs/go-pointer"
 	"github.com/stretchr/testify/require"
 	"go.yaml.in/yaml/v4"
 
@@ -59,7 +58,7 @@ func TestYAMLResource(t *testing.T) {
 	original := NewTestResource("id", TestSpec{
 		Value: &v1alpha1.UpdateOptions{
 			Owner:         "some owner",
-			ExpectedPhase: pointer.To(resource.Phase(0).String()),
+			ExpectedPhase: new(resource.Phase(0).String()),
 		},
 	})
 

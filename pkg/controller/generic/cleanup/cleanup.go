@@ -446,7 +446,7 @@ func containsInput(result []controller.Input, input controller.Input) bool {
 	for _, i := range result {
 		if i.Type == input.Type && i.Namespace == input.Namespace {
 			if i.Kind != input.Kind {
-				panic(fmt.Errorf("input %q has different kinds: %q and %q", i.Type, i.Kind, input.Kind))
+				panic(fmt.Errorf("input %q has different kinds: %d and %d", i.Type, i.Kind, input.Kind))
 			}
 
 			return true

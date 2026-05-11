@@ -110,6 +110,36 @@ type CoreState interface {
 // UpdaterFunc should also bump resource version.
 type UpdaterFunc func(resource.Resource) error
 
+// Teardowner is an optional interface a CoreState implementation may satisfy
+// to provide a native Teardown that does not require a separate Get+Update.
+//
+// When the wrapped CoreState satisfies Teardowner, [WrapCore]'s [State.Teardown]
+// delegates directly to it; otherwise the default Get+Update fallback is used.
+//
+// This interface is primarily useful for transport-layer adapters (e.g. the
+// gRPC client) where the default Get+Update implementation translates into
+// multiple network round-trips, and for state implementations that can perform
+// the phase change atomically.
+type Teardowner interface {
+	Teardown(context.Context, resource.Pointer, ...TeardownOption) (bool, error)
+}
+
+// TeardownAndDestroyer is an optional interface a CoreState implementation may
+// satisfy to provide a native TeardownAndDestroy that does not require the
+// caller to watch the resource between teardown and destroy.
+//
+// When the wrapped CoreState satisfies TeardownAndDestroyer, [WrapCore]'s
+// [State.TeardownAndDestroy] delegates directly to it; otherwise the default
+// Teardown + WatchFor + Destroy fallback is used.
+//
+// This interface is primarily useful for transport-layer adapters (e.g. the
+// gRPC client) where the default implementation requires a Watch with read
+// access to the resource. With this interface the wait happens server-side
+// and the caller observes only the final result.
+type TeardownAndDestroyer interface {
+	TeardownAndDestroy(context.Context, resource.Pointer, ...TeardownAndDestroyOption) error
+}
+
 // State extends CoreState with additional features which can be implemented on any CoreState.
 type State interface {
 	CoreState

@@ -1112,6 +1112,311 @@ func (x *WatchResponse) GetEvent() []*Event {
 	return nil
 }
 
+type TeardownRequest struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Namespace     string                 `protobuf:"bytes,1,opt,name=namespace,proto3" json:"namespace,omitempty"`
+	Type          string                 `protobuf:"bytes,2,opt,name=type,proto3" json:"type,omitempty"`
+	Id            string                 `protobuf:"bytes,3,opt,name=id,proto3" json:"id,omitempty"`
+	Options       *TeardownOptions       `protobuf:"bytes,4,opt,name=options,proto3" json:"options,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *TeardownRequest) Reset() {
+	*x = TeardownRequest{}
+	mi := &file_v1alpha1_state_proto_msgTypes[19]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *TeardownRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*TeardownRequest) ProtoMessage() {}
+
+func (x *TeardownRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_v1alpha1_state_proto_msgTypes[19]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use TeardownRequest.ProtoReflect.Descriptor instead.
+func (*TeardownRequest) Descriptor() ([]byte, []int) {
+	return file_v1alpha1_state_proto_rawDescGZIP(), []int{19}
+}
+
+func (x *TeardownRequest) GetNamespace() string {
+	if x != nil {
+		return x.Namespace
+	}
+	return ""
+}
+
+func (x *TeardownRequest) GetType() string {
+	if x != nil {
+		return x.Type
+	}
+	return ""
+}
+
+func (x *TeardownRequest) GetId() string {
+	if x != nil {
+		return x.Id
+	}
+	return ""
+}
+
+func (x *TeardownRequest) GetOptions() *TeardownOptions {
+	if x != nil {
+		return x.Options
+	}
+	return nil
+}
+
+type TeardownOptions struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Owner         string                 `protobuf:"bytes,1,opt,name=owner,proto3" json:"owner,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *TeardownOptions) Reset() {
+	*x = TeardownOptions{}
+	mi := &file_v1alpha1_state_proto_msgTypes[20]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *TeardownOptions) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*TeardownOptions) ProtoMessage() {}
+
+func (x *TeardownOptions) ProtoReflect() protoreflect.Message {
+	mi := &file_v1alpha1_state_proto_msgTypes[20]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use TeardownOptions.ProtoReflect.Descriptor instead.
+func (*TeardownOptions) Descriptor() ([]byte, []int) {
+	return file_v1alpha1_state_proto_rawDescGZIP(), []int{20}
+}
+
+func (x *TeardownOptions) GetOwner() string {
+	if x != nil {
+		return x.Owner
+	}
+	return ""
+}
+
+type TeardownResponse struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// DestroyReady is true when the resource has no pending finalizers and is ready to be destroyed.
+	DestroyReady  bool `protobuf:"varint,1,opt,name=destroy_ready,json=destroyReady,proto3" json:"destroy_ready,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *TeardownResponse) Reset() {
+	*x = TeardownResponse{}
+	mi := &file_v1alpha1_state_proto_msgTypes[21]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *TeardownResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*TeardownResponse) ProtoMessage() {}
+
+func (x *TeardownResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_v1alpha1_state_proto_msgTypes[21]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use TeardownResponse.ProtoReflect.Descriptor instead.
+func (*TeardownResponse) Descriptor() ([]byte, []int) {
+	return file_v1alpha1_state_proto_rawDescGZIP(), []int{21}
+}
+
+func (x *TeardownResponse) GetDestroyReady() bool {
+	if x != nil {
+		return x.DestroyReady
+	}
+	return false
+}
+
+type TeardownAndDestroyRequest struct {
+	state         protoimpl.MessageState     `protogen:"open.v1"`
+	Namespace     string                     `protobuf:"bytes,1,opt,name=namespace,proto3" json:"namespace,omitempty"`
+	Type          string                     `protobuf:"bytes,2,opt,name=type,proto3" json:"type,omitempty"`
+	Id            string                     `protobuf:"bytes,3,opt,name=id,proto3" json:"id,omitempty"`
+	Options       *TeardownAndDestroyOptions `protobuf:"bytes,4,opt,name=options,proto3" json:"options,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *TeardownAndDestroyRequest) Reset() {
+	*x = TeardownAndDestroyRequest{}
+	mi := &file_v1alpha1_state_proto_msgTypes[22]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *TeardownAndDestroyRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*TeardownAndDestroyRequest) ProtoMessage() {}
+
+func (x *TeardownAndDestroyRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_v1alpha1_state_proto_msgTypes[22]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use TeardownAndDestroyRequest.ProtoReflect.Descriptor instead.
+func (*TeardownAndDestroyRequest) Descriptor() ([]byte, []int) {
+	return file_v1alpha1_state_proto_rawDescGZIP(), []int{22}
+}
+
+func (x *TeardownAndDestroyRequest) GetNamespace() string {
+	if x != nil {
+		return x.Namespace
+	}
+	return ""
+}
+
+func (x *TeardownAndDestroyRequest) GetType() string {
+	if x != nil {
+		return x.Type
+	}
+	return ""
+}
+
+func (x *TeardownAndDestroyRequest) GetId() string {
+	if x != nil {
+		return x.Id
+	}
+	return ""
+}
+
+func (x *TeardownAndDestroyRequest) GetOptions() *TeardownAndDestroyOptions {
+	if x != nil {
+		return x.Options
+	}
+	return nil
+}
+
+type TeardownAndDestroyOptions struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Owner         string                 `protobuf:"bytes,1,opt,name=owner,proto3" json:"owner,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *TeardownAndDestroyOptions) Reset() {
+	*x = TeardownAndDestroyOptions{}
+	mi := &file_v1alpha1_state_proto_msgTypes[23]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *TeardownAndDestroyOptions) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*TeardownAndDestroyOptions) ProtoMessage() {}
+
+func (x *TeardownAndDestroyOptions) ProtoReflect() protoreflect.Message {
+	mi := &file_v1alpha1_state_proto_msgTypes[23]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use TeardownAndDestroyOptions.ProtoReflect.Descriptor instead.
+func (*TeardownAndDestroyOptions) Descriptor() ([]byte, []int) {
+	return file_v1alpha1_state_proto_rawDescGZIP(), []int{23}
+}
+
+func (x *TeardownAndDestroyOptions) GetOwner() string {
+	if x != nil {
+		return x.Owner
+	}
+	return ""
+}
+
+type TeardownAndDestroyResponse struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *TeardownAndDestroyResponse) Reset() {
+	*x = TeardownAndDestroyResponse{}
+	mi := &file_v1alpha1_state_proto_msgTypes[24]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *TeardownAndDestroyResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*TeardownAndDestroyResponse) ProtoMessage() {}
+
+func (x *TeardownAndDestroyResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_v1alpha1_state_proto_msgTypes[24]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use TeardownAndDestroyResponse.ProtoReflect.Descriptor instead.
+func (*TeardownAndDestroyResponse) Descriptor() ([]byte, []int) {
+	return file_v1alpha1_state_proto_rawDescGZIP(), []int{24}
+}
+
 var File_v1alpha1_state_proto protoreflect.FileDescriptor
 
 const file_v1alpha1_state_proto_rawDesc = "" +
@@ -1192,21 +1497,40 @@ const file_v1alpha1_state_proto_rawDesc = "" +
 	"\x12bootstrap_bookmark\x18\a \x01(\bR\x11bootstrapBookmarkB\x16\n" +
 	"\x14_start_from_bookmark\";\n" +
 	"\rWatchResponse\x12*\n" +
-	"\x05event\x18\x01 \x03(\v2\x14.cosi.resource.EventR\x05event*]\n" +
+	"\x05event\x18\x01 \x03(\v2\x14.cosi.resource.EventR\x05event\"\x8d\x01\n" +
+	"\x0fTeardownRequest\x12\x1c\n" +
+	"\tnamespace\x18\x01 \x01(\tR\tnamespace\x12\x12\n" +
+	"\x04type\x18\x02 \x01(\tR\x04type\x12\x0e\n" +
+	"\x02id\x18\x03 \x01(\tR\x02id\x128\n" +
+	"\aoptions\x18\x04 \x01(\v2\x1e.cosi.resource.TeardownOptionsR\aoptions\"'\n" +
+	"\x0fTeardownOptions\x12\x14\n" +
+	"\x05owner\x18\x01 \x01(\tR\x05owner\"7\n" +
+	"\x10TeardownResponse\x12#\n" +
+	"\rdestroy_ready\x18\x01 \x01(\bR\fdestroyReady\"\xa1\x01\n" +
+	"\x19TeardownAndDestroyRequest\x12\x1c\n" +
+	"\tnamespace\x18\x01 \x01(\tR\tnamespace\x12\x12\n" +
+	"\x04type\x18\x02 \x01(\tR\x04type\x12\x0e\n" +
+	"\x02id\x18\x03 \x01(\tR\x02id\x12B\n" +
+	"\aoptions\x18\x04 \x01(\v2(.cosi.resource.TeardownAndDestroyOptionsR\aoptions\"1\n" +
+	"\x19TeardownAndDestroyOptions\x12\x14\n" +
+	"\x05owner\x18\x01 \x01(\tR\x05owner\"\x1c\n" +
+	"\x1aTeardownAndDestroyResponse*]\n" +
 	"\tEventType\x12\v\n" +
 	"\aCREATED\x10\x00\x12\v\n" +
 	"\aUPDATED\x10\x01\x12\r\n" +
 	"\tDESTROYED\x10\x02\x12\x10\n" +
 	"\fBOOTSTRAPPED\x10\x03\x12\v\n" +
 	"\aERRORED\x10\x04\x12\b\n" +
-	"\x04NOOP\x10\x052\xa6\x03\n" +
+	"\x04NOOP\x10\x052\xde\x04\n" +
 	"\x05State\x12<\n" +
 	"\x03Get\x12\x19.cosi.resource.GetRequest\x1a\x1a.cosi.resource.GetResponse\x12A\n" +
 	"\x04List\x12\x1a.cosi.resource.ListRequest\x1a\x1b.cosi.resource.ListResponse0\x01\x12E\n" +
 	"\x06Create\x12\x1c.cosi.resource.CreateRequest\x1a\x1d.cosi.resource.CreateResponse\x12E\n" +
 	"\x06Update\x12\x1c.cosi.resource.UpdateRequest\x1a\x1d.cosi.resource.UpdateResponse\x12H\n" +
 	"\aDestroy\x12\x1d.cosi.resource.DestroyRequest\x1a\x1e.cosi.resource.DestroyResponse\x12D\n" +
-	"\x05Watch\x12\x1b.cosi.resource.WatchRequest\x1a\x1c.cosi.resource.WatchResponse0\x01B.Z,github.com/cosi-project/runtime/api/v1alpha1b\x06proto3"
+	"\x05Watch\x12\x1b.cosi.resource.WatchRequest\x1a\x1c.cosi.resource.WatchResponse0\x01\x12K\n" +
+	"\bTeardown\x12\x1e.cosi.resource.TeardownRequest\x1a\x1f.cosi.resource.TeardownResponse\x12i\n" +
+	"\x12TeardownAndDestroy\x12(.cosi.resource.TeardownAndDestroyRequest\x1a).cosi.resource.TeardownAndDestroyResponseB.Z,github.com/cosi-project/runtime/api/v1alpha1b\x06proto3"
 
 var (
 	file_v1alpha1_state_proto_rawDescOnce sync.Once
@@ -1221,70 +1545,82 @@ func file_v1alpha1_state_proto_rawDescGZIP() []byte {
 }
 
 var file_v1alpha1_state_proto_enumTypes = make([]protoimpl.EnumInfo, 1)
-var file_v1alpha1_state_proto_msgTypes = make([]protoimpl.MessageInfo, 19)
+var file_v1alpha1_state_proto_msgTypes = make([]protoimpl.MessageInfo, 25)
 var file_v1alpha1_state_proto_goTypes = []any{
-	(EventType)(0),          // 0: cosi.resource.EventType
-	(*Event)(nil),           // 1: cosi.resource.Event
-	(*GetRequest)(nil),      // 2: cosi.resource.GetRequest
-	(*GetOptions)(nil),      // 3: cosi.resource.GetOptions
-	(*GetResponse)(nil),     // 4: cosi.resource.GetResponse
-	(*ListRequest)(nil),     // 5: cosi.resource.ListRequest
-	(*ListOptions)(nil),     // 6: cosi.resource.ListOptions
-	(*ListResponse)(nil),    // 7: cosi.resource.ListResponse
-	(*CreateRequest)(nil),   // 8: cosi.resource.CreateRequest
-	(*CreateOptions)(nil),   // 9: cosi.resource.CreateOptions
-	(*CreateResponse)(nil),  // 10: cosi.resource.CreateResponse
-	(*UpdateRequest)(nil),   // 11: cosi.resource.UpdateRequest
-	(*UpdateOptions)(nil),   // 12: cosi.resource.UpdateOptions
-	(*UpdateResponse)(nil),  // 13: cosi.resource.UpdateResponse
-	(*DestroyRequest)(nil),  // 14: cosi.resource.DestroyRequest
-	(*DestroyOptions)(nil),  // 15: cosi.resource.DestroyOptions
-	(*DestroyResponse)(nil), // 16: cosi.resource.DestroyResponse
-	(*WatchRequest)(nil),    // 17: cosi.resource.WatchRequest
-	(*WatchOptions)(nil),    // 18: cosi.resource.WatchOptions
-	(*WatchResponse)(nil),   // 19: cosi.resource.WatchResponse
-	(*Resource)(nil),        // 20: cosi.resource.Resource
-	(*LabelQuery)(nil),      // 21: cosi.resource.LabelQuery
-	(*IDQuery)(nil),         // 22: cosi.resource.IDQuery
+	(EventType)(0),                     // 0: cosi.resource.EventType
+	(*Event)(nil),                      // 1: cosi.resource.Event
+	(*GetRequest)(nil),                 // 2: cosi.resource.GetRequest
+	(*GetOptions)(nil),                 // 3: cosi.resource.GetOptions
+	(*GetResponse)(nil),                // 4: cosi.resource.GetResponse
+	(*ListRequest)(nil),                // 5: cosi.resource.ListRequest
+	(*ListOptions)(nil),                // 6: cosi.resource.ListOptions
+	(*ListResponse)(nil),               // 7: cosi.resource.ListResponse
+	(*CreateRequest)(nil),              // 8: cosi.resource.CreateRequest
+	(*CreateOptions)(nil),              // 9: cosi.resource.CreateOptions
+	(*CreateResponse)(nil),             // 10: cosi.resource.CreateResponse
+	(*UpdateRequest)(nil),              // 11: cosi.resource.UpdateRequest
+	(*UpdateOptions)(nil),              // 12: cosi.resource.UpdateOptions
+	(*UpdateResponse)(nil),             // 13: cosi.resource.UpdateResponse
+	(*DestroyRequest)(nil),             // 14: cosi.resource.DestroyRequest
+	(*DestroyOptions)(nil),             // 15: cosi.resource.DestroyOptions
+	(*DestroyResponse)(nil),            // 16: cosi.resource.DestroyResponse
+	(*WatchRequest)(nil),               // 17: cosi.resource.WatchRequest
+	(*WatchOptions)(nil),               // 18: cosi.resource.WatchOptions
+	(*WatchResponse)(nil),              // 19: cosi.resource.WatchResponse
+	(*TeardownRequest)(nil),            // 20: cosi.resource.TeardownRequest
+	(*TeardownOptions)(nil),            // 21: cosi.resource.TeardownOptions
+	(*TeardownResponse)(nil),           // 22: cosi.resource.TeardownResponse
+	(*TeardownAndDestroyRequest)(nil),  // 23: cosi.resource.TeardownAndDestroyRequest
+	(*TeardownAndDestroyOptions)(nil),  // 24: cosi.resource.TeardownAndDestroyOptions
+	(*TeardownAndDestroyResponse)(nil), // 25: cosi.resource.TeardownAndDestroyResponse
+	(*Resource)(nil),                   // 26: cosi.resource.Resource
+	(*LabelQuery)(nil),                 // 27: cosi.resource.LabelQuery
+	(*IDQuery)(nil),                    // 28: cosi.resource.IDQuery
 }
 var file_v1alpha1_state_proto_depIdxs = []int32{
-	20, // 0: cosi.resource.Event.resource:type_name -> cosi.resource.Resource
-	20, // 1: cosi.resource.Event.old:type_name -> cosi.resource.Resource
+	26, // 0: cosi.resource.Event.resource:type_name -> cosi.resource.Resource
+	26, // 1: cosi.resource.Event.old:type_name -> cosi.resource.Resource
 	0,  // 2: cosi.resource.Event.event_type:type_name -> cosi.resource.EventType
 	3,  // 3: cosi.resource.GetRequest.options:type_name -> cosi.resource.GetOptions
-	20, // 4: cosi.resource.GetResponse.resource:type_name -> cosi.resource.Resource
+	26, // 4: cosi.resource.GetResponse.resource:type_name -> cosi.resource.Resource
 	6,  // 5: cosi.resource.ListRequest.options:type_name -> cosi.resource.ListOptions
-	21, // 6: cosi.resource.ListOptions.label_query:type_name -> cosi.resource.LabelQuery
-	22, // 7: cosi.resource.ListOptions.id_query:type_name -> cosi.resource.IDQuery
-	20, // 8: cosi.resource.ListResponse.resource:type_name -> cosi.resource.Resource
-	20, // 9: cosi.resource.CreateRequest.resource:type_name -> cosi.resource.Resource
+	27, // 6: cosi.resource.ListOptions.label_query:type_name -> cosi.resource.LabelQuery
+	28, // 7: cosi.resource.ListOptions.id_query:type_name -> cosi.resource.IDQuery
+	26, // 8: cosi.resource.ListResponse.resource:type_name -> cosi.resource.Resource
+	26, // 9: cosi.resource.CreateRequest.resource:type_name -> cosi.resource.Resource
 	9,  // 10: cosi.resource.CreateRequest.options:type_name -> cosi.resource.CreateOptions
-	20, // 11: cosi.resource.CreateResponse.resource:type_name -> cosi.resource.Resource
-	20, // 12: cosi.resource.UpdateRequest.new_resource:type_name -> cosi.resource.Resource
+	26, // 11: cosi.resource.CreateResponse.resource:type_name -> cosi.resource.Resource
+	26, // 12: cosi.resource.UpdateRequest.new_resource:type_name -> cosi.resource.Resource
 	12, // 13: cosi.resource.UpdateRequest.options:type_name -> cosi.resource.UpdateOptions
-	20, // 14: cosi.resource.UpdateResponse.resource:type_name -> cosi.resource.Resource
+	26, // 14: cosi.resource.UpdateResponse.resource:type_name -> cosi.resource.Resource
 	15, // 15: cosi.resource.DestroyRequest.options:type_name -> cosi.resource.DestroyOptions
 	18, // 16: cosi.resource.WatchRequest.options:type_name -> cosi.resource.WatchOptions
-	21, // 17: cosi.resource.WatchOptions.label_query:type_name -> cosi.resource.LabelQuery
-	22, // 18: cosi.resource.WatchOptions.id_query:type_name -> cosi.resource.IDQuery
+	27, // 17: cosi.resource.WatchOptions.label_query:type_name -> cosi.resource.LabelQuery
+	28, // 18: cosi.resource.WatchOptions.id_query:type_name -> cosi.resource.IDQuery
 	1,  // 19: cosi.resource.WatchResponse.event:type_name -> cosi.resource.Event
-	2,  // 20: cosi.resource.State.Get:input_type -> cosi.resource.GetRequest
-	5,  // 21: cosi.resource.State.List:input_type -> cosi.resource.ListRequest
-	8,  // 22: cosi.resource.State.Create:input_type -> cosi.resource.CreateRequest
-	11, // 23: cosi.resource.State.Update:input_type -> cosi.resource.UpdateRequest
-	14, // 24: cosi.resource.State.Destroy:input_type -> cosi.resource.DestroyRequest
-	17, // 25: cosi.resource.State.Watch:input_type -> cosi.resource.WatchRequest
-	4,  // 26: cosi.resource.State.Get:output_type -> cosi.resource.GetResponse
-	7,  // 27: cosi.resource.State.List:output_type -> cosi.resource.ListResponse
-	10, // 28: cosi.resource.State.Create:output_type -> cosi.resource.CreateResponse
-	13, // 29: cosi.resource.State.Update:output_type -> cosi.resource.UpdateResponse
-	16, // 30: cosi.resource.State.Destroy:output_type -> cosi.resource.DestroyResponse
-	19, // 31: cosi.resource.State.Watch:output_type -> cosi.resource.WatchResponse
-	26, // [26:32] is the sub-list for method output_type
-	20, // [20:26] is the sub-list for method input_type
-	20, // [20:20] is the sub-list for extension type_name
-	20, // [20:20] is the sub-list for extension extendee
-	0,  // [0:20] is the sub-list for field type_name
+	21, // 20: cosi.resource.TeardownRequest.options:type_name -> cosi.resource.TeardownOptions
+	24, // 21: cosi.resource.TeardownAndDestroyRequest.options:type_name -> cosi.resource.TeardownAndDestroyOptions
+	2,  // 22: cosi.resource.State.Get:input_type -> cosi.resource.GetRequest
+	5,  // 23: cosi.resource.State.List:input_type -> cosi.resource.ListRequest
+	8,  // 24: cosi.resource.State.Create:input_type -> cosi.resource.CreateRequest
+	11, // 25: cosi.resource.State.Update:input_type -> cosi.resource.UpdateRequest
+	14, // 26: cosi.resource.State.Destroy:input_type -> cosi.resource.DestroyRequest
+	17, // 27: cosi.resource.State.Watch:input_type -> cosi.resource.WatchRequest
+	20, // 28: cosi.resource.State.Teardown:input_type -> cosi.resource.TeardownRequest
+	23, // 29: cosi.resource.State.TeardownAndDestroy:input_type -> cosi.resource.TeardownAndDestroyRequest
+	4,  // 30: cosi.resource.State.Get:output_type -> cosi.resource.GetResponse
+	7,  // 31: cosi.resource.State.List:output_type -> cosi.resource.ListResponse
+	10, // 32: cosi.resource.State.Create:output_type -> cosi.resource.CreateResponse
+	13, // 33: cosi.resource.State.Update:output_type -> cosi.resource.UpdateResponse
+	16, // 34: cosi.resource.State.Destroy:output_type -> cosi.resource.DestroyResponse
+	19, // 35: cosi.resource.State.Watch:output_type -> cosi.resource.WatchResponse
+	22, // 36: cosi.resource.State.Teardown:output_type -> cosi.resource.TeardownResponse
+	25, // 37: cosi.resource.State.TeardownAndDestroy:output_type -> cosi.resource.TeardownAndDestroyResponse
+	30, // [30:38] is the sub-list for method output_type
+	22, // [22:30] is the sub-list for method input_type
+	22, // [22:22] is the sub-list for extension type_name
+	22, // [22:22] is the sub-list for extension extendee
+	0,  // [0:22] is the sub-list for field type_name
 }
 
 func init() { file_v1alpha1_state_proto_init() }
@@ -1303,7 +1639,7 @@ func file_v1alpha1_state_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_v1alpha1_state_proto_rawDesc), len(file_v1alpha1_state_proto_rawDesc)),
 			NumEnums:      1,
-			NumMessages:   19,
+			NumMessages:   25,
 			NumExtensions: 0,
 			NumServices:   1,
 		},

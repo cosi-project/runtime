@@ -34,7 +34,7 @@ func (v Version) Value() uint64 {
 // Next returns a new incremented version.
 func (v Version) Next() Version {
 	return Version{
-		uint64: pointer.To(pointer.SafeDeref(v.uint64) + 1),
+		uint64: new(pointer.SafeDeref(v.uint64) + 1),
 	}
 }
 
@@ -67,6 +67,6 @@ func ParseVersion(ver string) (Version, error) {
 	}
 
 	return Version{
-		uint64: pointer.To(uint64(intVersion)),
+		uint64: new(uint64(intVersion)),
 	}, nil
 }

@@ -10,11 +10,11 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"sync/atomic"
 	"time"
 
 	"github.com/cenkalti/backoff/v4"
 	"github.com/siderolabs/gen/channel"
-	"github.com/siderolabs/go-pointer"
 	"go.uber.org/zap"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
@@ -25,12 +25,18 @@ import (
 	"github.com/cosi-project/runtime/pkg/state"
 )
 
-var _ state.CoreState = (*Adapter)(nil)
+var (
+	_ state.CoreState            = (*Adapter)(nil)
+	_ state.Teardowner           = (*Adapter)(nil)
+	_ state.TeardownAndDestroyer = (*Adapter)(nil)
+)
 
 // Adapter implement state.CoreState from the gRPC State client.
 type Adapter struct {
-	client  v1alpha1.StateClient
-	options AdapterOptions
+	client                         v1alpha1.StateClient
+	options                        AdapterOptions
+	teardownNotSupported           atomic.Bool
+	teardownAndDestroyNotSupported atomic.Bool
 }
 
 // AdapterOptions contains options for the Adapter.
@@ -244,7 +250,7 @@ func (adapter *Adapter) Update(ctx context.Context, newResource resource.Resourc
 	var expectedPhase *string
 
 	if opts.ExpectedPhase != nil {
-		expectedPhase = pointer.To(opts.ExpectedPhase.String())
+		expectedPhase = new(opts.ExpectedPhase.String())
 	}
 
 	resp, err := adapter.client.Update(ctx, &v1alpha1.UpdateRequest{
@@ -308,6 +314,127 @@ func (adapter *Adapter) Destroy(ctx context.Context, resourcePointer resource.Po
 	return nil
 }
 
+// Teardown a resource (mark as being destroyed) using a single Teardown RPC.
+//
+// Implements [state.Teardowner], so [state.WrapCore] over this Adapter routes
+// [state.State.Teardown] through this single round-trip rather than the default
+// Get + Update fallback.
+//
+// If the server does not implement the Teardown RPC (returns [codes.Unimplemented]),
+// this method transparently falls back to the default Get + Update path; the
+// fallback is sticky so subsequent calls skip the round-trip.
+func (adapter *Adapter) Teardown(ctx context.Context, resourcePointer resource.Pointer, opt ...state.TeardownOption) (bool, error) {
+	opts := state.TeardownOptions{}
+
+	for _, o := range opt {
+		o(&opts)
+	}
+
+	if adapter.teardownNotSupported.Load() {
+		return adapter.teardownFallback(ctx, resourcePointer, opts)
+	}
+
+	resp, err := adapter.client.Teardown(ctx, &v1alpha1.TeardownRequest{
+		Namespace: resourcePointer.Namespace(),
+		Type:      resourcePointer.Type(),
+		Id:        resourcePointer.ID(),
+
+		Options: &v1alpha1.TeardownOptions{
+			Owner: opts.Owner,
+		},
+	})
+	if err != nil {
+		switch status.Code(err) { //nolint:exhaustive
+		case codes.Unimplemented:
+			adapter.teardownNotSupported.Store(true)
+
+			return adapter.teardownFallback(ctx, resourcePointer, opts)
+		case codes.NotFound:
+			return false, eNotFound{err}
+		case codes.PermissionDenied:
+			return false, eOwnerConflict{eConflict{error: err, resource: resourcePointer}}
+		case codes.FailedPrecondition:
+			return false, eConflict{error: err, resource: resourcePointer}
+		default:
+			return false, err
+		}
+	}
+
+	return resp.GetDestroyReady(), nil
+}
+
+// TeardownAndDestroy a resource via a single blocking RPC.
+//
+// Implements [state.TeardownAndDestroyer], so [state.WrapCore] over this
+// Adapter routes [state.State.TeardownAndDestroy] through one server-side
+// call that handles teardown, the wait for finalizers, and destroy in-process
+// against the wrapped state.
+//
+// If the server does not implement the TeardownAndDestroy RPC (returns
+// [codes.Unimplemented]), this method transparently falls back to the default
+// Teardown + WatchFor + Destroy path; the fallback is sticky so subsequent
+// calls skip the round-trip.
+func (adapter *Adapter) TeardownAndDestroy(ctx context.Context, resourcePointer resource.Pointer, opt ...state.TeardownAndDestroyOption) error {
+	opts := state.TeardownAndDestroyOptions{}
+
+	for _, o := range opt {
+		o(&opts)
+	}
+
+	if adapter.teardownAndDestroyNotSupported.Load() {
+		return adapter.teardownAndDestroyFallback(ctx, resourcePointer, opts)
+	}
+
+	_, err := adapter.client.TeardownAndDestroy(ctx, &v1alpha1.TeardownAndDestroyRequest{
+		Namespace: resourcePointer.Namespace(),
+		Type:      resourcePointer.Type(),
+		Id:        resourcePointer.ID(),
+
+		Options: &v1alpha1.TeardownAndDestroyOptions{
+			Owner: opts.Owner,
+		},
+	})
+	if err != nil {
+		switch status.Code(err) { //nolint:exhaustive
+		case codes.Unimplemented:
+			adapter.teardownAndDestroyNotSupported.Store(true)
+
+			return adapter.teardownAndDestroyFallback(ctx, resourcePointer, opts)
+		case codes.NotFound:
+			return eNotFound{err}
+		case codes.PermissionDenied:
+			return eOwnerConflict{eConflict{error: err, resource: resourcePointer}}
+		case codes.FailedPrecondition:
+			return eConflict{error: err, resource: resourcePointer}
+		default:
+			return err
+		}
+	}
+
+	return nil
+}
+
+// adapterCoreView wraps an Adapter so the result satisfies state.CoreState
+// but neither state.Teardowner nor state.TeardownAndDestroyer. The teardown
+// fallbacks use this to drive the default paths in coreWrapper without
+// recursing back into Adapter.Teardown or Adapter.TeardownAndDestroy.
+type adapterCoreView struct {
+	state.CoreState
+}
+
+// teardownFallback runs the default Get + Update teardown via coreWrapper,
+// against an Adapter view that hides the Teardowner identity.
+func (adapter *Adapter) teardownFallback(ctx context.Context, resourcePointer resource.Pointer, opts state.TeardownOptions) (bool, error) {
+	return state.WrapCore(adapterCoreView{adapter}).Teardown(ctx, resourcePointer, state.WithTeardownOwner(opts.Owner))
+}
+
+// teardownAndDestroyFallback runs the default Teardown + WatchFor + Destroy
+// via coreWrapper, against an Adapter view that hides the
+// TeardownAndDestroyer identity.
+func (adapter *Adapter) teardownAndDestroyFallback(ctx context.Context, resourcePointer resource.Pointer, opts state.TeardownAndDestroyOptions) error {
+	return state.WrapCore(adapterCoreView{adapter}).TeardownAndDestroy(ctx, resourcePointer, state.WithTeardownAndDestroyOwner(opts.Owner))
+}
+
 // Watch state of a resource by type.
 //
 // It's fine to watch for a resource which doesn't exist yet.
@@ -324,7 +451,7 @@ func (adapter *Adapter) Watch(ctx context.Context, resourcePointer resource.Poin
 	req := &v1alpha1.WatchRequest{
 		Namespace: resourcePointer.Namespace(),
 		Type:      resourcePointer.Type(),
-		Id:        pointer.To(resourcePointer.ID()),
+		Id:        new(resourcePointer.ID()),
 		Options: &v1alpha1.WatchOptions{
 			TailEvents:        int32(opts.TailEvents),
 			StartFromBookmark: opts.StartFromBookmark,

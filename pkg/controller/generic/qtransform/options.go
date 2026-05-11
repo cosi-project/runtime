@@ -107,7 +107,7 @@ func WithExtraMappedInputKind[I generic.ResourceWithRD](mapFunc MapperFunc, inpu
 		var zeroInput I
 
 		if inputKind != controller.InputQMapped && inputKind != controller.InputQMappedDestroyReady {
-			panic(fmt.Errorf("unexpected input kind for QController %q", inputKind))
+			panic(fmt.Errorf("unexpected input kind for QController %d", inputKind))
 		}
 
 		if o.mappers == nil {

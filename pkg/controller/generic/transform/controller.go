@@ -7,6 +7,7 @@ package transform
 import (
 	"context"
 	"fmt"
+	"slices"
 	"time"
 
 	"github.com/hashicorp/go-multierror"
@@ -159,7 +160,7 @@ func (ctrl *Controller[Input, Output]) Inputs() []controller.Input {
 		inputKind = controller.InputStrong
 	}
 
-	inputs := []controller.Input{
+	return slices.Concat([]controller.Input{
 		{
 			Namespace: input.ResourceDefinition().DefaultNamespace,
 			Type:      input.ResourceDefinition().Type,
@@ -170,9 +171,7 @@ func (ctrl *Controller[Input, Output]) Inputs() []controller.Input {
 			Type:      output.ResourceDefinition().Type,
 			Kind:      controller.InputDestroyReady,
 		},
-	}
-
-	return append(inputs, ctrl.options.extraInputs...)
+	}, ctrl.options.extraInputs)
 }
 
 // Outputs implements controller.Controller interface.

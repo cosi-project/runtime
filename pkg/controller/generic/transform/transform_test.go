@@ -571,8 +571,8 @@ func TestOutputShared(t *testing.T) {
 func TestHooks(t *testing.T) {
 	setup(t, func(ctx context.Context, st state.State, runtime *runtime.Runtime) {
 		var (
-			preCalled  int64
-			postCalled int64
+			preCalled  atomic.Int64
+			postCalled atomic.Int64
 		)
 
 		ctrl := transform.NewController(
@@ -589,14 +589,14 @@ func TestHooks(t *testing.T) {
 				PreTransformHook: func(ctx context.Context, r controller.ReaderWriter) error {
 					_, err := safe.ReaderListAll[*A](ctx, r)
 
-					atomic.AddInt64(&preCalled, 1)
+					preCalled.Add(1)
 
 					return err
 				},
 				PostTransformHook: func(ctx context.Context, r controller.ReaderWriter) error {
 					_, err := safe.ReaderListAll[*B](ctx, r)
 
-					atomic.AddInt64(&postCalled, 1)
+					postCalled.Add(1)
 
 					return err
 				},
@@ -626,8 +626,8 @@ func TestHooks(t *testing.T) {
 
 		time.Sleep(time.Second)
 
-		require.LessOrEqual(t, atomic.LoadInt64(&preCalled), int64(2))
-		require.LessOrEqual(t, atomic.LoadInt64(&postCalled), int64(2))
+		require.LessOrEqual(t, preCalled.Load(), int64(2))
+		require.LessOrEqual(t, postCalled.Load(), int64(2))
 	})
 }
 
