@@ -970,7 +970,8 @@ func (suite *StateSuite) testWatchKindWithBookmarks(useAggregated, useBootstrapC
 		initial.Items = []resource.Resource{nil}
 	}
 
-	suite.Require().NoError(watchAggregateAdapter(ctx, useAggregated, suite.State, res.Metadata().Copy(), ch,
+	suite.Require().NoError(watchAggregateAdapter(
+		ctx, useAggregated, suite.State, res.Metadata().Copy(), ch,
 		state.WithBootstrapContents(useBootstrapContents),
 		state.WithBootstrapBookmark(!useBootstrapContents),
 	))
@@ -1283,7 +1284,8 @@ func (suite *StateSuite) TestLabels() {
 	suite.Require().Equal(1, list.Len())
 	suite.Assert().True(resourceEqualIgnoreVersion(path1, list.Get(0)))
 
-	list, err = safe.StateList[*PathResource](ctx, suite.State, path1.Metadata(),
+	list, err = safe.StateList[*PathResource](
+		ctx, suite.State, path1.Metadata(),
 		state.WithLabelQuery(resource.LabelEqual("app", "app2")),
 		state.WithLabelQuery(resource.LabelEqual("app", "app3")),
 	)
@@ -1307,7 +1309,8 @@ func (suite *StateSuite) TestIDQuery() {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	list, err := safe.StateList[*PathResource](ctx, suite.State, NewPathResource(ns, "").Metadata(),
+	list, err := safe.StateList[*PathResource](
+		ctx, suite.State, NewPathResource(ns, "").Metadata(),
 		state.WithIDQuery(resource.IDRegexpMatch(regexp.MustCompile(`^idquery/.+[2-4]$`))),
 	)
 	suite.Require().NoError(err)
@@ -1320,7 +1323,8 @@ func (suite *StateSuite) TestIDQuery() {
 
 	watchCh := make(chan state.Event)
 
-	suite.Require().NoError(suite.State.WatchKind(ctx, NewPathResource(ns, "").Metadata(), watchCh,
+	suite.Require().NoError(suite.State.WatchKind(
+		ctx, NewPathResource(ns, "").Metadata(), watchCh,
 		state.WithBootstrapContents(true),
 		state.WatchWithIDQuery(resource.IDRegexpMatch(regexp.MustCompile(`^idquery/.+[2-4]$`))),
 	))

@@ -16,5 +16,5 @@ func TestIsTombstone(t *testing.T) {
 	t.Parallel()
 
 	assert.True(t, resource.IsTombstone(new(resource.Tombstone)))
-	assert.False(t, resource.IsTombstone((resource.Resource)(nil)))
+	assert.False(t, resource.IsTombstone(resource.Resource(nil)))
 }

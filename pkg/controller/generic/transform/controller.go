@@ -160,18 +160,27 @@ func (ctrl *Controller[Input, Output]) Inputs() []controller.Input {
 		inputKind = controller.InputStrong
 	}
 
-	return slices.Concat([]controller.Input{
+	stdInputs := []controller.Input{
 		{
 			Namespace: input.ResourceDefinition().DefaultNamespace,
 			Type:      input.ResourceDefinition().Type,
 			Kind:      inputKind,
 		},
-		{
+	}
+
+	// avoid creating duplicate input for the output resource definition if it is the same as input
+	if input.ResourceDefinition().Type != output.ResourceDefinition().Type || input.ResourceDefinition().DefaultNamespace != output.ResourceDefinition().DefaultNamespace {
+		stdInputs = append(stdInputs, controller.Input{
 			Namespace: output.ResourceDefinition().DefaultNamespace,
 			Type:      output.ResourceDefinition().Type,
 			Kind:      controller.InputDestroyReady,
-		},
-	}, ctrl.options.extraInputs)
+		})
+	}
+
+	return slices.Concat(
+		stdInputs,
+		ctrl.options.extraInputs,
+	)
 }
 
 // Outputs implements controller.Controller interface.
@@ -317,7 +326,8 @@ func (ctrl *Controller[Input, Output]) processInputs(
 					continue
 				}
 
-				logger.Debug("added finalizer to input resource",
+				logger.Debug(
+					"added finalizer to input resource",
 					zap.Stringer("input", in.Metadata()),
 					zap.String("finalizer", ctrl.Name()),
 				)
@@ -327,7 +337,8 @@ func (ctrl *Controller[Input, Output]) processInputs(
 		if err = safe.WriterModify(ctx, r, mappedOut, func(out Output) error {
 			return ctrl.transformFunc(ctx, r, logger, in, out)
 		}); err != nil {
-			if state.IsConflictError(err,
+			if state.IsConflictError(
+				err,
 				state.WithResourceNamespace(mappedOut.Metadata().Namespace()),
 				state.WithResourceType(mappedOut.Metadata().Type()),
 			) {
@@ -340,7 +351,8 @@ func (ctrl *Controller[Input, Output]) processInputs(
 				continue
 			}
 
-			runState.multiErr = multierror.Append(runState.multiErr,
+			runState.multiErr = multierror.Append(
+				runState.multiErr,
 				fmt.Errorf("error running transform on %s(%q): %w", in.Metadata().Type(), in.Metadata().ID(), err),
 			)
 		}
@@ -432,7 +444,8 @@ func (ctrl *Controller[Input, Output]) cleanupOutputs(
 			continue
 		}
 
-		logger.Debug("triggered teardown of output resource",
+		logger.Debug(
+			"triggered teardown of output resource",
 			zap.Stringer("output", out.Metadata()),
 			zap.Bool("ready", ready),
 		)
@@ -458,7 +471,8 @@ func (ctrl *Controller[Input, Output]) cleanupOutputs(
 		if err = r.RemoveFinalizer(ctx, inMd, ctrl.Name()); err != nil {
 			runState.multiErr = multierror.Append(runState.multiErr, err)
 		} else {
-			logger.Debug("removed finalizer to input resource",
+			logger.Debug(
+				"removed finalizer to input resource",
 				zap.Stringer("input", inMd),
 				zap.String("finalizer", ctrl.Name()),
 			)

@@ -474,7 +474,8 @@ func (suite *RuntimeSuite) TestModifyWithResultController() {
 	suite.Require().NoError(suite.State.Create(suite.ctx, NewStrResource(srcNS, "id", "val-1")))
 
 	suite.Assert().NoError(retry.Constant(10*time.Second, retry.WithUnits(10*time.Millisecond)).Retry(
-		suite.assertStrObjects(targetNS, StrResourceType,
+		suite.assertStrObjects(
+			targetNS, StrResourceType,
 			[]string{"id-out", "id-out-modify-result"},
 			[]string{"val-1-modified", "val-1-valid"},
 		),
@@ -490,7 +491,8 @@ func (suite *RuntimeSuite) TestModifyWithResultController() {
 	suite.Require().NoError(err)
 
 	suite.Assert().NoError(retry.Constant(10*time.Second, retry.WithUnits(10*time.Millisecond)).Retry(
-		suite.assertStrObjects(targetNS, StrResourceType,
+		suite.assertStrObjects(
+			targetNS, StrResourceType,
 			[]string{"id-out", "id-out-modify-result"},
 			[]string{"val-2-modified", "val-2-valid"},
 		),
@@ -591,7 +593,8 @@ func (suite *RuntimeSuite) TestQIntToStrController() {
 	suite.startRuntime(ctx)
 
 	suite.Assert().NoError(retry.Constant(10*time.Second, retry.WithUnits(10*time.Millisecond)).Retry(
-		suite.assertStrObjects(targetNS, StrResourceType,
+		suite.assertStrObjects(
+			targetNS, StrResourceType,
 			[]string{"id1", "id2"},
 			[]string{"1", "2"},
 		),
@@ -600,7 +603,8 @@ func (suite *RuntimeSuite) TestQIntToStrController() {
 	suite.Require().NoError(suite.State.Create(suite.ctx, NewIntResource(srcNS, "id3", 3)))
 
 	suite.Assert().NoError(retry.Constant(10*time.Second, retry.WithUnits(10*time.Millisecond)).Retry(
-		suite.assertStrObjects(targetNS, StrResourceType,
+		suite.assertStrObjects(
+			targetNS, StrResourceType,
 			[]string{"id1", "id2", "id3"},
 			[]string{"1", "2", "3"},
 		),
@@ -613,7 +617,8 @@ func (suite *RuntimeSuite) TestQIntToStrController() {
 	suite.Require().NoError(suite.State.Update(suite.ctx, int2Resource))
 
 	suite.Assert().NoError(retry.Constant(10*time.Second, retry.WithUnits(10*time.Millisecond)).Retry(
-		suite.assertStrObjects(targetNS, StrResourceType,
+		suite.assertStrObjects(
+			targetNS, StrResourceType,
 			[]string{"id1", "id2", "id3"},
 			[]string{"1", "22", "3"},
 		),
@@ -630,7 +635,8 @@ func (suite *RuntimeSuite) TestQIntToStrController() {
 	suite.Require().NoError(suite.State.Destroy(suite.ctx, resource.NewMetadata(srcNS, IntResourceType, "id1", resource.VersionUndefined)))
 
 	suite.Assert().NoError(retry.Constant(10*time.Second, retry.WithUnits(10*time.Millisecond)).Retry(
-		suite.assertStrObjects(targetNS, StrResourceType,
+		suite.assertStrObjects(
+			targetNS, StrResourceType,
 			[]string{"id2", "id3"},
 			[]string{"22", "3"},
 		),
@@ -660,7 +666,8 @@ func (suite *RuntimeSuite) TestQIntToStrController() {
 	suite.Require().NoError(suite.State.Destroy(suite.ctx, resource.NewMetadata(srcNS, IntResourceType, "id2", resource.VersionUndefined)))
 
 	suite.Assert().NoError(retry.Constant(10*time.Second, retry.WithUnits(10*time.Millisecond)).Retry(
-		suite.assertStrObjects(targetNS, StrResourceType,
+		suite.assertStrObjects(
+			targetNS, StrResourceType,
 			[]string{"id3"},
 			[]string{"3"},
 		),
@@ -713,7 +720,8 @@ func (suite *RuntimeSuite) TestQFailingController() {
 	suite.Require().NoError(suite.State.Create(suite.ctx, NewStrResource(srcNS, "id5", "ok")))
 
 	suite.Assert().NoError(retry.Constant(10*time.Second, retry.WithUnits(10*time.Millisecond)).Retry(
-		suite.assertStrObjects(targetNS, StrResourceType,
+		suite.assertStrObjects(
+			targetNS, StrResourceType,
 			[]string{"id5"},
 			[]string{"ok"},
 		),
@@ -730,7 +738,8 @@ func (suite *RuntimeSuite) TestQFailingController() {
 	makeNoFail("id3")
 
 	suite.Assert().NoError(retry.Constant(10*time.Second, retry.WithUnits(10*time.Millisecond)).Retry(
-		suite.assertStrObjects(targetNS, StrResourceType,
+		suite.assertStrObjects(
+			targetNS, StrResourceType,
 			[]string{"id3", "id5"},
 			[]string{"no fail", "ok"},
 		),
@@ -740,7 +749,8 @@ func (suite *RuntimeSuite) TestQFailingController() {
 	makeNoFail("id2")
 
 	suite.Assert().NoError(retry.Constant(10*time.Second, retry.WithUnits(10*time.Millisecond)).Retry(
-		suite.assertStrObjects(targetNS, StrResourceType,
+		suite.assertStrObjects(
+			targetNS, StrResourceType,
 			[]string{"id2", "id3", "id4", "id5"},
 			[]string{"no fail", "no fail", "no fail", "ok"},
 		),
@@ -764,7 +774,8 @@ func (suite *RuntimeSuite) TestQIntToStrSleepingController() {
 	suite.startRuntime(suite.ctx)
 
 	suite.Assert().NoError(retry.Constant(10*time.Second, retry.WithUnits(10*time.Millisecond)).Retry(
-		suite.assertStrObjects(targetNS, StrResourceType,
+		suite.assertStrObjects(
+			targetNS, StrResourceType,
 			[]string{"id1", "id2"},
 			[]string{"1", "2"},
 		),
@@ -773,7 +784,8 @@ func (suite *RuntimeSuite) TestQIntToStrSleepingController() {
 	suite.Require().NoError(suite.State.Create(suite.ctx, NewIntResource(srcNS, "id3", 3)))
 
 	suite.Assert().NoError(retry.Constant(10*time.Second, retry.WithUnits(10*time.Millisecond)).Retry(
-		suite.assertStrObjects(targetNS, StrResourceType,
+		suite.assertStrObjects(
+			targetNS, StrResourceType,
 			[]string{"id1", "id2", "id3"},
 			[]string{"1", "2", "3"},
 		),
@@ -793,7 +805,8 @@ func (suite *RuntimeSuite) TestQIntToStrSleepingController() {
 
 	// id4 and id5 won't show up, as the controller is blocked on id10s
 	suite.Assert().NoError(retry.Constant(10*time.Second, retry.WithUnits(10*time.Millisecond)).Retry(
-		suite.assertStrObjects(targetNS, StrResourceType,
+		suite.assertStrObjects(
+			targetNS, StrResourceType,
 			[]string{"id1", "id2", "id3"},
 			[]string{"1", "2", "3"},
 		),
@@ -810,7 +823,8 @@ func (suite *RuntimeSuite) TestQIntToStrSleepingController() {
 
 	// id4 and id5 should show up
 	suite.Assert().NoError(retry.Constant(3*time.Second, retry.WithUnits(10*time.Millisecond)).Retry(
-		suite.assertStrObjects(targetNS, StrResourceType,
+		suite.assertStrObjects(
+			targetNS, StrResourceType,
 			[]string{"id1", "id2", "id3", "id4", "id5"},
 			[]string{"1", "2", "3", "4", "5"},
 		),

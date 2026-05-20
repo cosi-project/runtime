@@ -271,7 +271,8 @@ func (l *List[T]) FilterLabelQuery(opts ...resource.LabelQueryOption) List[T] {
 		opt(&labelQuery)
 	}
 
-	filteredList.Items = xslices.Filter(l.list.Items,
+	filteredList.Items = xslices.Filter(
+		l.list.Items,
 		func(r resource.Resource) bool {
 			return labelQuery.Matches(*r.Metadata().Labels())
 		},

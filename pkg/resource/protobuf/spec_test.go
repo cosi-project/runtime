@@ -95,7 +95,8 @@ func TestDynamicResourceEquality(t *testing.T) {
 
 	r1 := typed.NewResource[ReflectSpec, ReflectSpecExtension](
 		resource.NewMetadata("default", "reflectResource", "aaa", resource.VersionUndefined),
-		ReflectSpec{"test"})
+		ReflectSpec{"test"},
+	)
 
 	// pass r1 through marshal/unmarshal stage, and make sure it's still equal to itself
 	protoR, err := protobuf.FromResource(r1)

@@ -107,7 +107,8 @@ func TestProtobufWatchAbort(t *testing.T) {
 
 	stateClient := v1alpha1.NewStateClient(grpcConn)
 
-	st := state.WrapCore(client.NewAdapter(stateClient,
+	st := state.WrapCore(client.NewAdapter(
+		stateClient,
 		client.WithRetryLogger(zaptest.NewLogger(t)),
 		client.WithDisableWatchRetry(),
 	))
@@ -154,7 +155,8 @@ func testProtobufWatchRestart(t *testing.T, option state.WatchKindOption, initia
 
 	stateClient := v1alpha1.NewStateClient(grpcConn)
 
-	st := state.WrapCore(client.NewAdapter(stateClient,
+	st := state.WrapCore(client.NewAdapter(
+		stateClient,
 		client.WithRetryLogger(zaptest.NewLogger(t)),
 	))
 
@@ -236,7 +238,8 @@ func TestProtobufWatchInvalidBookmark(t *testing.T) {
 
 	stateClient := v1alpha1.NewStateClient(grpcConn)
 
-	st := state.WrapCore(client.NewAdapter(stateClient,
+	st := state.WrapCore(client.NewAdapter(
+		stateClient,
 		client.WithRetryLogger(zaptest.NewLogger(t)),
 	))
 

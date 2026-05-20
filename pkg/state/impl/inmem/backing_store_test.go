@@ -54,8 +54,10 @@ func TestLocalConformanceWithBackingStore(t *testing.T) {
 	t.Parallel()
 
 	suite.Run(t, &conformance.StateSuite{
-		State: state.WrapCore(inmem.NewStateWithOptions(
-			inmem.WithBackingStore(&backingStoreMock{store: map[string]resource.Resource{}}))("default"),
+		State: state.WrapCore(
+			inmem.NewStateWithOptions(
+				inmem.WithBackingStore(&backingStoreMock{store: map[string]resource.Resource{}}),
+			)("default"),
 		),
 		Namespaces: []resource.Namespace{"default"},
 	})

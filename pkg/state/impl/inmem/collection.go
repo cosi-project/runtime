@@ -399,7 +399,8 @@ func (collection *ResourceCollection) Watch(ctx context.Context, id resource.ID,
 
 				collection.mu.Unlock()
 
-				channel.SendWithContext(ctx, ch,
+				channel.SendWithContext(
+					ctx, ch,
 					state.Event{
 						Type: state.Errored,
 						Error: fmt.Errorf(
@@ -521,7 +522,8 @@ func (collection *ResourceCollection) WatchAll(ctx context.Context, singleCh cha
 			switch {
 			case singleCh != nil:
 				for _, res := range bootstrapList {
-					if !channel.SendWithContext(ctx, singleCh,
+					if !channel.SendWithContext(
+						ctx, singleCh,
 						state.Event{
 							Type:     state.Created,
 							Resource: res,

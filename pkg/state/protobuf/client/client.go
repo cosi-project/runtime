@@ -601,19 +601,21 @@ func (adapter *Adapter) watchAdapter(
 	sendError := func(err error) {
 		switch {
 		case singleCh != nil:
-			channel.SendWithContext(ctx, singleCh,
+			channel.SendWithContext(
+				ctx, singleCh,
 				state.Event{
 					Type:  state.Errored,
 					Error: fmt.Errorf("namespace %q type %q: %w", watchRequest.Namespace, watchRequest.Type, err),
 				},
 			)
 		case aggregatedCh != nil:
-			channel.SendWithContext(ctx, aggregatedCh, []state.Event{
-				{
-					Type:  state.Errored,
-					Error: fmt.Errorf("namespace %q type %q: %w", watchRequest.Namespace, watchRequest.Type, err),
+			channel.SendWithContext(
+				ctx, aggregatedCh, []state.Event{
+					{
+						Type:  state.Errored,
+						Error: fmt.Errorf("namespace %q type %q: %w", watchRequest.Namespace, watchRequest.Type, err),
+					},
 				},
-			},
 			)
 		}
 	}
@@ -651,7 +653,8 @@ func (adapter *Adapter) watchAdapter(
 				return nil, fmt.Errorf("maximum retry attempts: %w", err)
 			}
 
-			adapter.options.RetryLogger.Warn("watch retrying",
+			adapter.options.RetryLogger.Warn(
+				"watch retrying",
 				zap.Error(err),
 				zap.Binary("bookmark", lastBookmark),
 				zap.Duration("backoff", delay),

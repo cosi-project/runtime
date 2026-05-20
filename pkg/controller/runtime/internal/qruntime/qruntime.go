@@ -199,7 +199,8 @@ func (adapter *Adapter) listPrimary(ctx context.Context, resourceNamespace resou
 
 			interval := backoff.NextBackOff()
 
-			adapter.logger.Error("error listing primary input, retrying",
+			adapter.logger.Error(
+				"error listing primary input, retrying",
 				zap.String("namespace", resourceNamespace),
 				zap.String("type", resourceType),
 				zap.Duration("interval", interval),
@@ -220,7 +221,8 @@ func (adapter *Adapter) listPrimary(ctx context.Context, resourceNamespace resou
 			adapter.queue.Put(qitem.QKey, qitem.QValue)
 		}
 
-		adapter.logger.Debug("injected primary inputs into the queue",
+		adapter.logger.Debug(
+			"injected primary inputs into the queue",
 			zap.Int("count", len(items.Items)),
 			zap.String("namespace", resourceNamespace),
 			zap.String("type", resourceType),
@@ -297,7 +299,8 @@ func (adapter *Adapter) runReconcile(ctx context.Context) {
 			case skipped:
 				adapter.clearBackoff(item.Key())
 
-				logger.Log(item.Key().job.LogLevel(), "reconcile skipped",
+				logger.Log(
+					item.Key().job.LogLevel(), "reconcile skipped",
 					zap.String("reason", reconcileError.Error()),
 					zap.Duration("busy", busy),
 					zapSkipIfZero(interval, zap.Duration("interval", interval)),
@@ -308,7 +311,8 @@ func (adapter *Adapter) runReconcile(ctx context.Context) {
 					interval = adapter.getBackoffInterval(item.Key())
 				}
 
-				logger.Error("reconcile failed",
+				logger.Error(
+					"reconcile failed",
 					zap.Error(reconcileError),
 					zap.Duration("interval", interval),
 					zap.Duration("busy", busy),
@@ -317,7 +321,8 @@ func (adapter *Adapter) runReconcile(ctx context.Context) {
 			default:
 				adapter.clearBackoff(item.Key())
 
-				logger.Log(item.Key().job.LogLevel(), "reconcile succeeded",
+				logger.Log(
+					item.Key().job.LogLevel(), "reconcile succeeded",
 					zap.Duration("busy", busy),
 					zapSkipIfZero(interval, zap.Duration("interval", interval)),
 					zapSkipIfZero(requeued, zap.Bool("requeued", requeued)),

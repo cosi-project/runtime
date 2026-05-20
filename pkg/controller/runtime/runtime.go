@@ -110,7 +110,8 @@ func (runtime *Runtime) RegisterController(ctrl controller.Controller) error {
 		return fmt.Errorf("controller %q already registered", name)
 	}
 
-	adapter, err := rruntime.NewAdapter(ctrl,
+	adapter, err := rruntime.NewAdapter(
+		ctrl,
 		adapter.Options{
 			Logger:         runtime.logger,
 			State:          runtime.state,
@@ -332,7 +333,8 @@ eventLoop:
 		//
 		// if the resource is not cached, this section is noop
 		if e.Type == state.Bootstrapped {
-			runtime.logger.Debug("bootstrapped event received",
+			runtime.logger.Debug(
+				"bootstrapped event received",
 				zap.String("namespace", e.Resource.Metadata().Namespace()),
 				zap.String("type", e.Resource.Metadata().Type()),
 				zap.Int("cache_size", runtime.cache.Len(e.Resource.Metadata().Namespace(), e.Resource.Metadata().Type())),

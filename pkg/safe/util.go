@@ -56,7 +56,8 @@ func Input[R generic.ResourceWithRD](kind controller.InputKind) controller.Input
 func CleanupOutputs[R generic.ResourceWithRD](ctx context.Context, tracker controller.OutputTracker) error {
 	var r R
 
-	return tracker.CleanupOutputs(ctx,
+	return tracker.CleanupOutputs(
+		ctx,
 		resource.NewMetadata(
 			r.ResourceDefinition().DefaultNamespace,
 			r.ResourceDefinition().Type,

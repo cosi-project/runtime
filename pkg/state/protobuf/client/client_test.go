@@ -119,7 +119,8 @@ func TestProtobufSkipUnmarshal(t *testing.T) {
 	assert.True(t, path1.Metadata().Equal(*ev.Resource.Metadata()))
 	assert.IsType(t, &protobuf.Resource{}, ev.Resource)
 
-	require.NoError(t, grpcState.WatchKind(ctx, path1.Metadata(), ch,
+	require.NoError(t, grpcState.WatchKind(
+		ctx, path1.Metadata(), ch,
 		state.WithBootstrapContents(true),
 		state.WithWatchKindUnmarshalOptions(state.WithSkipProtobufUnmarshal()),
 	))

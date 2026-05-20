@@ -361,7 +361,8 @@ func TestDestroyReconcileTeardown(t *testing.T) {
 			NewABController(
 				teardownCh,
 				transform.WithInputFinalizers(),
-			)))
+			),
+		))
 
 		for _, a := range []*A{
 			NewA("1", ASpec{Str: "reconcile-teardown"}),
@@ -421,7 +422,8 @@ func TestDestroyFinalizersRecreateInput(t *testing.T) {
 			require.NoError(t, st.Create(ctx, a))
 		}
 
-		rtestutils.AssertResources(ctx, t, st, []resource.ID{"transformed-1", "transformed-2", "transformed-3"},
+		rtestutils.AssertResources(
+			ctx, t, st, []resource.ID{"transformed-1", "transformed-2", "transformed-3"},
 			func(r *B, assert *assert.Assertions) {
 				assert.Equal(`""-1`, r.TypedSpec().Out)
 			},
@@ -438,7 +440,8 @@ func TestDestroyFinalizersRecreateInput(t *testing.T) {
 		require.NoError(t, st.Destroy(ctx, NewA("3", ASpec{}).Metadata()))
 
 		// wait for the output to enter tearing down phase
-		rtestutils.AssertResources(ctx, t, st, []resource.ID{"transformed-3"},
+		rtestutils.AssertResources(
+			ctx, t, st, []resource.ID{"transformed-3"},
 			func(r *B, assert *assert.Assertions) {
 				assert.Equal(resource.PhaseTearingDown, r.Metadata().Phase())
 			},
@@ -448,7 +451,8 @@ func TestDestroyFinalizersRecreateInput(t *testing.T) {
 		require.NoError(t, st.Create(ctx, NewA("3", ASpec{Int: 2})))
 
 		// the output still reflects the old spec since the controller is blocked on removing the output
-		rtestutils.AssertResources(ctx, t, st, []resource.ID{"transformed-3"},
+		rtestutils.AssertResources(
+			ctx, t, st, []resource.ID{"transformed-3"},
 			func(r *B, assert *assert.Assertions) {
 				assert.Equal(`""-1`, r.TypedSpec().Out)
 				assert.Equal(resource.PhaseTearingDown, r.Metadata().Phase())
@@ -459,7 +463,8 @@ func TestDestroyFinalizersRecreateInput(t *testing.T) {
 		require.NoError(t, st.RemoveFinalizer(ctx, NewB("transformed-3", BSpec{}).Metadata(), finalizer))
 
 		// the output should be re-created with new spec
-		rtestutils.AssertResources(ctx, t, st, []resource.ID{"transformed-3"},
+		rtestutils.AssertResources(
+			ctx, t, st, []resource.ID{"transformed-3"},
 			func(r *B, assert *assert.Assertions) {
 				assert.Equal(`""-2`, r.TypedSpec().Out)
 				assert.Equal(resource.PhaseRunning, r.Metadata().Phase())

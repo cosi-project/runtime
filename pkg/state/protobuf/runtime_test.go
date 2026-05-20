@@ -35,7 +35,8 @@ func TestProtobufWatchRuntimeRestart(t *testing.T) {
 
 	logger := zaptest.NewLogger(t)
 
-	st := state.WrapCore(client.NewAdapter(stateClient,
+	st := state.WrapCore(client.NewAdapter(
+		stateClient,
 		client.WithRetryLogger(logger),
 	))
 
