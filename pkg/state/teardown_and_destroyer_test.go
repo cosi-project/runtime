@@ -7,11 +7,13 @@ package state_test
 import (
 	"context"
 	"errors"
+	"fmt"
 	"testing"
 	"time"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"golang.org/x/sync/errgroup"
 
 	"github.com/cosi-project/runtime/pkg/resource"
 	"github.com/cosi-project/runtime/pkg/state"
@@ -118,6 +120,62 @@ func TestCoreWrapperTeardownAndDestroyFallback(t *testing.T) {
 	_, err = st.Get(ctx, other.Metadata())
 	require.Error(t, err)
 	assert.True(t, state.IsNotFoundError(err))
+}
+
+func TestCoreWrapperTeardownAndDestroyRacyDestroy(t *testing.T) {
+	t.Parallel()
+
+	ctx, cancel := context.WithTimeout(t.Context(), 5*time.Second)
+	t.Cleanup(cancel)
+
+	st := state.WrapCore(namespaced.NewState(inmem.Build))
+
+	r := conformance.NewPathResource("default", "/tmp")
+	require.NoError(t, st.Create(ctx, r))
+	require.NoError(t, st.AddFinalizer(ctx, r.Metadata(), "fin"))
+
+	var eg errgroup.Group
+
+	t.Cleanup(func() {
+		require.NoError(t, eg.Wait())
+
+		_, err := st.Get(ctx, r.Metadata())
+		require.Error(t, err)
+		assert.True(t, state.IsNotFoundError(err))
+	})
+
+	eg.Go(func() error {
+		events := make(chan state.Event)
+
+		err := st.Watch(ctx, r.Metadata(), events)
+		if err != nil {
+			return fmt.Errorf("watch failed: %w", err)
+		}
+
+		for {
+			select {
+			case <-ctx.Done():
+				return ctx.Err()
+			case ev := <-events:
+				if ev.Resource.Metadata().Phase() == resource.PhaseTearingDown {
+					return st.RemoveFinalizer(ctx, r.Metadata(), "fin")
+				}
+			}
+		}
+	})
+
+	for i := range 10 {
+		t.Run(fmt.Sprintf("teardownAndDestroy-%d", i), func(t *testing.T) {
+			t.Parallel()
+
+			err := st.TeardownAndDestroy(ctx, r.Metadata())
+			if state.IsNotFoundError(err) || state.IsPhaseConflictError(err) {
+				return
+			}
+
+			require.NoError(t, err)
+		})
+	}
 }
 
 // TestTeardownAndDestroyerInterfaceAssertion ensures TeardownAndDestroyer is

@@ -248,12 +248,50 @@ func (state coreWrapper) TeardownAndDestroy(ctx context.Context, resourcePointer
 		return state.Destroy(ctx, resourcePointer, WithDestroyOwner(options.Owner))
 	}
 
-	_, err = state.WatchFor(ctx, resourcePointer, WithFinalizerEmpty())
+	destroyed, err := state.waitFinalizersEmpty(ctx, resourcePointer)
 	if err != nil {
 		return err
 	}
 
+	if destroyed {
+		return nil
+	}
+
 	return state.Destroy(ctx, resourcePointer, WithDestroyOwner(options.Owner))
+}
+
+func (state coreWrapper) waitFinalizersEmpty(ctx context.Context, resourcePointer resource.Pointer) (bool, error) {
+	ch := make(chan Event)
+
+	ctx, cancel := context.WithCancel(ctx)
+	defer cancel()
+
+	if err := state.Watch(ctx, resourcePointer, ch); err != nil {
+		return false, err
+	}
+
+	for {
+		var event Event
+
+		select {
+		case <-ctx.Done():
+			return false, ctx.Err()
+		case event = <-ch:
+		}
+
+		switch event.Type {
+		case Destroyed:
+			return true, nil
+		case Created, Updated:
+			if event.Resource != nil && event.Resource.Metadata().Finalizers().Empty() {
+				return false, nil
+			}
+		case Errored:
+			return false, event.Error
+		case Bootstrapped, Noop:
+			// ignore
+		}
+	}
 }
 
 // Modify modifies an existing resource or creates a new one.
