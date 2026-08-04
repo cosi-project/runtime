@@ -17,7 +17,6 @@ import (
 	"github.com/cosi-project/runtime/pkg/safe"
 	"github.com/cosi-project/runtime/pkg/state"
 	"github.com/cosi-project/runtime/pkg/state/impl/inmem"
-	"github.com/cosi-project/runtime/pkg/state/impl/namespaced"
 	"github.com/cosi-project/runtime/pkg/state/owned"
 )
 
@@ -64,7 +63,7 @@ func TestOwned(t *testing.T) {
 
 	ctx := t.Context()
 
-	st := state.WrapCore(namespaced.NewState(inmem.Build))
+	st := state.WrapCore(inmem.NewState())
 	ownedState1 := owned.New(st, "owner1")
 	ownedState2 := owned.New(st, "owner2")
 

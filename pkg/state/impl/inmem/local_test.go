@@ -28,35 +28,35 @@ func TestLocalConformance(t *testing.T) {
 	t.Cleanup(func() { goleak.VerifyNone(t, goleak.IgnoreCurrent()) })
 
 	for _, tt := range []struct { //nolint:govet
-		name    string
-		builder *inmem.State
+		name  string
+		state *inmem.State
 	}{
 		{
-			name:    "defaults",
-			builder: inmem.NewState("default"),
+			name:  "defaults",
+			state: inmem.NewState(),
 		},
 		{
 			name: "dynamic large",
-			builder: inmem.NewStateWithOptions(
+			state: inmem.NewStateWithOptions(
 				inmem.WithHistoryMaxCapacity(1024),
 				inmem.WithHistoryInitialCapacity(8),
 				inmem.WithHistoryGap(2),
-			)("default"),
+			),
 		},
 		{
 			name: "dynamic small",
-			builder: inmem.NewStateWithOptions(
+			state: inmem.NewStateWithOptions(
 				inmem.WithHistoryMaxCapacity(32),
 				inmem.WithHistoryInitialCapacity(4),
 				inmem.WithHistoryGap(1),
-			)("default"),
+			),
 		},
 	} {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
 
 			suite.Run(t, &conformance.StateSuite{
-				State:      state.WrapCore(tt.builder),
+				State:      state.WrapCore(tt.state),
 				Namespaces: []resource.Namespace{"default"},
 			})
 		})
@@ -72,7 +72,7 @@ func TestBufferOverrun(t *testing.T) {
 	st := state.WrapCore(inmem.NewStateWithOptions(
 		inmem.WithHistoryMaxCapacity(10),
 		inmem.WithHistoryGap(5),
-	)(namespace))
+	))
 
 	ctx, cancel := context.WithCancel(t.Context())
 	t.Cleanup(cancel)
@@ -167,7 +167,7 @@ func TestNoBufferOverrunDynamic(t *testing.T) {
 		inmem.WithHistoryInitialCapacity(4),
 		inmem.WithHistoryMaxCapacity(N),
 		inmem.WithHistoryGap(5),
-	)(namespace))
+	))
 
 	ctx := t.Context()
 
@@ -200,12 +200,70 @@ func TestNoBufferOverrunDynamic(t *testing.T) {
 	}
 }
 
+// TestSharedHistoryBuffer verifies that the history buffer shared by the whole state doesn't
+// affect the watches on the namespaces/types which are not the ones producing the events.
+func TestSharedHistoryBuffer(t *testing.T) {
+	t.Parallel()
+
+	const (
+		quiet = "quiet"
+		busy  = "busy"
+	)
+
+	// create inmem state with tiny capacity, so that the busy namespace churns it many times over
+	st := state.WrapCore(inmem.NewStateWithOptions(
+		inmem.WithHistoryMaxCapacity(10),
+		inmem.WithHistoryGap(5),
+	))
+
+	ctx := t.Context()
+
+	quietKind := resource.NewMetadata(quiet, conformance.PathResourceType, "", resource.VersionUndefined)
+
+	watchCh := make(chan state.Event)
+
+	require.NoError(t, st.WatchKind(ctx, quietKind, watchCh, state.WithBootstrapBookmark(true)))
+
+	ev := <-watchCh
+	require.Equal(t, state.Noop, ev.Type)
+
+	bookmark := ev.Bookmark
+	require.NotEmpty(t, bookmark)
+
+	for i := range 100 {
+		require.NoError(t, st.Create(ctx, conformance.NewPathResource(busy, strconv.Itoa(i))))
+	}
+
+	require.NoError(t, st.Create(ctx, conformance.NewPathResource(quiet, "0")))
+
+	select {
+	case ev = <-watchCh:
+		require.Equal(t, state.Created, ev.Type)
+		require.Equal(t, "0", ev.Resource.Metadata().ID())
+	case <-time.After(time.Second):
+		t.Fatal("timeout waiting for event")
+	}
+
+	// the bookmark of the quiet namespace should still be valid, as no events were lost for it
+	bookmarkCh := make(chan state.Event)
+
+	require.NoError(t, st.WatchKind(ctx, quietKind, bookmarkCh, state.WithKindStartFromBookmark(bookmark)))
+
+	select {
+	case ev = <-bookmarkCh:
+		require.Equal(t, state.Created, ev.Type)
+		require.Equal(t, "0", ev.Resource.Metadata().ID())
+	case <-time.After(time.Second):
+		t.Fatal("timeout waiting for event")
+	}
+}
+
 func TestWatchInvalidBookmark(t *testing.T) {
 	t.Parallel()
 
 	const namespace = "default"
 
-	st := state.WrapCore(inmem.NewState(namespace))
+	st := state.WrapCore(inmem.NewState())
 
 	ctx := t.Context()
 

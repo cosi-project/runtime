@@ -19,7 +19,6 @@ import (
 	"github.com/cosi-project/runtime/pkg/state"
 	"github.com/cosi-project/runtime/pkg/state/conformance"
 	"github.com/cosi-project/runtime/pkg/state/impl/inmem"
-	"github.com/cosi-project/runtime/pkg/state/impl/namespaced"
 )
 
 // teardownAndDestroyerCoreState wraps a CoreState with a recording
@@ -52,7 +51,7 @@ func TestCoreWrapperTeardownAndDestroyFastPath(t *testing.T) {
 	t.Parallel()
 
 	core := &teardownAndDestroyerCoreState{
-		CoreState: namespaced.NewState(inmem.Build),
+		CoreState: inmem.NewState(),
 	}
 
 	wrapped := state.WrapCore(core)
@@ -80,7 +79,7 @@ func TestCoreWrapperTeardownAndDestroyFastPath(t *testing.T) {
 func TestCoreWrapperTeardownAndDestroyFallback(t *testing.T) {
 	t.Parallel()
 
-	st := state.WrapCore(namespaced.NewState(inmem.Build))
+	st := state.WrapCore(inmem.NewState())
 
 	ctx, cancel := context.WithTimeout(t.Context(), 5*time.Second)
 	t.Cleanup(cancel)
@@ -128,7 +127,7 @@ func TestCoreWrapperTeardownAndDestroyRacyDestroy(t *testing.T) {
 	ctx, cancel := context.WithTimeout(t.Context(), 5*time.Second)
 	t.Cleanup(cancel)
 
-	st := state.WrapCore(namespaced.NewState(inmem.Build))
+	st := state.WrapCore(inmem.NewState())
 
 	r := conformance.NewPathResource("default", "/tmp")
 	require.NoError(t, st.Create(ctx, r))

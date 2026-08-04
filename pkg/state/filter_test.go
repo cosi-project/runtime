@@ -17,7 +17,6 @@ import (
 	"github.com/cosi-project/runtime/pkg/state"
 	"github.com/cosi-project/runtime/pkg/state/conformance"
 	"github.com/cosi-project/runtime/pkg/state/impl/inmem"
-	"github.com/cosi-project/runtime/pkg/state/impl/namespaced"
 )
 
 func TestFilterPasshtroughConformance(t *testing.T) {
@@ -26,7 +25,7 @@ func TestFilterPasshtroughConformance(t *testing.T) {
 	suite.Run(t, &conformance.StateSuite{
 		State: state.WrapCore(
 			state.Filter(
-				namespaced.NewState(inmem.Build),
+				inmem.NewState(),
 				func(context.Context, state.Access) error {
 					return nil
 				},
@@ -47,7 +46,7 @@ func TestFilterSingleResource(t *testing.T) {
 
 	resources := state.WrapCore(
 		state.Filter(
-			namespaced.NewState(inmem.Build),
+			inmem.NewState(),
 			func(_ context.Context, access state.Access) error {
 				if access.ResourceNamespace != namespace || access.ResourceType != resourceType || access.ResourceID != resourceID {
 					return fmt.Errorf("access denied")

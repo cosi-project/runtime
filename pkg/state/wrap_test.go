@@ -13,14 +13,13 @@ import (
 	"github.com/cosi-project/runtime/pkg/state"
 	"github.com/cosi-project/runtime/pkg/state/conformance"
 	"github.com/cosi-project/runtime/pkg/state/impl/inmem"
-	"github.com/cosi-project/runtime/pkg/state/impl/namespaced"
 )
 
 func TestWrapConformance(t *testing.T) {
 	t.Parallel()
 
 	suite.Run(t, &conformance.StateSuite{
-		State:      state.WrapCore(namespaced.NewState(inmem.Build)),
+		State:      state.WrapCore(inmem.NewState()),
 		Namespaces: []resource.Namespace{"default", "controller", "system", "runtime"},
 	})
 }

@@ -7,6 +7,7 @@ package namespaced
 
 import (
 	"context"
+	"sync"
 
 	"github.com/siderolabs/gen/concurrent"
 
@@ -23,25 +24,42 @@ var _ state.CoreState = (*State)(nil)
 type State struct {
 	builder StateBuilder
 
-	namespaces *concurrent.HashTrieMap[resource.Namespace, state.CoreState]
+	// namespaces holds the state of each namespace, built once on the first access, see getNamespace.
+	namespaces *concurrent.HashTrieMap[resource.Namespace, *lazyState]
+}
+
+// lazyState builds the state of a namespace on the first access.
+type lazyState struct {
+	get func() state.CoreState
 }
 
 // NewState initializes new namespaced State.
 func NewState(builder StateBuilder) *State {
 	return &State{
 		builder:    builder,
-		namespaces: concurrent.NewHashTrieMap[resource.Namespace, state.CoreState](),
+		namespaces: concurrent.NewHashTrieMap[resource.Namespace, *lazyState](),
 	}
 }
 
 func (st *State) getNamespace(ns resource.Namespace) state.CoreState { //nolint:ireturn
-	if s, ok := st.namespaces.Load(ns); ok {
-		return s
+	if lazy, ok := st.namespaces.Load(ns); ok {
+		return lazy.get()
 	}
 
-	s, _ := st.namespaces.LoadOrStore(ns, st.builder(ns))
+	// the builder runs exactly once per namespace: the state a losing builder returned would be
+	// dropped on the floor, and building a state is not necessarily free of side effects (it might
+	// register with something shared, or run a goroutine of its own)
+	//
+	// the losing candidates are just closures which never run, and the builder doesn't run under any
+	// lock shared across the namespaces: a slow builder only holds up the callers of its own namespace,
+	// and a builder might access the other namespaces of this State
+	lazy, _ := st.namespaces.LoadOrStore(ns, &lazyState{
+		get: sync.OnceValue(func() state.CoreState {
+			return st.builder(ns)
+		}),
+	})
 
-	return s
+	return lazy.get()
 }
 
 // Get a resource by type and ID.

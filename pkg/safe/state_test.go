@@ -19,7 +19,6 @@ import (
 	"github.com/cosi-project/runtime/pkg/safe"
 	"github.com/cosi-project/runtime/pkg/state"
 	"github.com/cosi-project/runtime/pkg/state/impl/inmem"
-	"github.com/cosi-project/runtime/pkg/state/impl/namespaced"
 )
 
 func setup(t *testing.T) (context.Context, string, string, *conformance.IntResource, state.State, chan safe.WrappedStateEvent[*conformance.IntResource], chan state.Event) { //nolint:ireturn
@@ -32,7 +31,7 @@ func setup(t *testing.T) (context.Context, string, string, *conformance.IntResou
 	r := conformance.NewIntResource(testNamespace, testID, 2)
 	s := state.WrapCore(
 		state.Filter(
-			namespaced.NewState(inmem.Build),
+			inmem.NewState(),
 			func(context.Context, state.Access) error {
 				return nil
 			},

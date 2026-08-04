@@ -11,14 +11,13 @@ import (
 
 	"github.com/cosi-project/runtime/pkg/state"
 	"github.com/cosi-project/runtime/pkg/state/impl/inmem"
-	"github.com/cosi-project/runtime/pkg/state/impl/namespaced"
 	"github.com/cosi-project/runtime/pkg/state/registry"
 )
 
 func TestNamespaceRegistry(t *testing.T) {
 	t.Parallel()
 
-	r := registry.NewNamespaceRegistry(state.WrapCore(namespaced.NewState(inmem.Build)))
+	r := registry.NewNamespaceRegistry(state.WrapCore(inmem.NewState()))
 
 	assert.NoError(t, r.RegisterDefault(t.Context()))
 }
