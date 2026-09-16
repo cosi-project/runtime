@@ -27,7 +27,6 @@ import (
 	"github.com/cosi-project/runtime/pkg/state"
 	"github.com/cosi-project/runtime/pkg/state/conformance"
 	"github.com/cosi-project/runtime/pkg/state/impl/inmem"
-	"github.com/cosi-project/runtime/pkg/state/impl/namespaced"
 	"github.com/cosi-project/runtime/pkg/state/protobuf/client"
 	"github.com/cosi-project/runtime/pkg/state/protobuf/server"
 )
@@ -52,7 +51,7 @@ func TestProtobufSkipUnmarshal(t *testing.T) {
 	l, err := (&net.ListenConfig{}).Listen(ctx, "unix", sock.Name())
 	require.NoError(t, err)
 
-	memState := state.WrapCore(namespaced.NewState(inmem.Build))
+	memState := state.WrapCore(inmem.NewState())
 
 	grpcServer := grpc.NewServer()
 	v1alpha1.RegisterStateServer(grpcServer, server.NewState(memState))

@@ -32,7 +32,6 @@ import (
 	"github.com/cosi-project/runtime/pkg/state"
 	stateconformance "github.com/cosi-project/runtime/pkg/state/conformance"
 	"github.com/cosi-project/runtime/pkg/state/impl/inmem"
-	"github.com/cosi-project/runtime/pkg/state/impl/namespaced"
 	"github.com/cosi-project/runtime/pkg/state/protobuf/client"
 	"github.com/cosi-project/runtime/pkg/state/protobuf/server"
 )
@@ -97,7 +96,7 @@ func TestRuntimeConformance(t *testing.T) {
 			suiterunner.Run(t, &conformance.RuntimeSuite{
 				MetricsReadCacheEnabled: tt.metricsReadCacheEnabled,
 				SetupRuntime: func(rs *conformance.RuntimeSuite) {
-					rs.State = state.WrapCore(namespaced.NewState(inmem.Build))
+					rs.State = state.WrapCore(inmem.NewState())
 					logger := zaptest.NewLogger(rs.T())
 					rs.Runtime = must.Value(runtime.NewRuntime(rs.State, logger, tt.opts...))(rs.T())
 				},
@@ -119,7 +118,7 @@ func TestRuntimeConformance(t *testing.T) {
 					l := must.Value((&net.ListenConfig{}).Listen(t.Context(), "tcp", listenOn))(rs.T())
 
 					grpcServer := grpc.NewServer()
-					inmemState := state.WrapCore(namespaced.NewState(inmem.Build))
+					inmemState := state.WrapCore(inmem.NewState())
 					v1alpha1.RegisterStateServer(grpcServer, server.NewState(inmemState))
 
 					go func() { assert.NoError(rs.T(), grpcServer.Serve(l)) }()
@@ -153,12 +152,11 @@ func TestRuntimeWatchError(t *testing.T) {
 	defer goleak.VerifyNone(t, goleak.IgnoreCurrent())
 
 	// create a state with tiny capacity
-	st := state.WrapCore(namespaced.NewState(func(ns string) state.CoreState {
-		return inmem.NewStateWithOptions(
-			inmem.WithHistoryMaxCapacity(10),
-			inmem.WithHistoryGap(5),
-		)(ns)
-	}))
+	st := state.WrapCore(inmem.NewStateWithOptions(
+		inmem.WithHistoryInitialCapacity(10),
+		inmem.WithHistoryMaxCapacity(10),
+		inmem.WithHistoryGap(5),
+	))
 
 	logger := zaptest.NewLogger(t)
 	rt, err := runtime.NewRuntime(st, logger)
@@ -192,7 +190,7 @@ func TestRuntimeWatchOverrun(t *testing.T) {
 
 	defer goleak.VerifyNone(t, goleak.IgnoreCurrent())
 
-	st := state.WrapCore(namespaced.NewState(inmem.Build))
+	st := state.WrapCore(inmem.NewState())
 
 	logger := zaptest.NewLogger(t)
 	rt, err := runtime.NewRuntime(st, logger)
@@ -222,7 +220,7 @@ func TestRuntimeWatchOverrun(t *testing.T) {
 		for i := range 10 {
 			for _, ns := range []resource.Namespace{"default"} {
 				_, err = safe.StateUpdateWithConflicts(ctx, st, conformance.NewIntResource(ns, strconv.Itoa(i), i).Metadata(),
-					func(r *conformance.IntResource) error {
+					func(r *conformance.IntResource) error { //nolint:unparam // the signature is enforced by the safe.StateUpdateWithConflicts function
 						r.SetValue(i + j)
 
 						return nil
@@ -245,7 +243,7 @@ func TestRuntimeWatchOverrun(t *testing.T) {
 func TestRuntimeCachedState(t *testing.T) {
 	defer goleak.VerifyNone(t, goleak.IgnoreCurrent())
 
-	st := state.WrapCore(namespaced.NewState(inmem.Build))
+	st := state.WrapCore(inmem.NewState())
 
 	logger := zaptest.NewLogger(t)
 	rt, err := runtime.NewRuntime(st, logger, options.WithCachedResource("cached", conformance.IntResourceType))

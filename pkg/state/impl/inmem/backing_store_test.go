@@ -26,7 +26,7 @@ type backingStoreMock struct {
 
 func (mock *backingStoreMock) Load(_ context.Context, handler inmem.LoadHandler) error {
 	for _, r := range mock.store {
-		if err := handler(r.Metadata().Type(), r); err != nil {
+		if err := handler(r.Metadata().Namespace(), r.Metadata().Type(), r); err != nil {
 			return err
 		}
 	}
@@ -34,16 +34,16 @@ func (mock *backingStoreMock) Load(_ context.Context, handler inmem.LoadHandler)
 	return nil
 }
 
-func (mock *backingStoreMock) Put(_ context.Context, resourceType resource.Type, resource resource.Resource) error {
-	key := fmt.Sprintf("%s/%s", resourceType, resource.Metadata().ID())
+func (mock *backingStoreMock) Put(_ context.Context, ns resource.Namespace, resourceType resource.Type, resource resource.Resource) error {
+	key := fmt.Sprintf("%s/%s/%s", ns, resourceType, resource.Metadata().ID())
 
 	mock.store[key] = resource.DeepCopy()
 
 	return nil
 }
 
-func (mock *backingStoreMock) Destroy(_ context.Context, resourceType resource.Type, ptr resource.Pointer) error {
-	key := fmt.Sprintf("%s/%s", resourceType, ptr.ID())
+func (mock *backingStoreMock) Destroy(_ context.Context, ns resource.Namespace, resourceType resource.Type, ptr resource.Pointer) error {
+	key := fmt.Sprintf("%s/%s/%s", ns, resourceType, ptr.ID())
 
 	delete(mock.store, key)
 
@@ -57,7 +57,7 @@ func TestLocalConformanceWithBackingStore(t *testing.T) {
 		State: state.WrapCore(
 			inmem.NewStateWithOptions(
 				inmem.WithBackingStore(&backingStoreMock{store: map[string]resource.Resource{}}),
-			)("default"),
+			),
 		),
 		Namespaces: []resource.Namespace{"default"},
 	})
@@ -75,7 +75,7 @@ func TestBackingStore(t *testing.T) {
 	// create st with backing store and put some resources
 	st := state.WrapCore(inmem.NewStateWithOptions(
 		inmem.WithBackingStore(backingStore),
-	)(namespace))
+	))
 
 	path1 := conformance.NewPathResource(namespace, "var/run")
 	path2 := conformance.NewPathResource(namespace, "var/lib")
@@ -86,7 +86,7 @@ func TestBackingStore(t *testing.T) {
 	// re-create the state with backing store, resources should be still available
 	st = state.WrapCore(inmem.NewStateWithOptions(
 		inmem.WithBackingStore(backingStore),
-	)(namespace))
+	))
 
 	r, err := st.Get(ctx, path1.Metadata())
 	require.NoError(t, err)
@@ -101,7 +101,7 @@ func TestBackingStore(t *testing.T) {
 	// re-create the state with backing store, deleted resources should not be available
 	st = state.WrapCore(inmem.NewStateWithOptions(
 		inmem.WithBackingStore(backingStore),
-	)(namespace))
+	))
 
 	_, err = st.Get(ctx, path1.Metadata())
 	require.Error(t, err)

@@ -22,7 +22,6 @@ import (
 	"github.com/cosi-project/runtime/pkg/safe"
 	"github.com/cosi-project/runtime/pkg/state"
 	"github.com/cosi-project/runtime/pkg/state/impl/inmem"
-	"github.com/cosi-project/runtime/pkg/state/impl/namespaced"
 )
 
 //nolint:govet
@@ -93,7 +92,7 @@ func TestResource(t *testing.T) {
 		defer cancel()
 	}
 
-	st := state.WrapCore(namespaced.NewState(inmem.Build))
+	st := state.WrapCore(inmem.NewState())
 	r1 := typed.NewResource[testSpec, testExtension](
 		resource.NewMetadata("default", "testResource", "aaa", resource.VersionUndefined),
 		testSpec{Value: &Handle{someString: "my string"}},

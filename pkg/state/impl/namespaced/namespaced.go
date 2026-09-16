@@ -7,6 +7,7 @@ package namespaced
 
 import (
 	"context"
+	"sync"
 
 	"github.com/siderolabs/gen/concurrent"
 
@@ -24,6 +25,9 @@ type State struct {
 	builder StateBuilder
 
 	namespaces *concurrent.HashTrieMap[resource.Namespace, state.CoreState]
+
+	// namespacesMu makes the builder single-winner, see getNamespace.
+	namespacesMu sync.Mutex
 }
 
 // NewState initializes new namespaced State.
@@ -39,7 +43,20 @@ func (st *State) getNamespace(ns resource.Namespace) state.CoreState { //nolint:
 		return s
 	}
 
-	s, _ := st.namespaces.LoadOrStore(ns, st.builder(ns))
+	// the builder is called under the lock: the state a losing builder returned would be dropped on
+	// the floor, and building a state is not necessarily free of side effects (it might register
+	// with something shared, or run a goroutine of its own)
+	st.namespacesMu.Lock()
+	defer st.namespacesMu.Unlock()
+
+	// re-check after lock
+	if s, ok := st.namespaces.Load(ns); ok {
+		return s
+	}
+
+	s := st.builder(ns)
+
+	st.namespaces.Store(ns, s)
 
 	return s
 }

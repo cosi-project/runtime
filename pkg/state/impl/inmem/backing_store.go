@@ -11,7 +11,7 @@ import (
 )
 
 // LoadHandler is called for each resource loaded from the backing store.
-type LoadHandler func(resourceType resource.Type, resource resource.Resource) error
+type LoadHandler func(ns resource.Namespace, resourceType resource.Type, resource resource.Resource) error
 
 // BackingStore provides a way to persist contents of in-memory resource collection.
 //
@@ -20,14 +20,21 @@ type LoadHandler func(resourceType resource.Type, resource resource.Resource) er
 //
 // BackingStore is responsible for marshaling/unmarshaling of resources.
 //
-// BackingStore is optional for in-memory resource collection.
+// BackingStore is optional for in-memory resource collection: a State is either fully backed by
+// the store, or fully ephemeral. Use namespaced.NewState to combine persistent and ephemeral
+// namespaces in a single state.
+//
+// A BackingStore should back at most one State: Load pulls in every namespace the store holds, so
+// two States sharing a store would each load the full contents and then diverge, as neither sees
+// the writes of the other. To split the persistent namespaces across several States, give each one
+// its own store.
 type BackingStore interface {
 	// Load contents of the backing store into the in-memory resource collection.
 	//
-	// Handler should be called for each resource in the backing store.
+	// Handler should be called for each resource in the backing store, across all the namespaces.
 	Load(ctx context.Context, handler LoadHandler) error
 	// Put the resource to the backing store.
-	Put(ctx context.Context, resourceType resource.Type, resource resource.Resource) error
+	Put(ctx context.Context, ns resource.Namespace, resourceType resource.Type, resource resource.Resource) error
 	// Destroy the resource from the backing store.
-	Destroy(ctx context.Context, resourceType resource.Type, resourcePointer resource.Pointer) error
+	Destroy(ctx context.Context, ns resource.Namespace, resourceType resource.Type, resourcePointer resource.Pointer) error
 }

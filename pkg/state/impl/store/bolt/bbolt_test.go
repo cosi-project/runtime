@@ -47,38 +47,34 @@ func TestBboltStore(t *testing.T) { //nolint:tparallel
 	path2 := conformance.NewPathResource("ns1", "var/run2")
 	path3 := conformance.NewPathResource("ns2", "var/run3")
 
+	put := func(res resource.Resource) error {
+		return store.Put(t.Context(), res.Metadata().Namespace(), res.Metadata().Type(), res)
+	}
+
 	t.Run("Fill", func(t *testing.T) {
-		require.NoError(t, store.WithNamespace(path1.Metadata().Namespace()).Put(t.Context(), path1.Metadata().Type(), path1))
-		require.NoError(t, store.WithNamespace(path2.Metadata().Namespace()).Put(t.Context(), path2.Metadata().Type(), path2))
-		require.NoError(t, store.WithNamespace(path2.Metadata().Namespace()).Put(t.Context(), path2.Metadata().Type(), path2))
-		require.NoError(t, store.WithNamespace(path3.Metadata().Namespace()).Put(t.Context(), path3.Metadata().Type(), path3))
+		require.NoError(t, put(path1))
+		require.NoError(t, put(path2))
+		require.NoError(t, put(path2))
+		require.NoError(t, put(path3))
 	})
 
 	t.Run("Remove", func(t *testing.T) {
-		require.NoError(t, store.WithNamespace(path1.Metadata().Namespace()).Destroy(t.Context(), path1.Metadata().Type(), path1.Metadata()))
+		require.NoError(t, store.Destroy(t.Context(), path1.Metadata().Namespace(), path1.Metadata().Type(), path1.Metadata()))
 	})
 
 	t.Run("Load", func(t *testing.T) {
-		var resources []resource.Resource
+		resources := map[resource.Namespace][]resource.Resource{}
 
-		require.NoError(t, store.WithNamespace(path1.Metadata().Namespace()).Load(t.Context(), func(_ resource.Type, resource resource.Resource) error {
-			resources = append(resources, resource)
-
-			return nil
-		}))
-
-		require.Len(t, resources, 1)
-		assert.True(t, resource.Equal(path2, resources[0]))
-
-		resources = nil
-
-		require.NoError(t, store.WithNamespace(path3.Metadata().Namespace()).Load(t.Context(), func(_ resource.Type, resource resource.Resource) error {
-			resources = append(resources, resource)
+		require.NoError(t, store.Load(t.Context(), func(ns resource.Namespace, _ resource.Type, res resource.Resource) error {
+			resources[ns] = append(resources[ns], res)
 
 			return nil
 		}))
 
-		require.Len(t, resources, 1)
-		assert.True(t, resource.Equal(path3, resources[0]))
+		require.Len(t, resources["ns1"], 1)
+		assert.True(t, resource.Equal(path2, resources["ns1"][0]))
+
+		require.Len(t, resources["ns2"], 1)
+		assert.True(t, resource.Equal(path3, resources["ns2"][0]))
 	})
 }

@@ -17,7 +17,6 @@ import (
 	"github.com/cosi-project/runtime/pkg/state"
 	"github.com/cosi-project/runtime/pkg/state/conformance"
 	"github.com/cosi-project/runtime/pkg/state/impl/inmem"
-	"github.com/cosi-project/runtime/pkg/state/impl/namespaced"
 	"github.com/cosi-project/runtime/pkg/state/impl/store"
 	"github.com/cosi-project/runtime/pkg/state/impl/store/bolt"
 	"github.com/cosi-project/runtime/pkg/state/impl/store/encryption"
@@ -50,12 +49,8 @@ func TestBboltConformance(t *testing.T) {
 	})
 
 	suite.Run(t, &conformance.StateSuite{
-		State: state.WrapCore(namespaced.NewState(
-			func(ns resource.Namespace) state.CoreState {
-				return inmem.NewStateWithOptions(
-					inmem.WithBackingStore(backingStore.WithNamespace(ns)),
-				)(ns)
-			},
+		State: state.WrapCore(inmem.NewStateWithOptions(
+			inmem.WithBackingStore(backingStore),
 		)),
 		Namespaces: []resource.Namespace{"default", "controller", "system", "runtime"},
 	})

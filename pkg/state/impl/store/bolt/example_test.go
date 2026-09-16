@@ -73,24 +73,27 @@ func Example() {
 		}
 	}()
 
+	// an inmem.State is either fully backed by the store, or fully ephemeral, so build a separate
+	// persistent state, and route the namespaces to it with namespaced.NewState
+	persistentState := inmem.NewStateWithOptions(
+		inmem.WithBackingStore(backingStore),
+	)
+
+	// a single ephemeral state instance is shared by all the other namespaces, so that they share
+	// its event history buffer instead of reserving one per namespace
+	ephemeralState := inmem.NewState()
+
 	// create resource state with following namespaces
 	// * backed by BoltDB: persistent, system
-	// * in-memory: runtime
-	resources := state.WrapCore(namespaced.NewState(
-		func(ns resource.Namespace) state.CoreState {
-			switch ns {
-			case "persistent", "system":
-				// use in-memory state backed by BoltDB
-				return inmem.NewStateWithOptions(
-					inmem.WithBackingStore(backingStore.WithNamespace(ns)),
-				)(ns)
-			case "runtime":
-				return inmem.NewState(ns)
-			default:
-				panic("unexpected namespace")
-			}
-		},
-	))
+	// * in-memory: any other namespace, e.g. runtime
+	resources := state.WrapCore(namespaced.NewState(func(ns resource.Namespace) state.CoreState {
+		switch ns {
+		case "persistent", "system":
+			return persistentState
+		default:
+			return ephemeralState
+		}
+	}))
 
 	r1 := typed.NewResource[ExampleSpec, ExampleExtension](
 		resource.NewMetadata(

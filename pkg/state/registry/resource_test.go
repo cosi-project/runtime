@@ -11,14 +11,13 @@ import (
 
 	"github.com/cosi-project/runtime/pkg/state"
 	"github.com/cosi-project/runtime/pkg/state/impl/inmem"
-	"github.com/cosi-project/runtime/pkg/state/impl/namespaced"
 	"github.com/cosi-project/runtime/pkg/state/registry"
 )
 
 func TestResourceRegistry(t *testing.T) {
 	t.Parallel()
 
-	r := registry.NewResourceRegistry(state.WrapCore(namespaced.NewState(inmem.Build)))
+	r := registry.NewResourceRegistry(state.WrapCore(inmem.NewState()))
 
 	assert.NoError(t, r.RegisterDefault(t.Context()))
 }

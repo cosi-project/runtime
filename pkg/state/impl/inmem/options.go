@@ -6,7 +6,8 @@ package inmem
 
 // StateOptions configure inmem.State.
 type StateOptions struct {
-	BackingStore           BackingStore
+	BackingStore BackingStore
+
 	HistoryMaxCapacity     int
 	HistoryInitialCapacity int
 	HistoryGap             int
@@ -15,7 +16,7 @@ type StateOptions struct {
 // StateOption applies settings to StateOptions.
 type StateOption func(options *StateOptions)
 
-// WithHistoryCapacity sets history depth for a given namspace and resource.
+// WithHistoryCapacity sets history depth of the state event buffer.
 //
 // Deprecated: use WithHistoryMaxCapacity and WithHistoryInitialCapacity instead.
 func WithHistoryCapacity(capacity int) StateOption {
@@ -25,7 +26,9 @@ func WithHistoryCapacity(capacity int) StateOption {
 	}
 }
 
-// WithHistoryMaxCapacity sets history depth for a given namspace and resource.
+// WithHistoryMaxCapacity sets history depth of the state event buffer.
+//
+// The event buffer is shared by all namespaces and resource types of the state.
 //
 // Deep history requires more memory, but allows Watch request to return more historical entries, and also
 // acts like a buffer if watch consumer can't keep up with events.
@@ -41,7 +44,9 @@ func WithHistoryMaxCapacity(maxCapacity int) StateOption {
 	}
 }
 
-// WithHistoryInitialCapacity sets initial history depth for a given namspace and resource.
+// WithHistoryInitialCapacity sets initial history depth of the state event buffer.
+//
+// The event buffer is shared by all namespaces and resource types of the state.
 //
 // Deep history requires more memory, but allows Watch request to return more historical entries, and also
 // acts like a buffer if watch consumer can't keep up with events.
@@ -60,9 +65,17 @@ func WithHistoryInitialCapacity(initialCapacity int) StateOption {
 
 // WithHistoryGap sets a safety gap between watch events consumers and events producers.
 //
-// Bigger gap reduces effective history depth (HistoryCapacity - HistoryGap).
-// Smaller gap might result in buffer overruns if consumer can't keep up with the events.
-// It's recommended to have gap 5% of the capacity.
+// The gap is the number of the slots ahead of the oldest event a new watch is not allowed to start
+// from, so that a watch which starts at the very edge of the history doesn't overrun immediately.
+// A bigger gap reduces the effective history depth (HistoryMaxCapacity - HistoryGap), a smaller one
+// might result in buffer overruns if a consumer can't keep up with the events.
+//
+// The gap only applies once the buffer has grown to its max capacity: while it is still growing no
+// event can be overwritten, so there is nothing to keep the watches away from.
+//
+// As the buffer is shared by all namespaces and resource types of the state, the gap is a small
+// absolute number of the slots rather than a share of the capacity: it guards against a consumer
+// falling behind within a single burst, and it doesn't need to scale with the total history depth.
 func WithHistoryGap(gap int) StateOption {
 	return func(options *StateOptions) {
 		options.HistoryGap = gap
@@ -79,10 +92,13 @@ func WithBackingStore(store BackingStore) StateOption {
 }
 
 // DefaultStateOptions returns default value of StateOptions.
+//
+// As the history buffer is shared by all namespaces and resource types of the state, the default
+// capacity is much bigger than the depth which used to be reserved per resource type.
 func DefaultStateOptions() StateOptions {
 	return StateOptions{
-		HistoryMaxCapacity:     100,
-		HistoryInitialCapacity: 100,
-		HistoryGap:             5,
+		HistoryMaxCapacity:     40960,
+		HistoryInitialCapacity: 256,
+		HistoryGap:             50,
 	}
 }

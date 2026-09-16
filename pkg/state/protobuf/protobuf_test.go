@@ -32,7 +32,6 @@ import (
 	"github.com/cosi-project/runtime/pkg/state"
 	"github.com/cosi-project/runtime/pkg/state/conformance"
 	"github.com/cosi-project/runtime/pkg/state/impl/inmem"
-	"github.com/cosi-project/runtime/pkg/state/impl/namespaced"
 	"github.com/cosi-project/runtime/pkg/state/protobuf/client"
 	"github.com/cosi-project/runtime/pkg/state/protobuf/server"
 )
@@ -49,7 +48,7 @@ func ProtobufSetup(t *testing.T) (grpc.ClientConnInterface, *grpc.Server, func()
 
 	t.Cleanup(func() { noError(t, os.Remove, sock.Name(), fs.ErrNotExist) })
 
-	coreState := state.WrapCore(namespaced.NewState(inmem.Build))
+	coreState := state.WrapCore(inmem.NewState())
 	serverState := server.NewState(coreState)
 
 	runServer := func() *grpc.Server {
@@ -361,7 +360,7 @@ func TestProtobufTeardownUnimplementedFallback(t *testing.T) {
 	require.NoError(t, os.Remove(sock.Name()))
 	t.Cleanup(func() { noError(t, os.Remove, sock.Name(), fs.ErrNotExist) })
 
-	coreState := state.WrapCore(namespaced.NewState(inmem.Build))
+	coreState := state.WrapCore(inmem.NewState())
 	srv := &teardownUnimplementedServer{real: server.NewState(coreState)}
 
 	l, err := (&net.ListenConfig{}).Listen(t.Context(), "unix", sock.Name())
@@ -510,7 +509,7 @@ func TestProtobufTeardownAndDestroyUnimplementedFallback(t *testing.T) {
 	require.NoError(t, os.Remove(sock.Name()))
 	t.Cleanup(func() { noError(t, os.Remove, sock.Name(), fs.ErrNotExist) })
 
-	coreState := state.WrapCore(namespaced.NewState(inmem.Build))
+	coreState := state.WrapCore(inmem.NewState())
 	srv := &teardownAndDestroyUnimplementedServer{real: server.NewState(coreState)}
 
 	l, err := (&net.ListenConfig{}).Listen(t.Context(), "unix", sock.Name())

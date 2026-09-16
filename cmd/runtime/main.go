@@ -30,7 +30,6 @@ import (
 	"github.com/cosi-project/runtime/pkg/logging"
 	"github.com/cosi-project/runtime/pkg/state"
 	"github.com/cosi-project/runtime/pkg/state/impl/inmem"
-	"github.com/cosi-project/runtime/pkg/state/impl/namespaced"
 	"github.com/cosi-project/runtime/pkg/state/protobuf/server"
 )
 
@@ -77,7 +76,7 @@ func run() error {
 		return fmt.Errorf("failed to listen on network address: %w", err)
 	}
 
-	inmemState := state.WrapCore(namespaced.NewState(inmem.Build))
+	inmemState := state.WrapCore(inmem.NewState())
 
 	logger := logging.DefaultLogger()
 

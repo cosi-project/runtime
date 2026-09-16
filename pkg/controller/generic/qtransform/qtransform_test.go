@@ -34,7 +34,6 @@ import (
 	"github.com/cosi-project/runtime/pkg/safe"
 	"github.com/cosi-project/runtime/pkg/state"
 	"github.com/cosi-project/runtime/pkg/state/impl/inmem"
-	"github.com/cosi-project/runtime/pkg/state/impl/namespaced"
 )
 
 type ABController = qtransform.QController[*A, *B]
@@ -891,7 +890,7 @@ func TestMappedByLabelInput(t *testing.T) {
 func setup(t *testing.T, f func(ctx context.Context, st state.State, rt *runtime.Runtime), opts ...options.Option) {
 	defer goleak.VerifyNone(t, goleak.IgnoreCurrent())
 
-	st := state.WrapCore(namespaced.NewState(inmem.Build))
+	st := state.WrapCore(inmem.NewState())
 
 	logger := logging.DefaultLogger()
 
