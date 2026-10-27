@@ -67,7 +67,11 @@ func (task *Task[T, S]) runWithRestarts(ctx context.Context) {
 	// disable number of retries limit
 	backoff.MaxElapsedTime = 0
 
+	var interval time.Duration
+
 	for ctx.Err() == nil {
+		startTime := time.Now()
+
 		err := task.runWithPanicHandler(ctx)
 
 		// finished without an error
@@ -77,7 +81,12 @@ func (task *Task[T, S]) runWithRestarts(ctx context.Context) {
 			return
 		}
 
-		interval := backoff.NextBackOff()
+		// the task ran for longer than the last restart interval, so start the backoff over
+		if time.Since(startTime) > interval {
+			backoff.Reset()
+		}
+
+		interval = backoff.NextBackOff()
 
 		task.logger.Error("restarting task", zap.Duration("interval", interval), zap.Error(err))
 

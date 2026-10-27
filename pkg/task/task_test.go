@@ -8,6 +8,7 @@ import (
 	"context"
 	"errors"
 	"testing"
+	"testing/synctest"
 	"time"
 
 	"github.com/siderolabs/gen/containers"
@@ -93,4 +94,65 @@ func TestTask(t *testing.T) {
 
 	t1.Stop()
 	assertTask("task1", false)
+}
+
+type flakySpec struct {
+	runDuration func(run int) time.Duration
+	runs        *int
+	startCh     chan<- time.Time
+}
+
+func (spec flakySpec) ID() task.ID {
+	return "flaky"
+}
+
+func (spec flakySpec) RunTask(ctx context.Context, _ *zap.Logger, _ struct{}) error {
+	*spec.runs++
+
+	spec.startCh <- time.Now()
+
+	select {
+	case <-ctx.Done():
+		return nil
+	case <-time.After(spec.runDuration(*spec.runs)):
+		return errors.New("failed")
+	}
+}
+
+func TestTaskRestartBackoffReset(t *testing.T) {
+	t.Parallel()
+
+	synctest.Test(t, func(t *testing.T) {
+		startCh := make(chan time.Time, 32)
+
+		spec := flakySpec{
+			runs:    new(int),
+			startCh: startCh,
+			runDuration: func(run int) time.Duration {
+				// the 20th run is long-lived, all others fail at once
+				if run == 20 {
+					return time.Hour
+				}
+
+				return 0
+			},
+		}
+
+		tsk := task.New(zaptest.NewLogger(t), spec, struct{}{})
+		tsk.Start(t.Context())
+
+		starts := make([]time.Time, 0, 21)
+
+		for range 21 {
+			starts = append(starts, <-startCh)
+		}
+
+		tsk.Stop()
+
+		// the backoff reached its maximum interval before the long-lived run
+		assert.Greater(t, starts[19].Sub(starts[18]), 30*time.Second)
+
+		// the failure after the long-lived run restarts the task at the initial interval again
+		assert.Less(t, starts[20].Sub(starts[19].Add(time.Hour)), time.Second)
+	})
 }
