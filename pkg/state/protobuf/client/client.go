@@ -10,6 +10,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"strings"
 	"sync/atomic"
 	"time"
 
@@ -675,14 +676,20 @@ func (adapter *Adapter) watchAdapter(
 
 			cli, err = adapter.client.Watch(ctx, watchRequest)
 			if err != nil {
+				if isTLSRefusal(err) {
+					return nil, err
+				}
+
 				continue
 			}
 
 			_, err = cli.Recv()
 			if err != nil {
-				switch status.Code(err) { //nolint:exhaustive
-				case codes.FailedPrecondition: // abort retries on invalid watch bookmark
+				switch {
+				case status.Code(err) == codes.FailedPrecondition: // abort retries on invalid watch bookmark
 					return nil, eInvalidWatchBookmark{err}
+				case isTLSRefusal(err):
+					return nil, err
 				default:
 					continue
 				}
@@ -802,4 +809,17 @@ func updateResourceMetadata(source *v1alpha1.Resource, targetRes resource.Resour
 	targetRes.Metadata().SetUpdated(source.GetMetadata().GetUpdated().AsTime())
 
 	return targetRes.Metadata().SetOwner(source.GetMetadata().GetOwner())
+}
+
+// isTLSRefusal reports whether err is a TLS handshake refused by either side, for example by a server which started to
+// require client certificates, or a server certificate the client does not trust. gRPC reports it as Unavailable, the same
+// as a dropped connection, but retrying with the same credentials cannot succeed.
+func isTLSRefusal(err error) bool {
+	if status.Code(err) != codes.Unavailable {
+		return false
+	}
+
+	msg := status.Convert(err).Message()
+
+	return strings.Contains(msg, "tls: failed to verify certificate") || strings.Contains(msg, "remote error: tls: ")
 }
