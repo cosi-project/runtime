@@ -222,7 +222,7 @@ func TestRuntimeWatchOverrun(t *testing.T) {
 		for i := range 10 {
 			for _, ns := range []resource.Namespace{"default"} {
 				_, err = safe.StateUpdateWithConflicts(ctx, st, conformance.NewIntResource(ns, strconv.Itoa(i), i).Metadata(),
-					func(r *conformance.IntResource) error {
+					func(r *conformance.IntResource) error { //nolint:unparam
 						r.SetValue(i + j)
 
 						return nil
