@@ -5,11 +5,12 @@ go 1.26.5
 require (
 	github.com/ProtonMail/gopenpgp/v3 v3.5.2
 	github.com/cenkalti/backoff/v4 v4.3.0
+	github.com/cenkalti/backoff/v7 v7.0.1
 	github.com/gertd/go-pluralize v0.2.1
 	github.com/grpc-ecosystem/grpc-gateway/v2 v2.33.0
 	github.com/hashicorp/go-multierror v1.1.1
 	github.com/klauspost/compress v1.20.3
-	github.com/planetscale/vtprotobuf v0.6.1-0.20240319094008-0393e58bdf10
+	github.com/planetscale/vtprotobuf v0.6.1-0.20260702190614-8ae5a48058df
 	github.com/siderolabs/gen v0.8.8
 	github.com/siderolabs/go-pointer v1.0.1
 	github.com/siderolabs/go-retry v0.3.3

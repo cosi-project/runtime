@@ -6,6 +6,7 @@ github.com/brianvoe/gofakeit/v7 v7.7.3 h1:RWOATEGpJ5EVg2nN8nlaEyaV/aB4d6c3GqYrbq
 github.com/brianvoe/gofakeit/v7 v7.7.3/go.mod h1:QXuPeBw164PJCzCUZVmgpgHJ3Llj49jSLVkKPMtxtxA=
 github.com/cenkalti/backoff/v4 v4.3.0 h1:MyRJ/UdXutAwSAT+s3wNd7MfTIcy71VQueUuFK343L8=
 github.com/cenkalti/backoff/v4 v4.3.0/go.mod h1:Y3VNntkOUPxTVeUxJ/G5vcM//AlwfmyYozVcomhLiZE=
+github.com/cenkalti/backoff/v7 v7.0.1/go.mod h1:qcKBGwsu4hpxHtQ8tWYsQ+ifzx2+sS+Xx/3jfe30lI8=
 github.com/cloudflare/circl v1.6.4 h1:pOXuDTCEYyzydgUpQ0CQz3LsinKjiSk6nNP5Lt5K64U=
 github.com/cloudflare/circl v1.6.4/go.mod h1:YxarevkLlbaHuWsxG6vmYNWBEsSp4pnp7j+4VljMavY=
 github.com/gertd/go-pluralize v0.2.1 h1:M3uASbVjMnTsPb0PNqg+E/24Vwigyo/tvyMTtAlLgiA=
@@ -25,6 +26,8 @@ github.com/klauspost/compress v1.20.3 h1:zWNoFqq/lSuYQRim3dUXlXeA0IqwuZGicdG5ZTf
 github.com/klauspost/compress v1.20.3/go.mod h1:LUdAzn7YLVvxLpc7y3V1m40wESHTgc1422pwwBSKYuI=
 github.com/planetscale/vtprotobuf v0.6.1-0.20240319094008-0393e58bdf10 h1:GFCKgmp0tecUJ0sJuv4pzYCqS9+RGSn52M3FUwPs+uo=
 github.com/planetscale/vtprotobuf v0.6.1-0.20240319094008-0393e58bdf10/go.mod h1:t/avpk3KcrXxUnYOhZhMXJlSEyie6gQbtLq5NM3loB8=
+github.com/planetscale/vtprotobuf v0.6.1-0.20260702190614-8ae5a48058df h1:x2ymdov8jnZLDPfI+VVcf/ZvzuZ2u36ieXTuQASMkWI=
+github.com/planetscale/vtprotobuf v0.6.1-0.20260702190614-8ae5a48058df/go.mod h1:araspv2uYKozbi5lrKaqpv1/Uei7eQSml8JCw2A3IRg=
 github.com/siderolabs/gen v0.8.8 h1:wDDlHAT7q4JYr1nD6I8iJml2jUgMKKuCpd05W5UoM+A=
 github.com/siderolabs/gen v0.8.8/go.mod h1:iOCzLzCgiHas+4KIJ0KaLJUjIXL/SVH1ZXZUXBt04tc=
 github.com/siderolabs/go-pointer v1.0.1 h1:f7Yi4IK1jptS8yrT9GEbwhmGcVxvPQgBUG/weH3V3DM=
