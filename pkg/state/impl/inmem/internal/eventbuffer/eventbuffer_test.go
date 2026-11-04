@@ -635,3 +635,81 @@ func TestFilter(t *testing.T) {
 	assert.Equal(t, []resource.ID{"other", "match", "other"}, eventIDs(events))
 	assert.Equal(t, state.Created, events[1].Type)
 }
+
+// TestTailRewindsOnlyToTheLastMatch verifies that a filtered tail which finds fewer matches than
+// requested doesn't rewind past the oldest match: the watcher would otherwise start at the eviction
+// edge, and get overrun by the following events although it lost nothing it was going to get.
+func TestTailRewindsOnlyToTheLastMatch(t *testing.T) {
+	t.Parallel()
+
+	buf := eventbuffer.New(8, 8, 1)
+	f := buf.NewFeed("ns", "type")
+
+	for range 7 {
+		f.Publish(testEvent("other"))
+	}
+
+	f.Publish(testEvent("target"))
+
+	isTarget := func(ev *state.Event) bool { return ev.Resource.Metadata().ID() == "target" }
+
+	w, err := f.Subscribe(eventbuffer.SubscribeOptions{TailEvents: 2, Filter: isTarget, TailFilter: isTarget})
+	require.NoError(t, err)
+
+	t.Cleanup(w.Close)
+
+	// two more events of the other resource, "target" is still in the buffer
+	f.Publish(testEvent("other"))
+	f.Publish(testEvent("other"))
+
+	events, err := w.Next(t.Context())
+	require.NoError(t, err)
+	assert.Equal(t, []resource.ID{"target"}, eventIDs(events))
+}
+
+// TestStartBookmarkCarriesOver verifies that a watch resumed from a bookmark hands the very same
+// bookmark back as its start bookmark: the bookmark might have been handed out by another feed, so
+// recomputing it from the resumed feed could move it past the events of the other feeds, and carrying
+// it over to one of them would skip those.
+func TestStartBookmarkCarriesOver(t *testing.T) {
+	t.Parallel()
+
+	buf := eventbuffer.New(16, 16, 1)
+
+	source := buf.NewFeed("ns", "source")
+	resumed := buf.NewFeed("ns", "resumed")
+	third := buf.NewFeed("ns", "third")
+
+	sourceWatcher, err := source.Subscribe(eventbuffer.SubscribeOptions{})
+	require.NoError(t, err)
+
+	t.Cleanup(sourceWatcher.Close)
+
+	source.Publish(testEvent("source"))
+
+	events, err := sourceWatcher.Next(t.Context())
+	require.NoError(t, err)
+	require.Len(t, events, 1)
+
+	bookmark := events[0].Bookmark
+
+	// published past the bookmark: a watch of the third feed resumed from it should get the event
+	third.Publish(testEvent("third"))
+
+	resumedWatcher, err := resumed.Subscribe(eventbuffer.SubscribeOptions{Bookmark: bookmark})
+	require.NoError(t, err)
+
+	t.Cleanup(resumedWatcher.Close)
+
+	assert.Equal(t, bookmark, resumedWatcher.StartBookmark())
+
+	// carry the start bookmark over to the third feed
+	thirdWatcher, err := third.Subscribe(eventbuffer.SubscribeOptions{Bookmark: resumedWatcher.StartBookmark()})
+	require.NoError(t, err)
+
+	t.Cleanup(thirdWatcher.Close)
+
+	events, err = thirdWatcher.Next(t.Context())
+	require.NoError(t, err)
+	assert.Equal(t, []resource.ID{"third"}, eventIDs(events))
+}

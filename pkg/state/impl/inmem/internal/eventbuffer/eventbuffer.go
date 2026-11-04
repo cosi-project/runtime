@@ -295,11 +295,15 @@ func (f *Feed) Subscribe(opts SubscribeOptions) (*Watcher, error) {
 	buf.mu.Lock()
 	defer buf.mu.Unlock()
 
-	var seenSeq int64
+	var (
+		seenSeq       int64
+		startBookmark state.Bookmark
+	)
 
 	switch {
 	case opts.TailEvents > 0:
 		seenSeq = f.publishedSeq - f.tailLocked(opts.TailEvents, opts.TailFilter)
+		startBookmark = f.startBookmarkLocked(seenSeq)
 	case opts.Bookmark != nil:
 		var err error
 
@@ -307,15 +311,22 @@ func (f *Feed) Subscribe(opts SubscribeOptions) (*Watcher, error) {
 		if err != nil {
 			return nil, err
 		}
+
+		// the supplied bookmark is handed back as is: it is a global position, and it might have been
+		// handed out by another feed, so recomputing it from this feed's events could move it past the
+		// events the other feeds published in between, and a client carrying it over to another feed
+		// would skip them
+		startBookmark = slices.Clone(opts.Bookmark)
 	default:
 		seenSeq = f.publishedSeq
+		startBookmark = f.startBookmarkLocked(seenSeq)
 	}
 
 	w := &Watcher{
 		feed:          f,
 		filter:        opts.Filter,
 		notify:        make(chan struct{}, 1),
-		startBookmark: f.startBookmarkLocked(seenSeq),
+		startBookmark: startBookmark,
 		seenSeq:       seenSeq,
 	}
 
@@ -340,6 +351,10 @@ func (f *Feed) staleBoundaryLocked() int64 {
 // tailLocked returns the number of the feed events to rewind so that the watcher gets up to
 // tailEvents events matching the filter (any event if the filter is nil).
 //
+// With a filter, the rewind stops at the oldest matching event: rewinding past it would gain nothing
+// (the events past it don't match), and it would put the watcher at the eviction edge for no reason,
+// where it would get overrun by the very next events of the feed.
+//
 // The buffer mutex should be held.
 func (f *Feed) tailLocked(tailEvents int, filter func(*state.Event) bool) int64 {
 	// events which are already stale can't be replayed
@@ -350,20 +365,21 @@ func (f *Feed) tailLocked(tailEvents int, filter func(*state.Event) bool) int64 
 	}
 
 	var (
-		rewind int64
-		found  int
+		walked, rewind int64
+		found          int
 	)
 
 	buf := f.buf
 	pos := f.lastPos
 
-	for rewind < available && found < tailEvents {
+	for walked < available && found < tailEvents {
 		buffered := &buf.stream[pos%int64(buf.capacity)]
 
-		rewind++
+		walked++
 
 		if filter(&buffered.event) {
 			found++
+			rewind = walked
 		}
 
 		pos = buffered.prevPos

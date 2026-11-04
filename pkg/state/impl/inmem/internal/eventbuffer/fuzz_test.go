@@ -260,6 +260,9 @@ func (m *fuzzModel) subscribeBookmark(feed int, arg byte, filtered bool) {
 		require.False(m.t, stale, "a bookmark with stale events to replay should be rejected")
 	}
 
+	// the supplied bookmark is handed back as is, as it might have been handed out by another feed
+	require.Equal(m.t, bookmark, w.StartBookmark())
+
 	m.addWatcher(w, feed, filtered)
 	fw := m.watchers[len(m.watchers)-1]
 

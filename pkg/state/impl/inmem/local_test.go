@@ -55,9 +55,10 @@ func TestLocalConformance(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
 
+			// a single state serves all the namespaces, sharing the event history buffer
 			suite.Run(t, &conformance.StateSuite{
 				State:      state.WrapCore(tt.state),
-				Namespaces: []resource.Namespace{"default"},
+				Namespaces: []resource.Namespace{"default", "controller", "system", "runtime"},
 			})
 		})
 	}
