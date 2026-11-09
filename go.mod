@@ -5,10 +5,11 @@ go 1.26.5
 require (
 	github.com/ProtonMail/gopenpgp/v3 v3.5.2
 	github.com/cenkalti/backoff/v4 v4.3.0
+	github.com/cenkalti/backoff/v7 v7.0.3
 	github.com/gertd/go-pluralize v0.2.1
 	github.com/grpc-ecosystem/grpc-gateway/v2 v2.33.0
 	github.com/hashicorp/go-multierror v1.1.1
-	github.com/klauspost/compress v1.20.3
+	github.com/klauspost/compress v1.20.4
 	github.com/planetscale/vtprotobuf v0.6.1-0.20260702190614-8ae5a48058df
 	github.com/siderolabs/gen v0.8.8
 	github.com/siderolabs/go-pointer v1.0.1
@@ -18,8 +19,8 @@ require (
 	go.etcd.io/bbolt v1.5.0
 	go.uber.org/goleak v1.3.0
 	go.uber.org/zap v1.28.0
-	go.yaml.in/yaml/v4 v4.0.0-rc.6
-	golang.org/x/sync v0.24.0
+	go.yaml.in/yaml/v4 v4.0.0
+	golang.org/x/sync v0.25.0
 	golang.org/x/time v0.16.0
 	google.golang.org/grpc v1.85.0
 	google.golang.org/protobuf v1.36.12
