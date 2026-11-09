@@ -129,12 +129,12 @@ func TestTaskRestartBackoffReset(t *testing.T) {
 			runs:    new(int),
 			startCh: startCh,
 			runDuration: func(run int) time.Duration {
-				// the 20th run is long-lived, all others fail at once
+				// the 20th run is long-lived, all others fail slowly, like on a call timeout
 				if run == 20 {
 					return time.Hour
 				}
 
-				return 0
+				return 5 * time.Second
 			},
 		}
 
@@ -149,8 +149,8 @@ func TestTaskRestartBackoffReset(t *testing.T) {
 
 		tsk.Stop()
 
-		// the backoff reached its maximum interval before the long-lived run
-		assert.Greater(t, starts[19].Sub(starts[18]), 30*time.Second)
+		// the slow failures did not reset the backoff, it reached its maximum interval before the long-lived run
+		assert.Greater(t, starts[19].Sub(starts[18].Add(5*time.Second)), 30*time.Second)
 
 		// the failure after the long-lived run restarts the task at the initial interval again
 		assert.Less(t, starts[20].Sub(starts[19].Add(time.Hour)), time.Second)
